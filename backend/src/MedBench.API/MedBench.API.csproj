@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <UserSecretsId>37a3f024-f7fe-458b-833f-b321d1f1c0ed</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.AI.OpenAI" />
+    <PackageReference Include="DotEnv.Net" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Microsoft.Azure.Cosmos" />
+    <PackageReference Include="Microsoft.Identity.Web" />
+    <PackageReference Include="Microsoft.Identity.Web.UI" />
+    <PackageReference Include="MongoDB.Driver" />
+    <PackageReference Include="SixLabors.ImageSharp" />
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+    <PackageReference Include="SharpToken" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+  <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MedBench.Core\MedBench.Core.csproj" />
+    <ProjectReference Include="..\MedBench.Infrastructure\MedBench.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project> 

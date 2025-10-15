@@ -1,0 +1,21 @@
+.user-management {
+    .command-bar {
+        padding: 10px 0;
+        
+        button {
+            font-size: 14px;
+            padding: 5px 20px;
+            
+            &:disabled {
+                background-color: #f3f2f1;
+                color: #a19f9d;
+            }
+        }
+    }
+
+    .error-text {
+        color: #a4262c;
+        font-size: 12px;
+        margin-top: 5px;
+    }
+} 

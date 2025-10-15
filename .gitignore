@@ -1,0 +1,62 @@
+# .NET build output
+**/bin/
+**/obj/
+
+# DLLs
+*.dll 
+**/bin/**/*.dll
+**/obj/**/*.dll 
+**/bin/
+**/obj/
+*.dll 
+.env
+*.pdb
+
+data/
+.fake
+**/bin/**/obj/
+**/src/MedBench.Infrastructure/
+backend/src/MedBench.API/appsettings.Development.json
+appsettings.Development.json
+backend/src/MedBench.Infrastructure/bin/*
+backend/src/MedBench.Infrastructure/obj/*
+backend/src/MedBench.API/bin/*
+backend/src/MedBench.API/obj/*
+backend/src/MedBench.Infrastructure/bin/*
+backend/src/MedBench.Infrastructure/obj/*
+backend/src/MedBench.API/appsettings.Development.json
+# .NET build output
+**/bin/
+**/obj/
+*.dll
+*.pdb
+*.exe
+*.cache
+*.tmp
+
+# Environment files
+.env
+.env.local
+.env.development
+.env.production
+
+# Data directories
+data/
+
+# Build tools
+.fake
+.vs/
+.vscode/
+*.user
+*.suo
+*.userprefs
+
+# Logs
+*.log
+
+# Node modules (if applicable)
+node_modules/
+
+# OS generated files
+.DS_Store
+Thumbs.db

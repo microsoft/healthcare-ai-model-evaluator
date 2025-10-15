@@ -1,0 +1,37 @@
+services:
+  # Azure Storage Emulator (Azurite)
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite:latest
+    container_name: haime-azurite
+    ports:
+      - "10000:10000"  # Blob service
+      - "10001:10001"  # Queue service  
+      - "10002:10002"  # Table service
+    volumes:
+      - azurite-data:/data
+    command: ["azurite", "--blobHost", "0.0.0.0", "--queueHost", "0.0.0.0", "--tableHost", "0.0.0.0", "--location", "/data", "--debug", "/data/debug.log"]
+    networks:
+      - haime-network
+
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: haime-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=HAIME
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - haime-network
+
+volumes:
+  azurite-data:
+    driver: local
+  mongodb-data:
+    driver: local
+
+networks:
+  haime-network:
+    driver: bridge

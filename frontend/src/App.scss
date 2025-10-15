@@ -1,0 +1,29 @@
+.app {
+    min-height: 100vh;
+    background-color: #f5f5f5;
+
+    .main-content {
+        padding: 0px;
+        padding-top: 60px;
+        height: calc(100vh - 60px);
+        @media (max-width: 768px) {
+            padding: 60px 0 20px;  // Remove horizontal padding on mobile
+        }
+    }
+} 
+html {
+    height: 100%;
+}
+body {
+    height: 100%;
+    background-color: #f5f5f5;
+}
+.placeholder-page {
+    padding: 20px;  // Keep padding for placeholder pages
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    font-size: 24px;
+    color: #808080;
+}

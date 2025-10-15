@@ -1,0 +1,23 @@
+{
+  "version": "2.0",
+  "logging": {
+    "applicationInsights": {
+      "samplingSettings": {
+        "isEnabled": true,
+        "excludedTypes": "Request"
+      }
+    }
+  },
+  "extensionBundle": {
+    "id": "Microsoft.Azure.Functions.ExtensionBundle",
+    "version": "[3.*, 4.0.0)"
+  },
+  "functionTimeout": "-1",
+  "healthMonitor": {
+    "enabled": true,
+    "healthCheckInterval": "00:00:10",
+    "healthCheckWindow": "00:02:00",
+    "healthCheckThreshold": 6,
+    "counterThreshold": 0.80
+  }
+}

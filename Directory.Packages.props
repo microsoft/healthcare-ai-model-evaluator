@@ -1,0 +1,33 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="Azure.AI.Inference" Version="1.0.0-beta.3" />
+    <PackageVersion Include="Azure.AI.OpenAI" Version="2.1.0" />
+    <PackageVersion Include="Azure.Storage.Blobs" Version="12.19.1" />
+  <PackageVersion Include="Azure.Communication.Email" Version="1.1.0-beta.2" />
+    <PackageVersion Include="DotEnv.Net" Version="3.2.1" />
+    <PackageVersion Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.OpenApi" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.Azure.Cosmos" Version="3.37.0" />
+    <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+    <PackageVersion Include="Microsoft.Identity.Web" Version="2.16.1" />
+    <PackageVersion Include="Microsoft.Identity.Web.UI" Version="2.16.1" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <PackageVersion Include="MongoDB.Bson" Version="2.22.0" />
+    <PackageVersion Include="MongoDB.Driver" Version="2.22.0" />
+    <PackageVersion Include="MongoDB.Driver.Core" Version="2.22.0" />
+    <PackageVersion Include="Moq" Version="4.20.70" />
+    <PackageVersion Include="SharpToken" Version="1.2.14" />
+    <PackageVersion Include="SixLabors.ImageSharp" Version="3.1.11" />
+    <PackageVersion Include="Swashbuckle.AspNetCore" Version="6.5.0" />
+  <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.10" />
+  <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="7.5.1" />
+    <PackageVersion Include="xunit" Version="2.6.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="2.5.5" />
+  </ItemGroup>
+</Project>

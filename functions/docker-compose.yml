@@ -1,0 +1,58 @@
+services:
+  # Healthcare AI Model Evaluator Metrics Function App
+  haime-metrics:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: haime-metrics-func
+    ports:
+      - "7071:80"
+    environment:
+      # Connect to Azurite from root docker-compose.yaml 
+      - AzureWebJobsStorage=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://host.docker.internal:10000/devstoreaccount1;QueueEndpoint=http://host.docker.internal:10001/devstoreaccount1;TableEndpoint=http://host.docker.internal:10002/devstoreaccount1;
+      - FUNCTIONS_WORKER_RUNTIME=python
+      - FUNCTIONS_EXTENSION_VERSION=~4
+    volumes:
+      - ./data:/home/site/wwwroot/data
+      # Override code for development
+      - .:/home/site/wwwroot
+      # Local cache volumes
+      - transformers-cache:/tmp/transformers_cache
+      - hf-cache:/tmp/hf_home
+    networks:
+      - haime-network
+
+  # Summary Evaluator Add-on Function App
+  haime-evaluator:
+    build:
+      context: .
+      dockerfile: Dockerfile.addon-dev
+      args:
+        ADDON_PATH: ./addons/evaluator
+    container_name: haime-evaluator-func
+    ports:
+      - "7073:80"
+    environment:
+      # Connect to Azurite from root docker-compose.yaml 
+      - AzureWebJobsStorage=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://host.docker.internal:10000/devstoreaccount1;QueueEndpoint=http://host.docker.internal:10001/devstoreaccount1;TableEndpoint=http://host.docker.internal:10002/devstoreaccount1;
+      - FUNCTIONS_WORKER_RUNTIME=python
+      - FUNCTIONS_EXTENSION_VERSION=~4
+    env_file:
+      - .env
+    volumes:
+      # Override code for development
+      - ./haime:/home/site/wwwroot/haime
+      - ./addons/evaluator/function_app.py:/home/site/wwwroot/function_app.py
+      - ./addons/evaluator/host.json:/home/site/wwwroot/host.json
+    networks:
+      - haime-network
+
+volumes:
+  transformers-cache:
+    driver: local
+  hf-cache:
+    driver: local
+
+networks:
+  haime-network:
+    driver: bridge

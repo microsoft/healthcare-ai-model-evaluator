@@ -1,0 +1,60 @@
+.nav-container {
+    overflow-x: auto;  // Enable horizontal scrolling
+    white-space: nowrap;  // Prevent wrapping
+    -webkit-overflow-scrolling: touch;  // Smooth scrolling on iOS
+
+    // Hide scrollbar but keep functionality
+    &::-webkit-scrollbar {
+        display: none;  // Chrome, Safari, newer Edge
+    }
+    -ms-overflow-style: none;  // IE, Edge
+    scrollbar-width: none;  // Firefox
+
+    .nav-items {
+        flex-shrink: 0;  // Prevent items from shrinking
+    }
+
+    .nav-logo {
+        cursor: pointer;
+        min-width: 150px;
+        padding: 15px 10px;
+        transition: background-color 0.2s ease;
+        margin:-35px -25px -35px -20px;   
+        
+        
+
+        &:hover {
+            background-color: #f3f2f1;
+        }
+
+        img {
+            width: 30px !important;
+            height: 30px !important;
+            min-width: 30px;
+            min-height: 30px;
+        }
+    }
+    .nav-logo-text {
+        vertical-align: text-top;
+        display: inline-block;
+        position: relative;
+        margin-top: -4px;
+        white-space: nowrap;
+    }
+
+    .profile-button {
+        cursor: pointer;
+        transition: transform 0.2s ease;
+
+        &:hover {
+            transform: scale(1.05);
+        }
+    }
+
+    .nav-menu-button {
+        height: 32px;
+        width: 32px;
+        padding: 4px;
+        margin-right: 8px;
+    }
+} 

@@ -1,0 +1,38 @@
+# Ignore files for azd deployments
+.git/
+.vscode/
+.idea/
+.DS_Store
+*.log
+node_modules/
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Backend build artifacts
+backend/bin/
+backend/obj/
+backend/**/bin/
+backend/**/obj/
+
+# Frontend build artifacts (keep build/ for deployment)
+frontend/node_modules/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
+# Documentation
+*.md
+!README.md
+
+# Test files
+**/tests/
+**/*.test.*
+**/*.spec.*
+
+# Temporary files
+*.tmp
+*.temp 

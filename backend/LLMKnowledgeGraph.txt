@@ -1,0 +1,93 @@
+Backend Architecture Knowledge Graph:
+
+Core Domain Model Hierarchy:
+User -> Experiment -> Trial
+  ├─ ClinicalTask -> DataSetModel
+  ├─ TestScenario -> ModelIds[]
+  ├─ Model -> ExperimentResults
+  └─ DataSet -> DataObject -> DataContent
+
+Key Relationships:
+- Experiment owns Trials and references TestScenario
+- TestScenario references ClinicalTask and Models
+- ClinicalTask references DataSetModels (DataSet + Model pairs)
+- DataSet contains DataObjects with InputData/OutputData
+- Trial references Experiment, DataObject, and captures ModelOutputs
+
+Repository Pattern:
+IRepository<T> (Base Interface)
+  ├─ GetAllAsync()
+  ├─ GetByIdAsync()
+  ├─ CreateAsync()
+  ├─ UpdateAsync()
+  └─ DeleteAsync()
+
+Data Storage:
+MongoDB Collections:
+  ├─ Users
+  ├─ Experiments 
+  ├─ Trials
+  ├─ ClinicalTasks
+  ├─ TestScenarios
+  ├─ Models
+  ├─ DataSets
+  ├─ DataObjects
+  └─ Images
+
+Authentication Chain:
+Azure AD -> JWT Token -> UserIdMiddleware -> MongoDb UserId
+
+Controller Authorization:
+[Authorize] Base
+  ├─ [RequireAuthenticatedUser] Standard Access
+  └─ [RequireAdministratorRole] Admin Only
+
+Key Processing Flows:
+1. Experiment Lifecycle:
+   Draft -> Processing -> InProgress -> Completed/Cancelled
+   - ProcessingStatus tracks trial generation
+   - Trials start as "pending"
+   - Completion triggers result collation
+
+2. Trial Processing:
+   - Pending -> InProgress -> Done
+   - Updates experiment.PendingTrials count
+   - Captures user responses and time spent
+   - May include model output flags
+
+3. Image Handling:
+   - Base64 -> Azure Blob Storage
+   - Returns Image ID for reference
+   - Served via dedicated endpoint
+
+Critical Dependencies:
+- MongoDB for primary storage
+- Azure Blob Storage for images
+- Azure AD B2C for auth
+- Background processing for experiments
+
+Error Handling Pattern:
+Controllers:
+  ├─ Try/Catch wrapping
+  ├─ KeyNotFoundException -> 404
+  ├─ UnauthorizedAccessException -> 401
+  └─ Other Exceptions -> 500 + Logging
+
+State Management:
+- Immutable models with explicit updates
+- Timestamp tracking (CreatedAt/UpdatedAt)
+- Status transitions via dedicated endpoints
+- Atomic updates in repositories
+
+Validation Rules:
+- Owner/user authorization checks
+- Status transition validation
+- Required field validation
+- Cross-entity reference integrity
+
+This knowledge graph helps maintain:
+1. Data consistency across operations
+2. Proper authorization flows
+3. Expected state transitions
+4. Error handling patterns
+5. Entity relationships

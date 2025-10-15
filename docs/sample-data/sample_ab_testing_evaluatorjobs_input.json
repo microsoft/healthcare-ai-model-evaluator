@@ -1,0 +1,78 @@
+{
+  "model_run": {
+    "id": "gpt-4o-mini-2024-07-18",
+    "model": {
+      "name": "gpt-4o-mini-2024-07-18",
+      "version": "1.0"
+    },
+    "dataset": {
+      "name": "arena_evaluation",
+      "description": "Arena experiment evaluation dataset",
+      "instances": [
+        {
+          "id": "0",
+          "input": {
+            "content": [
+              {
+                "type": "Text",
+                "data": "Summarize this text:\n\nThis is a sample text that needs to be summarized. It contains important information that should be captured in a concise manner.",
+                "location": null,
+                "metadata": null,
+                "highlighted_segments": []
+              }
+            ]
+          },
+          "references": [],
+          "split": "Test",
+          "sub_split": null,
+          "perturbation": null
+        }
+      ]
+    },
+    "results": [
+      {
+        "input_id": "0",
+        "completions": {
+          "content": [
+            {
+              "type": "Text",
+              "data": "Complete summary of the input text.",
+              "location": null,
+              "metadata": null,
+              "highlighted_segments": []
+            }
+          ]
+        },
+        "finish_reason": "stop",
+        "error": null,
+        "metadata": {
+          "model_name": "gpt-4o-mini-2024-07-18"
+        }
+      },
+      {
+        "input_id": "0",
+        "completions": {
+          "content": [
+            {
+              "type": "Text",
+              "data": "Summary with some of the important information.",
+              "location": null,
+              "metadata": null,
+              "highlighted_segments": []
+            }
+          ]
+        },
+        "finish_reason": "stop",
+        "error": null,
+        "metadata": {
+          "model_name": "model_claude-3-5-sonnet-20241022"
+        }
+      }
+    ]
+  },
+  "function_type": "evaluator",
+  "job_id": "87654321-4321-8765-dcba-210987654321",
+  "created_at": "2024-06-16T10:45:00.000Z",
+  "base_prompt": "You are a model evaluator reviewing AI model outputs.\nReview the following input and output according to these instructions:\n    Compare the two model outputs and determine which provides a better summary.\n\nOriginal prompt from scenario:Summarize this text:\n\nThis is a sample text that needs to be summarized. It contains important information that should be captured in a concise manner.",
+  "output_instructions": "Compare Model A and Model B outputs.\nRespond with exactly one of these options:\n    - 'A' if Model A's output is better\n    - 'B' if Model B's output is better\n    - 'both-good' if both outputs are good\n    - 'both-bad' if neither output is acceptable"
+}

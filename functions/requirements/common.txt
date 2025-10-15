@@ -1,0 +1,27 @@
+# -c ./constraints.txt
+
+# Core dependencies
+attrs
+azure-ai-ml
+azure-ai-inference
+azure-functions
+azure-identity
+azureml-fsspec
+azure-storage-blob
+python-dotenv
+openai
+
+# Evaluation metrics, model as judge
+evaluate
+bert-score
+sacrebleu
+rouge_score
+nltk
+numpy
+faiss-cpu
+
+# Only used to pre download models during build:
+transformers
+
+# Addon dependencies (dynamically overwritten during addon packaging)
+-r ./addon.txt
