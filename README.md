@@ -192,7 +192,7 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions and trou
 ```bash
 cd frontend
 npm install
-npm start
+npm run start
 ```
 
 ### Backend Setup
