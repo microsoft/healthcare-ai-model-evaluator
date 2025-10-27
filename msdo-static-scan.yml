@@ -9,53 +9,74 @@ pr:
     include: [ main, develop, feature/* ]
 
 pool:
-  vmImage: 'ubuntu-latest'   # You can switch to 'macOS-latest' if you prefer
-
+  vmImage: 'ubuntu-latest'  
 variables:
   DOTNET_VERSION: '8.0.x'
   NODE_VERSION: '23.x'
   BUILD_CONFIGURATION: 'Release'
-  # Path to your .sln (adjust if needed)
   SOLUTION: 'backend/*.sln'
 
 steps:
   - checkout: self
     fetchDepth: 0
 
-  # --- Toolchains
   - task: UseDotNet@2
-    displayName: 'Use .NET $(DOTNET_VERSION)'
     inputs:
       packageType: 'sdk'
       version: '$(DOTNET_VERSION)'
 
   - task: NodeTool@0
-    displayName: 'Use Node.js $(NODE_VERSION)'
     inputs:
       versionSpec: '$(NODE_VERSION)'
 
-  # --- (Optional) Restore/build to generate binaries for BinSkim
+  # Build so BinSkim can analyze binaries
   - script: |
       dotnet restore $(SOLUTION)
       dotnet build $(SOLUTION) -c $(BUILD_CONFIGURATION) --no-restore
     displayName: 'Restore & Build (.NET)'
 
-  # --- Microsoft Security DevOps (SAST umbrella)
-  - task: MicrosoftSecurityDevOps@1
-    displayName: 'Microsoft Security DevOps'
-    inputs:
-      policy: 'microsoft'             # MS-curated policy
-      # categories: 'code,artifacts'   # uncomment to limit; defaults to all
-      tools: 'eslint,binskim,trivy'   # JS/TS, binaries, deps/IaC
-      break: false                     # set true to fail on High findings
-      publish: true                    # publish SARIF as pipeline artifact
-      artifactName: 'CodeAnalysisLogs' # required name for downstream dashboards
+  # --- Install scanners
+  - script: |
+      # DevSkim (SAST patterns for many languages)
+      dotnet tool install -g Microsoft.CST.DevSkim.CLI
+      echo '##vso[task.prependpath]$HOME/.dotnet/tools'
 
-  # (Optional) Also publish the folder so you can download SARIF easily
+      # BinSkim (binary hardening checks)
+      dotnet tool install -g Microsoft.CodeAnalysis.BinSkim
+
+      # ESLint + security plugins
+      npm i -D eslint eslint-plugin-security eslint-plugin-react eslint-plugin-jsx-a11y eslint-plugin-no-unsanitized
+
+      # Trivy (deps/secrets/misconfig)
+      sudo apt-get update -y
+      sudo apt-get install -y wget
+      wget -qO- https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+      echo "deb https://aquasecurity.github.io/trivy-repo/deb stable main" | sudo tee /etc/apt/sources.list.d/trivy.list
+      sudo apt-get update -y && sudo apt-get install -y trivy
+    displayName: 'Install security tools'
+
+  # --- Run scanners (emit SARIF)
+  - script: |
+      mkdir -p CodeAnalysisLogs
+
+      # DevSkim
+      devskim analyze --output CodeAnalysisLogs/devskim.sarif --ignore-globs node_modules/** --severity medium || true
+
+      # ESLint (React/TS)
+      npx eslint "src/**/*.{js,jsx,ts,tsx}" -f sarif -o CodeAnalysisLogs/eslint.sarif || true
+
+      # BinSkim (scan built artifacts)
+      binskim analyze "$(Build.SourcesDirectory)/**/bin/**" --recurse --output CodeAnalysisLogs/binskim.sarif || true
+
+      # Trivy filesystem scan (deps, secrets, misconfig)
+      trivy fs --scanners vuln,secret,misconfig --format sarif -o CodeAnalysisLogs/trivy.sarif .
+    displayName: 'Run SAST & artifact scans'
+    continueOnError: true
+
+  # Publish SARIF for download / dashboards
   - task: PublishBuildArtifacts@1
-    displayName: 'Publish CodeAnalysisLogs'
     condition: succeededOrFailed()
     inputs:
-      PathtoPublish: '$(Pipeline.Workspace)/CodeAnalysisLogs'
+      PathtoPublish: 'CodeAnalysisLogs'
       ArtifactName: 'CodeAnalysisLogs'
       publishLocation: 'Container'
