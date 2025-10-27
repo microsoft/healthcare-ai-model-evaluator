@@ -1,0 +1,38 @@
+# Use the official Azure Functions Python image
+FROM mcr.microsoft.com/azure-functions/python:4-python3.11
+
+# Build argument for addon path
+ARG ADDON_PATH
+ENV ADDON_PATH=${ADDON_PATH}
+
+# Set environment variables
+ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
+    AzureFunctionsJobHost__Logging__Console__IsEnabled=true \
+    FUNCTIONS_WORKER_RUNTIME=python \
+    PYTHONPATH=/home/site/wwwroot
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements folder and main requirements
+COPY requirements/ /home/site/wwwroot/requirements/
+COPY ${ADDON_PATH}/requirements.txt /home/site/wwwroot/requirements/addon.txt
+COPY requirements.txt /home/site/wwwroot/requirements.txt
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r /home/site/wwwroot/requirements.txt
+
+# Install remaining packages
+RUN pip install --no-cache-dir -r /home/site/wwwroot/requirements/addon.txt
+
+# Copy Healthcare AI Model Evaluator package first (for better Docker layer caching)
+COPY ./medbench /home/site/wwwroot/medbench
+# Copy addon files
+COPY ${ADDON_PATH}/function_app.py /home/site/wwwroot/
+COPY ${ADDON_PATH}/host.json /home/site/wwwroot/
+
+# Set working directory
+WORKDIR /home/site/wwwroot

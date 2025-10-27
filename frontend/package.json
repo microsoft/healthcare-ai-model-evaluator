@@ -1,0 +1,76 @@
+{
+  "name": "frontend",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@azure/msal-browser": "^3.28.0",
+    "@azure/msal-react": "^2.2.0",
+    "@craco/craco": "^7.1.0",
+    "@fluentui/react": "^8.122.7",
+    "@fluentui/react-charting": "^5.23.65",
+    "@reduxjs/toolkit": "^2.2.1",
+    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^13.5.0",
+    "@types/jest": "^27.5.2",
+    "@types/node": "^16.18.86",
+    "@types/react": "^18.2.61",
+    "@types/react-dom": "^18.2.19",
+    "axios": "^1.6.7",
+    "cornerstone-core": "^2.6.1",
+    "cornerstone-math": "^0.1.10",
+    "cornerstone-tools": "^6.0.10",
+    "cornerstone-wado-image-loader": "^4.13.2",
+    "dcmjs": "^0.29.5",
+    "dicom-parser": "^1.8.21",
+    "gl-matrix": "^3.4.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-hot-toast": "^2.5.1",
+    "react-markdown": "^10.1.0",
+    "react-redux": "^9.1.0",
+    "react-router-dom": "^7.1.3",
+    "react-scripts": "^5.0.1",
+    "recharts": "^2.15.1",
+    "rehype-raw": "^7.0.0",
+    "remark-gfm": "^4.0.1",
+    "sass": "^1.71.1",
+    "typescript": "^4.9.5",
+    "uuid": "^11.0.5",
+    "web-vitals": "^2.1.4"
+  },
+  "scripts": {
+    "start": "craco start",
+    "build": "craco build",
+    "test": "craco test",
+    "eject": "react-scripts eject"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@types/react-redux": "^7.1.34",
+    "@types/uuid": "^10.0.0"
+  },
+  "resolutions": {
+    "postcss": "^8.4.31",
+    "nth-check": "^2.1.1",
+    "css-select": "^5.1.0",
+    "svgo": "^3.0.2"
+  }
+}

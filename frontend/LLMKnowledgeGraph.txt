@@ -1,0 +1,96 @@
+App Structure & Entry:
+index.tsx -> App.tsx -> [AuthProvider -> ReduxProvider -> Router -> Navigation]
+  ├─ Login/Login.tsx (uses: Login.scss, authConfig.ts, AuthContext)
+  ├─ Arena/* (uses: Arena.scss, arenaReducer.ts, trialService.ts)
+  ├─ Rankings/Rankings.tsx (uses: rankingService.ts, LoadingOverlay)
+  └─ Admin/* (uses: ManagementLayout.tsx + individual management components)
+
+State Management Hierarchy:
+store/store.ts (Root Redux Store)
+  ├─ reducers/
+  │   ├─ userReducer.ts (auth user management)
+  │   ├─ dataReducer.ts (datasets)
+  │   ├─ modelReducer.ts (AI models)
+  │   ├─ clinicalTaskReducer.ts (clinical tasks)
+  │   ├─ testScenarioReducer.ts (test scenarios)
+  │   ├─ experimentReducer.ts (experiments)
+  │   └─ arenaReducer.ts (arena state)
+  └─ hooks/
+      ├─ useModels.ts
+      ├─ useClinicalTasks.ts
+      ├─ useExperiments.ts
+      ├─ useTestScenarios.ts
+      └─ useMongoUserId.ts
+
+Authentication Chain:
+config/authConfig.ts (MSAL config)
+  ├─ contexts/AuthContext.tsx (auth state & methods)
+  ├─ hooks/useAuth.ts (auth hook)
+  └─ services/axiosConfig.ts (auth interceptor)
+
+Core Feature Dependencies:
+
+1. Arena Module Files:
+components/Arena/
+  ├─ Arena.tsx (main container)
+  ├─ ArenaLayout.tsx (shared layout)
+  ├─ ArenaAB.tsx
+  ├─ SimpleEvaluation.tsx
+  ├─ SimpleValidation.tsx
+  ├─ FullValidation.tsx
+  ├─ ModelPreferenceSelector.tsx
+  ├─ ModelRatingSelector.tsx
+  ├─ ModelValidationSelector.tsx
+  ├─ ReferenceDataPanel.tsx
+  └─ FlagModelOutput.tsx
+
+2. Admin Module Files:
+components/Admin/
+  ├─ Admin.tsx (container)
+  ├─ ManagementLayout.tsx (shared)
+  ├─ UserManagement.tsx + UserPanel.tsx
+  ├─ ModelsManagement.tsx + ModelPanel.tsx
+  ├─ ClinicalTasksManagement.tsx + ClinicalTaskPanel.tsx
+  ├─ TestScenariosManagement.tsx + TestScenarioPanel.tsx
+  ├─ ExperimentManagement.tsx + ExperimentPanel.tsx
+  └─ DataManagement.tsx
+
+Services Layer:
+services/
+  ├─ axiosConfig.ts (base config)
+  ├─ userService.ts
+  ├─ modelService.ts
+  ├─ clinicalTaskService.ts
+  ├─ testScenarioService.ts
+  ├─ experimentService.ts
+  ├─ dataSetService.ts
+  ├─ trialService.ts
+  ├─ rankingService.ts
+  └─ imageService.ts
+
+Type Definitions:
+types/
+  ├─ admin.ts (core interfaces: IModel, IClinicalTask, ITestScenario, IExperiment)
+  ├─ auth.types.ts (User, AuthState, AuthAction)
+  ├─ dataset.ts (DataSet, DataContent)
+  ├─ user.ts (UserFormData, AVAILABLE_ROLES)
+  └─ services.ts (service interfaces)
+
+Shared Components:
+components/shared/
+  └─ LoadingOverlay.tsx (used across all management views)
+
+Style Dependencies:
+- Each feature module has its own .scss file
+- App.scss (global styles)
+- Navigation.scss
+- Login.scss
+- Arena.scss
+
+Critical External Dependencies:
+package.json:
+  ├─ @azure/msal-react + @azure/msal-browser (auth)
+  ├─ @fluentui/react (UI components)
+  ├─ @reduxjs/toolkit + react-redux (state)
+  ├─ react-router-dom (routing)
+  └─ axios (API calls) 

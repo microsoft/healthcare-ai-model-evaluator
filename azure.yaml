@@ -1,0 +1,46 @@
+name: healthcare-ai-model-evaluator
+metadata:
+  template: healthcare-ai-model-evaluator@0.0.1-beta
+
+services:
+  web:
+    project: ./frontend
+    dist: build
+    language: js
+    host: staticwebapp
+    hooks:
+      prebuild:
+        posix:
+          shell: sh
+          run: ../infra/scripts/update-env.sh
+          interactive: false
+          continueOnError: false
+  
+  api:
+    project: ./backend/src/MedBench.API
+    language: dotnet
+    host: containerapp
+
+  # Main metrics processor function app (Docker-based)
+  metrics:
+    project: ./functions
+    language: python
+    host: function
+    module: .
+
+  # Summary evaluator addon function app
+  evaluator:
+    project: ./functions/addons/evaluator/build
+    language: python
+    host: function
+    module: .
+    hooks:
+      prepackage:
+        shell: sh
+        run: ../../package_addon.sh evaluator
+        continueOnError: false
+
+hooks:
+  postprovision:
+    - run: ./infra/scripts/postprovision.sh
+      continueOnError: false

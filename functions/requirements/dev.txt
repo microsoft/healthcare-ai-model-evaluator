@@ -1,0 +1,10 @@
+-r ./common.txt
+
+setuptools
+datasets
+
+pytest
+pytest-mock
+
+ipykernel
+ruff
