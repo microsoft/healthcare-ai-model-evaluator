@@ -1,3 +1,4 @@
+//In the frontend this is called Experiments, but in the backend it's called TestScenarios
 namespace MedBench.API.Controllers;
 
 [ApiController]
@@ -57,16 +58,16 @@ public class TestScenariosController : ControllerBase
 
             scenario.OwnerId = userId;
             Console.WriteLine($"Creating test scenario with ID: {scenario.Id}");
-            
+
             var created = await _testScenarioRepository.CreateAsync(scenario);
-            
+
             // Verify the object has an ID
             if (string.IsNullOrEmpty(created.Id))
             {
                 Console.WriteLine("Error: Created test scenario has no ID");
                 return StatusCode(500, new { message = "Failed to generate ID for test scenario" });
             }
-            
+
             // Return just the ID to avoid potential serialization issues
             return CreatedAtAction(nameof(Get), new { id = created.Id }, created);
         }
@@ -102,13 +103,13 @@ public class TestScenariosController : ControllerBase
         try
         {
             _logger.LogInformation("Delete request received for test scenario {TestScenarioId}", id);
-            
+
             // First, try to retrieve the test scenario to see if it exists and log its details
             TestScenario? testScenario = null;
             try
             {
                 testScenario = await _testScenarioRepository.GetByIdAsync(id);
-                _logger.LogInformation("Retrieved test scenario {TestScenarioId} with TaskId: '{TaskId}', Name: '{Name}'", 
+                _logger.LogInformation("Retrieved test scenario {TestScenarioId} with TaskId: '{TaskId}', Name: '{Name}'",
                     id, testScenario.TaskId, testScenario.Name);
             }
             catch (KeyNotFoundException)
@@ -121,12 +122,12 @@ public class TestScenariosController : ControllerBase
                 _logger.LogError(ex, "Error retrieving test scenario {TestScenarioId}: {ErrorMessage}", id, ex.Message);
                 return StatusCode(500, $"Error retrieving test scenario: {ex.Message}");
             }
-            
+
             // Log the TaskId to see if it's problematic
             if (!string.IsNullOrEmpty(testScenario.TaskId))
             {
                 _logger.LogInformation("Test scenario {TestScenarioId} references TaskId: {TaskId}", id, testScenario.TaskId);
-                
+
                 // Try to check if the clinical task exists
                 try
                 {
@@ -142,12 +143,12 @@ public class TestScenariosController : ControllerBase
                     _logger.LogError(ex, "Error checking clinical task {TaskId}: {ErrorMessage}", testScenario.TaskId, ex.Message);
                 }
             }
-            
+
             // Now attempt the delete operation
             _logger.LogInformation("Attempting to delete test scenario {TestScenarioId}", id);
             await _testScenarioRepository.DeleteAsync(id);
             _logger.LogInformation("Successfully deleted test scenario {TestScenarioId}", id);
-            
+
             return NoContent();
         }
         catch (KeyNotFoundException)

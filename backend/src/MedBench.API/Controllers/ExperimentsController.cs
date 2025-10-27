@@ -1,3 +1,4 @@
+//In the frontend this is called Assignments, but in the backend it's Experiments
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using MedBench.Core.Models;

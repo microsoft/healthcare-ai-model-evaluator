@@ -54,13 +54,13 @@ const tiles: DashboardTileProps[] = [
         icon: 'TestBeaker',
         title: 'Experiments',
         description: 'Create and manage experiments to evaluate model performance.',
-        path: '/admin/test-scenarios'
+        path: '/admin/experiments'
     },
     {
         icon: 'TestPlan',
         title: 'Assignments',
         description: 'Assign and run experiments to assess model capabilities and performance.',
-        path: '/admin/experiments'
+        path: '/admin/assignments'
     },
     {
         icon: 'Database',

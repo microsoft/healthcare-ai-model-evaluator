@@ -19,8 +19,11 @@ namespace MedBench.API.Tests.Controllers
         private readonly Mock<IExperimentRepository> _mockExperimentRepo;
         private readonly Mock<ILogger<TrialsController>> _mockLogger;
         private readonly Mock<IUserRepository> _mockUserRepository;
-        private readonly Mock<StatCalculatorService> _mockStatCalculatorService;
         private readonly Mock<ITestScenarioRepository> _mockTestScenarioRepository;
+        private readonly Mock<IModelRepository> _mockModelRepository;
+        private readonly Mock<IClinicalTaskRepository> _mockClinicalTaskRepository;
+        private readonly Mock<ILogger<StatCalculatorService>> _mockStatLogger;
+        private readonly StatCalculatorService _statCalculatorService;
         private readonly TrialsController _controller;
         private readonly string _userId = "test-user-id";
 
@@ -30,15 +33,28 @@ namespace MedBench.API.Tests.Controllers
             _mockExperimentRepo = new Mock<IExperimentRepository>();
             _mockLogger = new Mock<ILogger<TrialsController>>();
             _mockUserRepository = new Mock<IUserRepository>();
-            _mockStatCalculatorService = new Mock<StatCalculatorService>();
             _mockTestScenarioRepository = new Mock<ITestScenarioRepository>();
+            _mockModelRepository = new Mock<IModelRepository>();
+            _mockClinicalTaskRepository = new Mock<IClinicalTaskRepository>();
+            _mockStatLogger = new Mock<ILogger<StatCalculatorService>>();
+            
+            // Create real StatCalculatorService with mocked dependencies
+            _statCalculatorService = new StatCalculatorService(
+                _mockRepository.Object,
+                _mockUserRepository.Object,
+                _mockStatLogger.Object,
+                _mockExperimentRepo.Object,
+                _mockTestScenarioRepository.Object,
+                _mockModelRepository.Object,
+                _mockClinicalTaskRepository.Object
+            );
             
             _controller = new TrialsController(
                 _mockRepository.Object, 
                 _mockExperimentRepo.Object, 
                 _mockUserRepository.Object, 
                 _mockLogger.Object, 
-                _mockStatCalculatorService.Object,
+                _statCalculatorService,
                 _mockTestScenarioRepository.Object
             );
 
@@ -127,26 +143,49 @@ namespace MedBench.API.Tests.Controllers
             var existingTrial = new Trial 
             { 
                 Id = "1", 
+                UserId = _userId,
+                ExperimentId = "exp1",
                 Status = "pending",
                 Response = new TrialResponse(),
-                Flags = new List<TrialFlag>()
+                Flags = new List<TrialFlag>(),
+                ModelOutputs = new List<ModelOutput>(),
+                StartedOn = DateTime.UtcNow.AddMinutes(-5),
+                UpdatedAt = DateTime.UtcNow.AddMinutes(-5),
+                DataObjectId = "data1"
             };
             
-            var updateTrial = new Trial
+            var updateDto = new TrialUpdateDto
             {
-                Id = "1",
                 Status = "done",
                 Response = new TrialResponse { Text = "Updated response" },
                 Flags = new List<TrialFlag> { new TrialFlag { Text = "flag1" } }
+            };
+
+            var user = new User 
+            { 
+                Id = _userId, 
+                Stats = new Dictionary<string, string>() 
             };
 
             _mockRepository.Setup(repo => repo.GetByIdAsync("1"))
                 .ReturnsAsync(existingTrial);
             _mockRepository.Setup(repo => repo.UpdateAsync(It.IsAny<Trial>()))
                 .ReturnsAsync((Trial t) => t);
+            _mockUserRepository.Setup(repo => repo.GetByIdAsync(_userId))
+                .ReturnsAsync(user);
+            _mockUserRepository.Setup(repo => repo.UpdateAsync(It.IsAny<User>()))
+                .ReturnsAsync((User u) => u);
+            _mockExperimentRepo.Setup(repo => repo.GetByIdAsync("exp1"))
+                .ReturnsAsync(new Experiment { Id = "exp1" });
+            _mockExperimentRepo.Setup(repo => repo.UpdateAsync(It.IsAny<Experiment>()))
+                .ReturnsAsync((Experiment e) => e);
+
+            // Mock for StatCalculatorService calls
+            _mockRepository.Setup(repo => repo.GetTrialsByExperimentAndDataObject("exp1", "data1"))
+                .ReturnsAsync(new List<Trial>());
 
             // Act
-            var result = await _controller.UpdateTrial(updateTrial.Id, updateTrial );
+            var result = await _controller.UpdateTrial("1", updateDto);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
