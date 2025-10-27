@@ -1,19 +1,61 @@
-# Starter pipeline
-# Start with a minimal pipeline that you can customize to build and deploy your code.
-# Add steps that build, run tests, deploy, and more:
-# https://aka.ms/yaml
+# /.azure-pipelines/msdo-static-scan.yml
+# Static security scan for .NET + React using Microsoft Security DevOps (MSDO)
 
 trigger:
-- main
+  branches:
+    include: [ main ]
+pr:
+  branches:
+    include: [ main, develop, feature/* ]
 
 pool:
-  vmImage: ubuntu-latest
+  vmImage: 'ubuntu-latest'   # You can switch to 'macOS-latest' if you prefer
+
+variables:
+  DOTNET_VERSION: '8.0.x'
+  NODE_VERSION: '23.x'
+  BUILD_CONFIGURATION: 'Release'
+  # Path to your .sln (adjust if needed)
+  SOLUTION: 'backend/*.sln'
 
 steps:
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
+  - checkout: self
+    fetchDepth: 0
 
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+  # --- Toolchains
+  - task: UseDotNet@2
+    displayName: 'Use .NET $(DOTNET_VERSION)'
+    inputs:
+      packageType: 'sdk'
+      version: '$(DOTNET_VERSION)'
+
+  - task: NodeTool@0
+    displayName: 'Use Node.js $(NODE_VERSION)'
+    inputs:
+      versionSpec: '$(NODE_VERSION)'
+
+  # --- (Optional) Restore/build to generate binaries for BinSkim
+  - script: |
+      dotnet restore $(SOLUTION)
+      dotnet build $(SOLUTION) -c $(BUILD_CONFIGURATION) --no-restore
+    displayName: 'Restore & Build (.NET)'
+
+  # --- Microsoft Security DevOps (SAST umbrella)
+  - task: MicrosoftSecurityDevOps@1
+    displayName: 'Microsoft Security DevOps'
+    inputs:
+      policy: 'microsoft'             # MS-curated policy
+      # categories: 'code,artifacts'   # uncomment to limit; defaults to all
+      tools: 'eslint,binskim,trivy'   # JS/TS, binaries, deps/IaC
+      break: false                     # set true to fail on High findings
+      publish: true                    # publish SARIF as pipeline artifact
+      artifactName: 'CodeAnalysisLogs' # required name for downstream dashboards
+
+  # (Optional) Also publish the folder so you can download SARIF easily
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish CodeAnalysisLogs'
+    condition: succeededOrFailed()
+    inputs:
+      PathtoPublish: '$(Pipeline.Workspace)/CodeAnalysisLogs'
+      ArtifactName: 'CodeAnalysisLogs'
+      publishLocation: 'Container'
