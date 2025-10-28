@@ -1,10 +1,14 @@
+/// <reference types="vitest" />
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 import tsconfigPaths from 'vite-tsconfig-paths'
 import path from 'path'
 
 export default defineConfig({
-  plugins: [react(), tsconfigPaths()],
+  plugins: [
+    react() as any,
+    tsconfigPaths() as any
+  ],
   test: {
     globals: true,
     environment: 'jsdom',
@@ -25,7 +29,9 @@ export default defineConfig({
         '**/__tests__/**',
         '**/*.test.*',
         '**/*.spec.*'
-      ]
+      ],
+      enabled: true,
+      skipFull: false
     }
   },
   resolve: {
