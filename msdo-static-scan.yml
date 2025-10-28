@@ -44,7 +44,7 @@ steps:
         --collect:"XPlat Code Coverage" \
         --results-directory TestResults \
         --logger trx \
-        --settings backend/CodeCoverage.runsettings
+        -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
     displayName: 'Run .NET Tests with Coverage'
     continueOnError: true
 
@@ -56,8 +56,18 @@ steps:
 
   # Generate HTML coverage report
   - script: |
+      # First, let's see what coverage files were actually generated
+      echo "Looking for coverage files:"
+      find TestResults -name "*.xml" -type f | head -10
+      find TestResults -name "*coverage*" -type f | head -10
+      
+      # Use the correct pattern for .NET coverage files
       reportgenerator \
-        -reports:"TestResults/**/coverage.cobertura.xml" \
+        -reports:"TestResults/**/coverage.cobertura.xml;TestResults/**/*.cobertura.xml" \
+        -targetdir:"TestResults/CoverageReport" \
+        -reporttypes:"HtmlInline_AzurePipelines;Cobertura;XMLSummary" || \
+      reportgenerator \
+        -reports:"TestResults/**/*.xml" \
         -targetdir:"TestResults/CoverageReport" \
         -reporttypes:"HtmlInline_AzurePipelines;Cobertura;XMLSummary"
     displayName: 'Generate Coverage Report'
