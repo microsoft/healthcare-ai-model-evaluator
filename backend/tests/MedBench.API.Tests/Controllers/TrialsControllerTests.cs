@@ -98,18 +98,33 @@ namespace MedBench.API.Tests.Controllers
         public async Task GetNextPendingTrial_ReturnsOkResult_WhenTrialExists()
         {
             // Arrange
-            var trials = new List<Trial>
+            var experiments = new List<Experiment>
             {
-                new Trial 
+                new Experiment 
                 { 
-                    Id = "1", 
-                    Status = "pending",
-                    ExperimentType = "Simple Evaluation"
+                    Id = "exp1", 
+                    Status = ExperimentStatus.InProgress,
+                    TestScenarioId = "Simple Evaluation"
                 }
             };
 
-            _mockRepository.Setup(repo => repo.GetPendingTrialsAsync(_userId))
-                .ReturnsAsync(trials);
+            var trialIds = new List<string> { "trial1" };
+            
+            var trial = new Trial 
+            { 
+                Id = "trial1", 
+                Status = "pending",
+                ExperimentType = "Simple Evaluation"
+            };
+
+            _mockExperimentRepo.Setup(repo => repo.GetByTestScenarioIdsAsync(It.IsAny<List<string>>()))
+                .ReturnsAsync(experiments);
+                
+            _mockRepository.Setup(repo => repo.GetPendingTrialIdsAsync(_userId, It.IsAny<string[]>(), It.IsAny<string>()))
+                .ReturnsAsync(trialIds);
+                
+            _mockRepository.Setup(repo => repo.GetByIdAsync("trial1"))
+                .ReturnsAsync(trial);
 
             // Act
             var result = await _controller.GetNextPendingTrial("Simple Evaluation");
@@ -117,23 +132,28 @@ namespace MedBench.API.Tests.Controllers
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
             var returnedTrial = Assert.IsType<Trial>(okResult.Value);
-            Assert.Equal("1", returnedTrial.Id);
+            Assert.Equal("trial1", returnedTrial.Id);
         }
 
         [Fact]
         public async Task GetNextPendingTrial_ReturnsNotFound_WhenNoTrialsAvailable()
         {
             // Arrange
-            _mockRepository.Setup(repo => repo.GetPendingTrialsAsync(_userId))
-                .ReturnsAsync(new List<Trial>());
+            _mockExperimentRepo.Setup(repo => repo.GetByTestScenarioIdsAsync(It.IsAny<List<string>>()))
+                .ReturnsAsync(new List<Experiment>());
 
             // Act
             var result = await _controller.GetNextPendingTrial("Simple Evaluation");
 
             // Assert
             var notFoundResult = Assert.IsType<NotFoundObjectResult>(result.Result);
-            var message = Assert.IsType<Anonymous>(notFoundResult.Value);
-            Assert.Equal("No pending trials available.", message.message);
+            
+            // The controller returns an anonymous object with a message property
+            var returnedObject = notFoundResult.Value;
+            var messageProperty = returnedObject?.GetType().GetProperty("message");
+            Assert.NotNull(messageProperty);
+            var message = messageProperty.GetValue(returnedObject)?.ToString();
+            Assert.Equal("No in-progress experiments found for the provided test scenario IDs.", message);
         }
 
         [Fact]

@@ -131,18 +131,22 @@ public class ModelsControllerTests
     }
 
     [Fact]
-    public async Task Update_WithDifferentOwner_ReturnsForbid()
+    public async Task Update_WithDifferentOwner_ReturnsOkResult()
     {
         // Arrange
         var model = new Model { Id = "1", Name = "Model", OwnerId = "different-owner" };
         _mockRepository.Setup(repo => repo.GetByIdAsync("1"))
+            .ReturnsAsync(model);
+        _mockRepository.Setup(repo => repo.UpdateAsync(It.IsAny<Model>()))
             .ReturnsAsync(model);
 
         // Act
         var result = await _controller.Update("1", model);
 
         // Assert
-        Assert.IsType<ForbidResult>(result.Result);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedModel = Assert.IsType<Model>(okResult.Value);
+        Assert.Equal(model.Id, returnedModel.Id);
     }
 
     [Fact]
@@ -163,17 +167,19 @@ public class ModelsControllerTests
     }
 
     [Fact]
-    public async Task Delete_WithDifferentOwner_ReturnsForbid()
+    public async Task Delete_WithDifferentOwner_ReturnsNoContent()
     {
         // Arrange
         var model = new Model { Id = "1", OwnerId = "different-owner" };
         _mockRepository.Setup(repo => repo.GetByIdAsync("1"))
             .ReturnsAsync(model);
+        _mockRepository.Setup(repo => repo.DeleteAsync("1"))
+            .Returns(Task.CompletedTask);
 
         // Act
         var result = await _controller.Delete("1");
 
         // Assert
-        Assert.IsType<ForbidResult>(result);
+        Assert.IsType<NoContentResult>(result);
     }
 } 

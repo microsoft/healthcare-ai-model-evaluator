@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 using Moq;
 using Xunit;
 using Microsoft.Extensions.Logging;
+using static MedBench.API.Controllers.UsersController;
 
 namespace MedBench.API.Tests.Controllers
 {
@@ -38,7 +39,7 @@ namespace MedBench.API.Tests.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var returnedUsers = Assert.IsAssignableFrom<IEnumerable<User>>(okResult.Value);
+            var returnedUsers = Assert.IsAssignableFrom<IEnumerable<UserDto>>(okResult.Value);
             Assert.Equal(2, returnedUsers.Count());
         }
 
@@ -61,7 +62,7 @@ namespace MedBench.API.Tests.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var returnedUser = Assert.IsType<User>(okResult.Value);
+            var returnedUser = Assert.IsType<UserDto>(okResult.Value);
             Assert.Equal(user.Id, returnedUser.Id);
         }
 
@@ -104,7 +105,7 @@ namespace MedBench.API.Tests.Controllers
 
             // Assert
             var createdAtActionResult = Assert.IsType<CreatedAtActionResult>(result.Result);
-            var returnedUser = Assert.IsType<User>(createdAtActionResult.Value);
+            var returnedUser = Assert.IsType<UserDto>(createdAtActionResult.Value);
             Assert.Equal(createdUser.Id, returnedUser.Id);
         }
 
@@ -119,7 +120,7 @@ namespace MedBench.API.Tests.Controllers
                 Email = "updated@example.com",
                 Roles = new List<string> { "user" }
             };
-            _mockRepository.Setup(repo => repo.UpdateAsync(It.IsAny<User>()))
+            _mockRepository.Setup(repo => repo.UpdateProfileAsync(It.IsAny<User>()))
                 .ReturnsAsync(user);
 
             // Act
@@ -127,7 +128,7 @@ namespace MedBench.API.Tests.Controllers
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result.Result);
-            var returnedUser = Assert.IsType<User>(okResult.Value);
+            var returnedUser = Assert.IsType<UserDto>(okResult.Value);
             Assert.Equal(user.Id, returnedUser.Id);
         }
 
@@ -161,7 +162,7 @@ namespace MedBench.API.Tests.Controllers
                 Email = "notfound@example.com",
                 Roles = new List<string> { "user" }
             };
-            _mockRepository.Setup(repo => repo.UpdateAsync(It.IsAny<User>()))
+            _mockRepository.Setup(repo => repo.UpdateProfileAsync(It.IsAny<User>()))
                 .ThrowsAsync(new KeyNotFoundException());
 
             // Act

@@ -86,7 +86,8 @@ public class DataSetsControllerTests
         var result = await _controller.GetById("1");
 
         // Assert
-        var okResult = Assert.IsType<OkObjectResult>(result);
+        var actionResult = Assert.IsType<ActionResult<DataSetDetailDto>>(result);
+        var okResult = Assert.IsType<OkObjectResult>(actionResult.Result);
         var returnedDataset = Assert.IsType<DataSetDetailDto>(okResult.Value);
         Assert.Equal(dataset.Id, returnedDataset.Id);
         Assert.Equal(5, returnedDataset.DataObjectCount);
@@ -132,7 +133,8 @@ public class DataSetsControllerTests
         var result = await _controller.GetDataObject("1", "obj1");
 
         // Assert
-        var okResult = Assert.IsType<OkObjectResult>(result);
+        var actionResult = Assert.IsType<ActionResult<DataObject>>(result);
+        var okResult = Assert.IsType<OkObjectResult>(actionResult.Result);
         var returnedObject = Assert.IsType<DataObject>(okResult.Value);
         Assert.Equal("obj1", returnedObject.Id);
     }
@@ -152,7 +154,8 @@ public class DataSetsControllerTests
         var result = await _controller.GetDataObject("1", "obj1");
 
         // Assert
-        Assert.IsType<NotFoundResult>(result);
+        var actionResult = Assert.IsType<ActionResult<DataObject>>(result);
+        Assert.IsType<NotFoundResult>(actionResult.Result);
     }
 
     [Fact]
@@ -207,7 +210,8 @@ public class DataSetsControllerTests
         var result = await _controller.Update("1", updateDto);
 
         // Assert
-        Assert.IsType<OkObjectResult>(result);
+        var actionResult = Assert.IsType<ActionResult<DataSet>>(result);
+        Assert.IsType<OkObjectResult>(actionResult.Result);
     }
 
     [Fact]
@@ -228,7 +232,8 @@ public class DataSetsControllerTests
         var result = await _controller.Update("1", updateDto);
 
         // Assert
-        Assert.IsType<BadRequestResult>(result);
+        var actionResult = Assert.IsType<ActionResult<DataSet>>(result);
+        Assert.IsType<BadRequestResult>(actionResult.Result);
     }
 
     [Fact]
