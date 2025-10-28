@@ -9,6 +9,24 @@ export default defineConfig({
     globals: true,
     environment: 'jsdom',
     setupFiles: ['./src/setupTests.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html', 'lcov', 'cobertura'],
+      exclude: [
+        'node_modules/',
+        'src/setupTests.ts',
+        'src/reportWebVitals.ts',
+        'src/vite-env.d.ts',
+        '**/*.d.ts',
+        '**/*.config.*',
+        'build/',
+        'dist/',
+        'coverage/',
+        '**/__tests__/**',
+        '**/*.test.*',
+        '**/*.spec.*'
+      ]
+    }
   },
   resolve: {
     alias: {

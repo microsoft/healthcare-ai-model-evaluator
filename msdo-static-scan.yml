@@ -35,6 +35,69 @@ steps:
       dotnet build $(SOLUTION) -c $(BUILD_CONFIGURATION) --no-restore
     displayName: 'Restore & Build (.NET)'
 
+  # Run .NET tests with code coverage
+  - script: |
+      mkdir -p TestResults
+      dotnet test $(SOLUTION) \
+        --configuration $(BUILD_CONFIGURATION) \
+        --no-build \
+        --collect:"XPlat Code Coverage" \
+        --results-directory TestResults \
+        --logger trx \
+        --settings backend/CodeCoverage.runsettings
+    displayName: 'Run .NET Tests with Coverage'
+    continueOnError: true
+
+  # Install ReportGenerator for coverage reports
+  - script: |
+      dotnet tool install -g dotnet-reportgenerator-globaltool
+      echo '##vso[task.prependpath]$HOME/.dotnet/tools'
+    displayName: 'Install ReportGenerator'
+
+  # Generate HTML coverage report
+  - script: |
+      reportgenerator \
+        -reports:"TestResults/**/coverage.cobertura.xml" \
+        -targetdir:"TestResults/CoverageReport" \
+        -reporttypes:"HtmlInline_AzurePipelines;Cobertura;XMLSummary"
+    displayName: 'Generate Coverage Report'
+    condition: succeededOrFailed()
+
+  # Publish test results
+  - task: PublishTestResults@2
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFormat: 'VSTest'
+      testResultsFiles: 'TestResults/**/*.trx'
+      publishRunAttachments: true
+
+  # Publish code coverage results
+  - task: PublishCodeCoverageResults@1
+    condition: succeededOrFailed()
+    inputs:
+      codeCoverageTool: 'Cobertura'
+      summaryFileLocation: 'TestResults/CoverageReport/Cobertura.xml'
+      reportDirectory: 'TestResults/CoverageReport'
+      failIfCoverageEmpty: false
+
+  # Frontend tests and coverage (if applicable)
+  - script: |
+      cd frontend
+      npm ci
+      npm install --save-dev @vitest/coverage-v8
+      npm run test -- run --coverage
+    displayName: 'Run Frontend Tests with Coverage'
+    continueOnError: true
+
+  # Publish frontend code coverage
+  - task: PublishCodeCoverageResults@1
+    condition: succeededOrFailed()
+    inputs:
+      codeCoverageTool: 'Cobertura'
+      summaryFileLocation: 'frontend/coverage/cobertura-coverage.xml'
+      reportDirectory: 'frontend/coverage'
+      failIfCoverageEmpty: false
+
   # --- Install scanners
   - script: |
       # DevSkim (SAST patterns for many languages)

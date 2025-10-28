@@ -12,10 +12,12 @@ ENV AzureWebJobsScriptRoot=/home/site/wwwroot \
     PYTHONPATH=/home/site/wwwroot
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     g++ \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd -r appuser && useradd -r -g appuser -d /home/site appuser \
+    && chown -R appuser:appuser /home/site
 
 # Copy requirements folder and main requirements
 COPY requirements/ /home/site/wwwroot/requirements/
@@ -36,3 +38,7 @@ COPY ${ADDON_PATH}/host.json /home/site/wwwroot/
 
 # Set working directory
 WORKDIR /home/site/wwwroot
+
+# Set ownership and switch to non-root user
+RUN chown -R appuser:appuser /home/site/wwwroot
+USER appuser
