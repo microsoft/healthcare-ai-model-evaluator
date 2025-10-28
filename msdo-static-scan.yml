@@ -56,22 +56,11 @@ steps:
 
   # Generate HTML coverage report
   - script: |
-      # Debug: Show what files were actually generated
-      echo "=== Generated test result files ==="
-      find TestResults -type f -name "*.xml" | head -20
-      echo "=== Looking for coverage files specifically ==="
-      find TestResults -type f -name "*coverage*" | head -10
-      
-      # Find the actual coverage file(s)
+      # Find the coverage files (they're in GUID-named directories)
       COVERAGE_FILES=$(find TestResults -name "coverage.cobertura.xml" -type f)
       
       if [ -z "$COVERAGE_FILES" ]; then
-        echo "No coverage.cobertura.xml files found. Trying alternative patterns..."
-        COVERAGE_FILES=$(find TestResults -name "*.cobertura.xml" -type f)
-      fi
-      
-      if [ -z "$COVERAGE_FILES" ]; then
-        echo "No Cobertura coverage files found at all!"
+        echo "No coverage files found!"
         exit 1
       fi
       
@@ -81,8 +70,7 @@ steps:
       reportgenerator \
         -reports:"$COVERAGE_FILES" \
         -targetdir:"TestResults/CoverageReport" \
-        -reporttypes:"HtmlInline_AzurePipelines;Cobertura;XMLSummary" \
-        -verbosity:"Info"
+        -reporttypes:"HtmlInline_AzurePipelines;Cobertura;XMLSummary"
     displayName: 'Generate Coverage Report'
     condition: succeededOrFailed()
 
