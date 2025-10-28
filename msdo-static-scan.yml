@@ -115,7 +115,7 @@ steps:
   - script: |
       cd frontend
       echo "Running frontend tests with coverage..."
-      npm run test -- run --coverage --reporter=verbose --reporter=json --outputFile.json=./test-results.json
+      npm run test -- run --coverage
     displayName: 'Run Frontend Tests with Coverage'
     continueOnError: true
 
@@ -124,7 +124,7 @@ steps:
     condition: succeededOrFailed()
     inputs:
       testResultsFormat: 'JUnit'
-      testResultsFiles: 'frontend/test-results.json'
+      testResultsFiles: 'frontend/test-results.xml'
       testRunTitle: 'Frontend Tests'
       publishRunAttachments: true
     continueOnError: true

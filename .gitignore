@@ -68,3 +68,4 @@ node_modules/
 Thumbs.db
 frontend/test-results.json
 frontend/coverage/
+frontend/test-results.xml
