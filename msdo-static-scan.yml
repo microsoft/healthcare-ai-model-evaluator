@@ -44,7 +44,7 @@ steps:
         --collect:"XPlat Code Coverage" \
         --results-directory TestResults \
         --logger trx \
-        -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=cobertura
+        --settings backend/CodeCoverage.runsettings
     displayName: 'Run .NET Tests with Coverage'
     continueOnError: true
 
@@ -56,20 +56,33 @@ steps:
 
   # Generate HTML coverage report
   - script: |
-      # First, let's see what coverage files were actually generated
-      echo "Looking for coverage files:"
-      find TestResults -name "*.xml" -type f | head -10
-      find TestResults -name "*coverage*" -type f | head -10
+      # Debug: Show what files were actually generated
+      echo "=== Generated test result files ==="
+      find TestResults -type f -name "*.xml" | head -20
+      echo "=== Looking for coverage files specifically ==="
+      find TestResults -type f -name "*coverage*" | head -10
       
-      # Use the correct pattern for .NET coverage files
+      # Find the actual coverage file(s)
+      COVERAGE_FILES=$(find TestResults -name "coverage.cobertura.xml" -type f)
+      
+      if [ -z "$COVERAGE_FILES" ]; then
+        echo "No coverage.cobertura.xml files found. Trying alternative patterns..."
+        COVERAGE_FILES=$(find TestResults -name "*.cobertura.xml" -type f)
+      fi
+      
+      if [ -z "$COVERAGE_FILES" ]; then
+        echo "No Cobertura coverage files found at all!"
+        exit 1
+      fi
+      
+      echo "Found coverage files: $COVERAGE_FILES"
+      
+      # Generate the report using found files
       reportgenerator \
-        -reports:"TestResults/**/coverage.cobertura.xml;TestResults/**/*.cobertura.xml" \
+        -reports:"$COVERAGE_FILES" \
         -targetdir:"TestResults/CoverageReport" \
-        -reporttypes:"HtmlInline_AzurePipelines;Cobertura;XMLSummary" || \
-      reportgenerator \
-        -reports:"TestResults/**/*.xml" \
-        -targetdir:"TestResults/CoverageReport" \
-        -reporttypes:"HtmlInline_AzurePipelines;Cobertura;XMLSummary"
+        -reporttypes:"HtmlInline_AzurePipelines;Cobertura;XMLSummary" \
+        -verbosity:"Info"
     displayName: 'Generate Coverage Report'
     condition: succeededOrFailed()
 
@@ -88,6 +101,14 @@ steps:
       codeCoverageTool: 'Cobertura'
       summaryFileLocation: 'TestResults/CoverageReport/Cobertura.xml'
       reportDirectory: 'TestResults/CoverageReport'
+      failIfCoverageEmpty: false
+
+  # Alternative: Try to publish original coverage files if ReportGenerator fails
+  - task: PublishCodeCoverageResults@1
+    condition: failed()
+    inputs:
+      codeCoverageTool: 'Cobertura'  
+      summaryFileLocation: 'TestResults/**/coverage.cobertura.xml'
       failIfCoverageEmpty: false
 
   # Frontend tests and coverage (if applicable)
