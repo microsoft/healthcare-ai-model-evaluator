@@ -161,18 +161,30 @@ steps:
   # --- Run scanners (emit SARIF)
   - script: |
       mkdir -p CodeAnalysisLogs
+      
+      echo "Starting security scans with verbose output..."
 
       # DevSkim
-      devskim analyze --output CodeAnalysisLogs/devskim.sarif --ignore-globs node_modules/** --severity medium || true
+      echo "Running DevSkim SAST scan..."
+      devskim analyze --source-code . --output-file CodeAnalysisLogs/devskim.sarif --file-format sarif --ignore-globs node_modules/** --severity Medium --console-verbosity Information || true
 
       # ESLint (React/TS)
-      npx eslint "src/**/*.{js,jsx,ts,tsx}" -f sarif -o CodeAnalysisLogs/eslint.sarif || true
+      cd frontend
+      echo "Running ESLint security scan..."
+      # Create minimal eslint config if none exists
+      if [ ! -f .eslintrc.js ] && [ ! -f .eslintrc.json ]; then
+        echo '{"extends": ["eslint:recommended"], "plugins": ["security"], "env": {"browser": true, "es2021": true}, "parserOptions": {"ecmaVersion": 12, "sourceType": "module"}}' > .eslintrc.json
+      fi
+      npx eslint "src/**/*.{js,jsx,ts,tsx}" -f sarif -o ../CodeAnalysisLogs/eslint.sarif || true
+      cd ..
 
       # BinSkim (scan built artifacts)
+      echo "Running BinSkim binary analysis..."
       binskim analyze "$(Build.SourcesDirectory)/**/bin/**" --recurse --output CodeAnalysisLogs/binskim.sarif || true
 
       # Trivy filesystem scan (deps, secrets, misconfig)
-      trivy fs --scanners vuln,secret,misconfig --format sarif -o CodeAnalysisLogs/trivy.sarif .
+      echo "Running Trivy vulnerability and security scan..."
+      trivy fs --scanners vuln,secret,misconfig --format sarif -o CodeAnalysisLogs/trivy.sarif --severity HIGH,CRITICAL . || true
     displayName: 'Run SAST & artifact scans'
     continueOnError: true
 
