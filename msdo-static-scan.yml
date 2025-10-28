@@ -91,6 +91,7 @@ steps:
   - task: PublishCodeCoverageResults@2
     condition: succeededOrFailed()
     inputs:
+      codeCoverageTool: 'Cobertura'
       summaryFileLocation: 'TestResults/CoverageReport/Cobertura.xml'
       pathToSources: 'backend/src/'
       failIfCoverageEmpty: false
@@ -99,28 +100,42 @@ steps:
   - task: PublishCodeCoverageResults@2
     condition: failed()
     inputs:
+      codeCoverageTool: 'Cobertura'
       summaryFileLocation: 'TestResults/**/coverage.cobertura.xml'
       pathToSources: 'backend/src/'
       failIfCoverageEmpty: false
 
-  # --- Install scanners  # Frontend tests and coverage (if applicable)
+  # --- Frontend tests and coverage
   - script: |
       cd frontend
       echo "Installing frontend dependencies..."
       npm ci
-      
-      echo "Running frontend tests (coverage disabled due to test configuration issues)..."
-      npm run test -- run --reporter=verbose || echo "Frontend tests failed but continuing pipeline..."
-    displayName: 'Run Frontend Tests'
+    displayName: 'Install Frontend Dependencies'
+
+  - script: |
+      cd frontend
+      echo "Running frontend tests with coverage..."
+      npm run test -- run --coverage --reporter=verbose --reporter=json --outputFile.json=./test-results.json
+    displayName: 'Run Frontend Tests with Coverage'
+    continueOnError: true
+
+  # Publish frontend test results
+  - task: PublishTestResults@2
+    condition: succeededOrFailed()
+    inputs:
+      testResultsFormat: 'JUnit'
+      testResultsFiles: 'frontend/test-results.json'
+      testRunTitle: 'Frontend Tests'
+      publishRunAttachments: true
     continueOnError: true
 
   # Publish frontend code coverage
-  - task: PublishCodeCoverageResults@1
+  - task: PublishCodeCoverageResults@2
     condition: succeededOrFailed()
     inputs:
       codeCoverageTool: 'Cobertura'
       summaryFileLocation: 'frontend/coverage/cobertura-coverage.xml'
-      reportDirectory: 'frontend/coverage'
+      pathToSources: 'frontend/src/'
       failIfCoverageEmpty: false
 
   # --- Install scanners
