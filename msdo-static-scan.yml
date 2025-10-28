@@ -66,9 +66,14 @@ steps:
       
       echo "Found coverage files: $COVERAGE_FILES"
       
+      # Convert newline-separated list to semicolon-separated for ReportGenerator
+      COVERAGE_REPORTS=$(echo "$COVERAGE_FILES" | tr '\n' ';' | sed 's/;$//')
+      
+      echo "Coverage reports parameter: $COVERAGE_REPORTS"
+      
       # Generate the report using found files
       reportgenerator \
-        -reports:"$COVERAGE_FILES" \
+        -reports:"$COVERAGE_REPORTS" \
         -targetdir:"TestResults/CoverageReport" \
         -reporttypes:"HtmlInline_AzurePipelines;Cobertura;XMLSummary"
     displayName: 'Generate Coverage Report'
