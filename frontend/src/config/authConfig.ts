@@ -2,16 +2,16 @@ import { PublicClientApplication, Configuration } from "@azure/msal-browser";
 
 // Configuration that uses environment variables (available at build time via azd)
 const runtimeConfig = {
-    clientId: process.env.REACT_APP_CLIENT_ID || "432521be-fddf-45d4-8a9e-f9ff8495db08",
-    tenantId: process.env.REACT_APP_TENANT_ID || "72f988bf-86f1-41af-91ab-2d7cd011db47",
-    apiBaseUrl: process.env.REACT_APP_API_BASE_URL || "http://localhost:5000"
+    clientId: import.meta.env.VITE_CLIENT_ID || "432521be-fddf-45d4-8a9e-f9ff8495db08",
+    tenantId: import.meta.env.VITE_TENANT_ID || "72f988bf-86f1-41af-91ab-2d7cd011db47",
+    apiBaseUrl: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"
 };
 
 console.log("Configuration loaded:", {
     clientId: runtimeConfig.clientId,
     tenantId: runtimeConfig.tenantId,
     apiBaseUrl: runtimeConfig.apiBaseUrl,
-    usingFallback: !process.env.REACT_APP_CLIENT_ID
+    usingFallback: !import.meta.env.VITE_CLIENT_ID
 });
 
 export const msalConfig: Configuration = {

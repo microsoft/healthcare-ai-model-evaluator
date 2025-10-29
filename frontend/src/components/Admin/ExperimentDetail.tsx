@@ -109,8 +109,8 @@ export const ExperimentDetail: React.FC = () => {
     ];
 
     const breadcrumbItems: IBreadcrumbItem[] = [
-        { key: 'experiments', text: 'Assignments', onClick: () => navigate('/admin/experiments') },
-        { key: 'details', text: experiment?.name || 'Experiment Details', isCurrentItem: true }
+        { key: 'experiments', text: 'Assignments', onClick: () => navigate('/admin/assignments') },
+        { key: 'details', text: experiment?.name || 'Assignment Details', isCurrentItem: true }
     ];
 
     return (

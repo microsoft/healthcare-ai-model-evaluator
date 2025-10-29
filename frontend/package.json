@@ -5,15 +5,10 @@
   "dependencies": {
     "@azure/msal-browser": "^3.28.0",
     "@azure/msal-react": "^2.2.0",
-    "@craco/craco": "^7.1.0",
     "@fluentui/react": "^8.122.7",
     "@fluentui/react-charting": "^5.23.65",
     "@reduxjs/toolkit": "^2.2.1",
-    "@testing-library/jest-dom": "^5.17.0",
-    "@testing-library/react": "^13.4.0",
-    "@testing-library/user-event": "^13.5.0",
-    "@types/jest": "^27.5.2",
-    "@types/node": "^16.18.86",
+    "@types/node": "^20.0.0",
     "@types/react": "^18.2.61",
     "@types/react-dom": "^18.2.19",
     "axios": "^1.6.7",
@@ -30,26 +25,34 @@
     "react-markdown": "^10.1.0",
     "react-redux": "^9.1.0",
     "react-router-dom": "^7.1.3",
-    "react-scripts": "^5.0.1",
     "recharts": "^2.15.1",
     "rehype-raw": "^7.0.0",
     "remark-gfm": "^4.0.1",
     "sass": "^1.71.1",
-    "typescript": "^4.9.5",
+    "typescript": "^5.6.0",
     "uuid": "^11.0.5",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "craco start",
-    "build": "craco build",
-    "test": "craco test",
-    "eject": "react-scripts eject"
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview",
+    "test": "vitest"
   },
   "eslintConfig": {
     "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
+      "@typescript-eslint/recommended",
+      "plugin:react-hooks/recommended"
+    ],
+    "parser": "@typescript-eslint/parser",
+    "plugins": ["react-refresh"],
+    "rules": {
+      "react-refresh/only-export-components": [
+        "warn",
+        { "allowConstantExport": true }
+      ]
+    }
   },
   "browserslist": {
     "production": [
@@ -64,13 +67,37 @@
     ]
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^13.5.0",
+    "@types/jest": "^27.5.2",
     "@types/react-redux": "^7.1.34",
-    "@types/uuid": "^10.0.0"
+    "@types/uuid": "^10.0.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "@vitest/coverage-v8": "^2.1.8",
+    "eslint": "^8.45.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.6",
+    "jsdom": "^24.0.0",
+    "vite": "^6.3.6",
+    "vite-tsconfig-paths": "^4.3.1",
+    "vitest": "^2.1.8"
+  },
+  "overrides": {
+    "@babel/runtime": ">=7.26.10",
+    "esbuild": ">=0.24.3",
+    "cornerstone-tools": {
+      "@babel/runtime": ">=7.26.10"
+    }
   },
   "resolutions": {
     "postcss": "^8.4.31",
     "nth-check": "^2.1.1",
     "css-select": "^5.1.0",
-    "svgo": "^3.0.2"
+    "svgo": "^3.0.2",
+    "@babel/runtime": ">=7.26.10",
+    "esbuild": ">=0.24.3"
   }
 }

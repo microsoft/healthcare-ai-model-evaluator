@@ -202,9 +202,9 @@ if [ -n "$RESOURCE_GROUP_NAME" ]; then
             --name "$STATIC_WEB_APP_NAME" \
             --resource-group "$RESOURCE_GROUP_NAME" \
             --setting-names \
-                REACT_APP_CLIENT_ID="$CLIENT_ID" \
-                REACT_APP_API_BASE_URL="$API_URL" \
-                REACT_APP_TENANT_ID="$TENANT_ID" \
+                VITE_CLIENT_ID="$CLIENT_ID" \
+                VITE_API_BASE_URL="$API_URL" \
+                VITE_TENANT_ID="$TENANT_ID" \
             --output none
         
         if [ $? -eq 0 ]; then

@@ -258,7 +258,7 @@ export const DataManagement: React.FC = () => {
     }, [dispatch]);
 
     useEffect(() => {
-        const hasProcessingFiles = datasets.some(ds => ds.files?.some(
+        const hasProcessingFiles = datasets?.some(ds => ds.files?.some(
             df => df.processingStatus === DataFileProcessingStatus.Processing || df.processingStatus === DataFileProcessingStatus.Unprocessed
         ));
         

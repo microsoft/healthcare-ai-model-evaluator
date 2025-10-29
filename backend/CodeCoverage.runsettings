@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <Exclude>
+            [*.Tests]*
+            [*.Test]*
+            [xunit.*]*
+            [Microsoft.*]*
+            [System.*]*
+            [Newtonsoft.*]*
+            [AutoMapper]*
+            [FluentValidation]*
+          </Exclude>
+          <ExcludeByAttribute>
+            <Attribute>System.Diagnostics.DebuggerNonUserCodeAttribute</Attribute>
+            <Attribute>System.Diagnostics.DebuggerHiddenAttribute</Attribute>
+            <Attribute>System.Diagnostics.DebuggerStepThroughAttribute</Attribute>
+            <Attribute>System.Runtime.CompilerServices.CompilerGeneratedAttribute</Attribute>
+            <Attribute>System.CodeDom.Compiler.GeneratedCodeAttribute</Attribute>
+            <Attribute>System.Diagnostics.CodeAnalysis.ExcludeFromCodeCoverageAttribute</Attribute>
+          </ExcludeByAttribute>
+          <ExcludeByFile>
+            <File>**/Migrations/**</File>
+            <File>**/Program.cs</File>
+            <File>**/Startup.cs</File>
+          </ExcludeByFile>
+          <IncludeDirectory>../src/</IncludeDirectory>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

@@ -6,9 +6,10 @@ import { configureStore } from '@reduxjs/toolkit';
 import { BrowserRouter } from 'react-router-dom';
 import { DataManagement } from '../../../components/Admin/DataManagement';
 import dataReducer from '../../../reducers/dataReducer';
+import { vi } from 'vitest';
 
 // Mock the auth context
-jest.mock('../../../config/authConfig', () => ({
+vi.mock('../../../config/authConfig', () => ({
     msalInstance: {
         getActiveAccount: () => ({ idToken: 'mock-token' }),
         acquireTokenSilent: () => Promise.resolve({ accessToken: 'mock-token' })
@@ -18,10 +19,10 @@ jest.mock('../../../config/authConfig', () => ({
 }));
 
 // Mock services
-jest.mock('../../../services/dataSetService', () => ({
+vi.mock('../../../services/dataSetService', () => ({
     dataSetService: {
-        getDataSets: jest.fn().mockResolvedValue([]),
-        addDataSet: jest.fn().mockResolvedValue({ id: 'test-id' }),
+        getDataSets: vi.fn().mockResolvedValue([]),
+        addDataSet: vi.fn().mockResolvedValue({ id: 'test-id' }),
     }
 }));
 
@@ -281,7 +282,7 @@ describe('DataManagement Array Mapping Tests', () => {
                 </TestWrapper>
             );
             
-            const addButton = screen.getByText('Add Dataset');
+            const addButton = screen.getAllByText('Add Dataset')[0];
             fireEvent.click(addButton);
             
             expect(screen.getByText('Select JSONL File')).toBeInTheDocument();

@@ -21,8 +21,8 @@ const navLinks: INavLinkGroup[] = [
             { key: 'data', name: 'Data', url: '/admin/data', icon: 'Database' },
             { key: 'models', name: 'Models', url: '/admin/models', icon: 'Robot' },
             { key: 'clinicalTasks', name: 'Clinical Tasks', url: '/admin/clinical-tasks', icon: 'TaskGroup' },
-            { key: 'testScenarios', name: 'Experiments', url: '/admin/test-scenarios', icon: 'TestBeaker' },
-            { key: 'experiments', name: 'Assignments', url: '/admin/experiments', icon: 'TestPlan' },
+            { key: 'testScenarios', name: 'Experiments', url: '/admin/experiments', icon: 'TestBeaker' },
+            { key: 'experiments', name: 'Assignments', url: '/admin/assignments', icon: 'TestPlan' },
             //{ key: 'metrics', name: 'Metrics', url: '/admin/metrics', icon: 'Chart' },
            // { key: 'settings', name: 'Settings', url: '/admin/settings', icon: 'Settings' },
         ],
@@ -101,8 +101,8 @@ export const Admin: React.FC = () => {
                     <Route path="users" element={<UserManagement />} />
                     <Route path="models" element={<ModelsManagement />} />
                     <Route path="clinical-tasks" element={<ClinicalTasksManagement />} />
-                    <Route path="test-scenarios" element={<TestScenariosManagement />} />
-                    <Route path="experiments" element={<ExperimentManagement />} />
+                    <Route path="experiments" element={<TestScenariosManagement />} />
+                    <Route path="assignments" element={<ExperimentManagement />} />
                     <Route path="experiments/:experimentId" element={<ExperimentDetail />} />
                     <Route path="data" element={<DataManagement />} />
                     <Route path="data/:datasetId" element={<DatasetDetails />} />

@@ -8,9 +8,13 @@ ENV CONTAINER_VERSION="v8.1_fixed_verify"
 
 # Install git and build essentials for requirements
 # RUN apt-get update && apt-get install -y git build-essential && rm -rf /var/lib/apt/lists/*
-RUN apt-get update && apt-get install -y git build-essential && rm -rf /var/lib/apt/lists/* && \
+RUN apt-get update && apt-get install -y --no-install-recommends git build-essential && rm -rf /var/lib/apt/lists/* && \
+    # Create a non-root user for security
+    groupadd -r appuser && useradd -r -g appuser -d /home/site appuser && \
     # Create a virtual environment to isolate dependencies
-    python -m venv /home/site/venv
+    python -m venv /home/site/venv && \
+    # Set ownership of the home directory
+    chown -R appuser:appuser /home/site
 
 ENV PATH="/home/site/venv/bin:${PATH}"
 
@@ -35,6 +39,8 @@ RUN mkdir -p $NLTK_DATA && \
     python -c "import nltk; import rouge_score; from rouge_score import rouge_scorer; print('NLTK version:', nltk.__version__); print('NLTK data path:', nltk.data.path); print('Rouge Score imported successfully')" && \
     # Create directories for caching
     mkdir -p /home/site/model_cache /home/site/evaluate_cache && \
+    # Set ownership of all directories
+    chown -R appuser:appuser /home/site/nltk_data /home/site/model_cache /home/site/evaluate_cache && \
     # Pre-download common models
     python -c "from transformers import AutoModel, AutoTokenizer; \
                AutoModel.from_pretrained('bert-base-uncased'); \
@@ -51,3 +57,7 @@ RUN mkdir -p $NLTK_DATA && \
 
 # Copy function code
 COPY . /home/site/wwwroot
+
+# Set ownership and switch to non-root user
+RUN chown -R appuser:appuser /home/site/wwwroot
+USER appuser

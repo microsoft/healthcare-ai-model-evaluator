@@ -31,9 +31,9 @@ resource staticWebAppConfig 'Microsoft.Web/staticSites/config@2022-09-01' = {
   parent: staticWebApp
   name: 'appsettings'
   properties: {
-    REACT_APP_CLIENT_ID: authClientId
-    REACT_APP_API_BASE_URL: apiBaseUrl
-    REACT_APP_TENANT_ID: subscription().tenantId
+    VITE_CLIENT_ID: authClientId
+    VITE_API_BASE_URL: apiBaseUrl
+    VITE_TENANT_ID: subscription().tenantId
   }
 }
 

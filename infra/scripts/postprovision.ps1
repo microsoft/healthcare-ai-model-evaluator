@@ -92,7 +92,7 @@ if ($resourceGroupName) {
         az staticwebapp appsettings set `
             --name $staticWebAppName `
             --resource-group $resourceGroupName `
-            --setting-names REACT_APP_CLIENT_ID=$clientId REACT_APP_API_BASE_URL=$apiUrl REACT_APP_TENANT_ID=$(az account show --query tenantId -o tsv) `
+            --setting-names VITE_CLIENT_ID=$clientId VITE_API_BASE_URL=$apiUrl VITE_TENANT_ID=$(az account show --query tenantId -o tsv) `
             --output none
         
         if ($LASTEXITCODE -eq 0) {
@@ -111,7 +111,7 @@ Write-Host ""
 Write-Host "🎉 Post-provision setup completed successfully!"
 Write-Host ""
 Write-Host "Next steps:"
-Write-Host "1. Update your React app's MSAL configuration to use the new Client ID: $clientId"
+Write-Host "1. Update your Vite app's MSAL configuration to use the new Client ID: $clientId"
 Write-Host "2. Add your production URLs to the app registration redirect URIs if needed"
 Write-Host "3. Grant any additional API permissions if required"
 Write-Host ""

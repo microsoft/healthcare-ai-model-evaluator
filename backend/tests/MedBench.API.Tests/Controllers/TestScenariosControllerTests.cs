@@ -130,18 +130,22 @@ public class TestScenariosControllerTests
     }
 
     [Fact]
-    public async Task Update_WithDifferentOwner_ReturnsForbid()
+    public async Task Update_WithDifferentOwner_ReturnsOkResult()
     {
         // Arrange
         var scenario = new TestScenario { Id = "1", Name = "Scenario", OwnerId = "different-owner" };
         _mockRepository.Setup(repo => repo.GetByIdAsync("1"))
+            .ReturnsAsync(scenario);
+        _mockRepository.Setup(repo => repo.UpdateAsync(It.IsAny<TestScenario>()))
             .ReturnsAsync(scenario);
 
         // Act
         var result = await _controller.Update("1", scenario);
 
         // Assert
-        Assert.IsType<ForbidResult>(result.Result);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var returnedScenario = Assert.IsType<TestScenario>(okResult.Value);
+        Assert.Equal(scenario.Id, returnedScenario.Id);
     }
 
     [Fact]
@@ -162,17 +166,19 @@ public class TestScenariosControllerTests
     }
 
     [Fact]
-    public async Task Delete_WithDifferentOwner_ReturnsForbid()
+    public async Task Delete_WithDifferentOwner_ReturnsNoContent()
     {
         // Arrange
         var scenario = new TestScenario { Id = "1", OwnerId = "different-owner" };
         _mockRepository.Setup(repo => repo.GetByIdAsync("1"))
             .ReturnsAsync(scenario);
+        _mockRepository.Setup(repo => repo.DeleteAsync("1"))
+            .Returns(Task.CompletedTask);
 
         // Act
         var result = await _controller.Delete("1");
 
         // Assert
-        Assert.IsType<ForbidResult>(result);
+        Assert.IsType<NoContentResult>(result);
     }
 } 
