@@ -5,6 +5,8 @@ import { fetchDoneTrialIds, getTrialById } from '../../reducers/arenaReducer';
 import { trialService } from '../../services/trialService';
 import { ITestScenario, ITrial } from '../../types/admin';
 import {TestScenarioItem} from './Arena';
+
+import { toast,Toaster } from 'react-hot-toast';
 // Removed unused IClinicalTaskStats interface
 
 
@@ -106,7 +108,7 @@ export const SubNavigation = ({
         }
         
         dispatch(getTrialById(trialId));
-        //setTrialIndex("");
+        setTrialIndex((doneTrailIds.indexOf(trialId)+1).toString());
     }
 
     const items: ICommandBarItemProps[] = [
@@ -168,7 +170,7 @@ export const SubNavigation = ({
                 {inDoneTrialMode && (
                     <Stack style={{marginLeft: '8px'}} horizontal verticalAlign="center" tokens={{ childrenGap: 4 }}>
                         <input
-                            type="number"
+                            type="text"
                             min="1"
                             max={doneTrailIds.length}
                             placeholder="Go to trial"
@@ -183,8 +185,7 @@ export const SubNavigation = ({
                             }}
                             onChange={(e) => {
                                 try{
-                                    var index = Math.min(doneTrailIds.length,parseInt(e.target.value)).toString();
-                                    setTrialIndex(index)
+                                    setTrialIndex(e.target.value)
                                 } catch (error) {
                                    // setTrialIndex(doneTrailIds.length.toString());
                                     console.error('Error parsing trial index:', error);
@@ -196,14 +197,6 @@ export const SubNavigation = ({
                                 }
                             }}
 
-                            onKeyUp={(e) => {
-                                if( parseInt(trialIndex) === 0 || trialIndex === ''){
-                                    setTrialIndex('1');
-                                }
-                                if( parseInt(trialIndex) > doneTrailIds.length || isNaN(parseInt(trialIndex))){
-                                   // setTrialIndex(doneTrailIds.length.toString());
-                                }
-                            }}
                         />
                         <IconButton
                             iconProps={{ iconName: "NavigateForward" }}
