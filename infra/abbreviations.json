@@ -1,0 +1,15 @@
+{
+  "cognitiveServicesAccounts": "cog-",
+  "documentDbDatabaseAccounts": "cosmos-",
+  "containerRegistryRegistries": "cr",
+  "storageStorageAccounts": "st",
+  "keyVaultVaults": "kv-",
+  "webSitesAppService": "app-",
+  "appManagedEnvironments": "cae-",
+  "operationalInsightsWorkspaces": "log-",
+  "insightsComponents": "appi-",
+  "webSitesAppServiceEnvironment": "ase-",
+  "webStaticSites": "swa-",
+  "webSitesFunctions": "func-",
+  "communicationServices": "acs-"
+}

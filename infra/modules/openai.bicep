@@ -4,25 +4,15 @@ param name string
 param keyVaultName string
 
 // Parameters for Azure OpenAI configuration
-@description('Whether to create a new Azure OpenAI service or use existing')
-param createOpenAI bool = true
-
-@description('Existing Azure OpenAI endpoint (if not creating new)')
-param existingOpenAIEndpoint string = ''
-
-@description('Existing Azure OpenAI API key (if not creating new)')
+param createOpenAI bool
+param existingOpenAIEndpoint string
 @secure()
 param existingOpenAIKey string = ''
-
-@description('Azure OpenAI deployment name')
-param openAIDeploymentName string = 'o3-mini'
-
-@description('Azure OpenAI API version')
-param openAIApiVersion string = '2025-01-01-preview'
-
-@description('Azure OpenAI model name and version')
-param openAIModelName string = 'o3-mini'
-param openAIModelVersion string = ''
+param openAIApiVersion string
+param openAIModelName string
+param openAIModelVersion string
+param modelCapacity int = 10
+param modelSku string
 
 // Create Azure OpenAI service if requested
 resource openAIService 'Microsoft.CognitiveServices/accounts@2023-05-01' = if (createOpenAI) {
@@ -45,7 +35,7 @@ resource openAIService 'Microsoft.CognitiveServices/accounts@2023-05-01' = if (c
 // Create deployment for the model if creating new service
 resource openAIDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = if (createOpenAI) {
   parent: openAIService
-  name: openAIDeploymentName
+  name: openAIModelName
   properties: {
     model: {
       format: 'OpenAI'
@@ -55,8 +45,8 @@ resource openAIDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023
     raiPolicyName: 'Microsoft.Default'
   }
   sku: {
-    name: 'Standard'
-    capacity: 100
+    capacity: modelCapacity
+    name: modelSku
   }
 }
 
@@ -88,7 +78,7 @@ resource openAIDeploymentSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' =
   parent: keyVault
   name: 'azure-openai-deployment'
   properties: {
-    value: openAIDeploymentName
+    value: openAIModelName
   }
 }
 
@@ -103,6 +93,6 @@ resource openAIVersionSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
 
 // Outputs
 output endpoint string = createOpenAI ? openAIService.properties.endpoint : existingOpenAIEndpoint
-output deploymentName string = openAIDeploymentName
+output deploymentName string = openAIModelName
 output apiVersion string = openAIApiVersion
 output serviceName string = createOpenAI ? openAIService.name : '' 

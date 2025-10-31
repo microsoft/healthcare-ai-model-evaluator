@@ -11,143 +11,225 @@ Healthcare AI Model Evaluator consists of:
   - **Main Metrics Processor**: Docker-based function with TBFact integration
   - **Evaluator Addon**: Custom model-as-judge evaluators
 
-## Prerequisites
+## Getting Started
 
-- [Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
-- [Azure Developer CLI](https://docs.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd)
-- [Docker](https://docs.docker.com/get-docker/) (for functions deployment)
-- Azure subscription with permissions to create resources
+### Prerequisites
 
-## Quick Start
+> [!IMPORTANT]
+> Follow the steps in order. Each step builds on the previous ones.
 
-### 1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd healthcare-ai-model-evaluator
-   ```
+**Required Software:**
+- [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli)
+- [Azure Developer CLI (azd)](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd)
+- [Docker Desktop](https://docs.docker.com/get-docker/) (for Functions deployment)
+- DotNet v8.0.318
 
-### 2. **Login and Initialize Azure Development Environment**:
-   ```
-   azd auth login
-   azd init
-   ```
+**Azure Subscription Requirements:**
+- **Azure OpenAI**: Access to one of the supported models for Model-as-a-Judge with Metrics Azure Functions.
+  - Recommended: 100K TPM (tokens per minute) quota
+  - You may select the model that best suit your needs.
+- **Azure Functions**: Premium or dedicated plan quota is required for containerized functions.
+- **Cosmos DB**: Availability varies by region. If you encounter capacity issues, try a different region (see troubleshooting).
+- **Static Web Apps**: Only available in specific regions, see [Product Availability by Region](https://azure.microsoft.com/en-us/explore/global-infrastructure/products-by-region/table).
+- **Permissions**: 
+   - A resource group where you have _Owner_ permissions for deployment (subscription-level owner permissions is OK too).
+   - **Application Developer** role (or higher) in Entra ID to create App Registrations for authentication.
 
-### 3. Configure  the `azd` environment variables
-   ```
-   # Append template contents to existing .env without overwriting
-   cat .env.example >> .azure/{env_name}/.env
-   ```
+### Step 1: Verify Prerequisites (Quota & Availability)
+* **Azure OpenAI**
+  - Ensure you have quota for your desired model in your `AZURE_GPT_LOCATION` region (recommended: 100K-200K TPM).
 
-   Note that after running `azd up` the .env will be rewritten.
+**Required Permissions:**
 
-   Edit `.env` file with your preferences:
+* **Azure Resource Access**
+  - You need **Owner** rights on at least one resource group to provision resources.
+  - You need **Application Developer** role (or higher) in Entra ID to create and configure App Registrations for authentication.
+  - If you lack subscription-level owner permissions, ask your IT administrator to:
+    - Create a resource group for you
+    - Grant you the **Owner** role on that specific resource group
+    - Grant you **Application Developer** role in Entra ID (or create the App Registration for you)
+    - Use that resource group in **Step 3**
 
-   ```bash
-   # Basic configuration
-   AZURE_ENV_NAME=haime-dev
-   AZURE_LOCATION=eastus
-   AZURE_SUBSCRIPTION_ID=your-subscription-id
+### Step 2: Create an `azd` Environment & Configure Settings
 
-   # Azure OpenAI Configuration
-   CREATE_AZURE_OPENAI=true  # Set to false to use existing service
+First, authenticate with Azure services:
 
-   # If using existing Azure OpenAI (when CREATE_AZURE_OPENAI=false):
-   # EXISTING_AZURE_OPENAI_ENDPOINT=https://your-openai-service.openai.azure.com/
-   # EXISTING_AZURE_OPENAI_KEY=your-api-key
+```sh
+# Log in to Azure CLI and Azure Developer CLI
+az login                 # add --tenant <TENANT_ID> if needed
+azd auth login           # add --tenant <TENANT_ID> if needed
+```
 
-   # Function configuration
-   ENABLE_EVALUATOR_ADDON=true  # Set to false to skip evaluator addon
-   ```
+Create a new environment with a short name:
 
-   Further sections have more details on customizing specific configurations.
+```sh
+# Create environment (keep name ≤ 8 characters for best results)
+azd env new <envName>
+```
 
-### 5. Deploy Everything
+#### Azure OpenAI Configuration
+
+During deployment (`azd up`), you'll be prompted to select an Azure OpenAI model, capacity, and deployment type. You can review available models at the [Azure OpenAI Service models documentation](https://learn.microsoft.com/en-us/azure/ai-foundry/openai/how-to/reasoning).
+
+The model selection follows the format: `name;version` (e.g., `o3-mini;2025-01-31`).
+
+**Choose your deployment approach:**
+
+| Variable | When to Use | Description |
+|----------|-------------|-------------|
+| `CREATE_AZURE_OPENAI=true` (default) | You want to create a new Azure OpenAI service | Deployment will provision a new Azure OpenAI service with your selected model |
+| `CREATE_AZURE_OPENAI=false` | You have an existing Azure OpenAI service | Use an existing service instead of creating a new one (requires endpoint and API key) |
+
+**To use an existing Azure OpenAI service**, set these variables before running `azd up`:
+
+```sh
+# Configure to use existing Azure OpenAI service
+azd env set CREATE_AZURE_OPENAI false
+azd env set EXISTING_AZURE_OPENAI_ENDPOINT "https://your-openai.openai.azure.com/"
+azd env set EXISTING_AZURE_OPENAI_KEY "your-api-key"
+```
+
+#### Optional Configuration
+
+**Regional Quota Flexibility**: If you have limited quota in your primary region, you can deploy specific resources to alternate regions:
+
+```sh
+# Example: Deploy Azure OpenAI to a different region
+azd env set AZURE_GPT_LOCATION eastus2
+
+# Example: Deploy Azure Functions to a different region  
+azd env set AZURE_FUNCTIONS_LOCATION westus3
+
+# Example: Deploy Static Web App to a supported region (westus2, centralus, eastus2, westeurope, eastasia)
+azd env set AZURE_STATIC_WEB_APP_LOCATION westus2
+
+# Other location overrides if needed:
+# azd env set AZURE_KEYVAULT_LOCATION centralus
+# azd env set AZURE_COSMOS_LOCATION westus
+# azd env set AZURE_STORAGE_LOCATION eastus
+# azd env set AZURE_CONTAINER_REGISTRY_LOCATION westus2
+```
+
+> [!TIP]
+> Only set location overrides if you have quota constraints. Most deployments work fine with a single region.
+
+> [!NOTE]
+> Static Web Apps have limited regional availability. Supported regions: `westus2`, `centralus`, `eastus2`, `westeurope`, `eastasia`.
+
+**Feature Flags**: Control optional components:
+
+```sh
+# Disable evaluator addon to reduce deployment time
+azd env set ENABLE_EVALUATOR_ADDON false
+
+# Disable Azure Communication Services
+azd env set ENABLE_ACS false
+```
+
+### Step 3: Deploy the Infrastructure
+
+Now that your environment is configured, you can deploy all necessary resources and infrastructure for the Healthcare AI Model Evaluator.
+
+> [!IMPORTANT]
+> Deploying the infrastructure will create Azure resources in your subscription and may incur costs.
+
+To start the deployment process, run:
 
    ```bash
    azd up
    ```
 
-   You may be prompted for some information (e.g.: resource group) when running this command.
+During deployment you will be prompted for any required variable not yet set, such as subscription, resource group and location.
 
-   This single command will:
-   - Provision all Azure infrastructure
-   - Deploy frontend and backend applications
-   - Build and deploy Azure Functions (zip-deployed functions only)
-   - Create or configure Azure OpenAI service
-   - Set up shared blob storage for all components
+This command will:
+- Provision all Azure infrastructure (Container Apps, Functions, Storage, Cosmos DB, etc.)
+- Deploy frontend Static Web App and backend API
+- Create or configure Azure OpenAI service
+- Set up shared blob storage for all components
+- Configure authentication via Entra ID App Registration
 
-### 6. Build and push metrics function docker image
+> [!TIP]
+> For persistent deployment issues, use `azd down --purge` to completely reset your environment and manually delete the resource group to avoid Azure's soft-delete complications.
 
-   This step is necessary because `bicep` does not take care of building and pushing docker images to registry.
+> [!IMPORTANT]
+> The full deployment takes 15-20 minutes to complete. If you encounter any issues, see the [Troubleshooting](#troubleshooting) section below.
+
+### Step 4: Build and Push Metrics Function Docker Image
+
+   This step is necessary because `azd` does not automatically build and push Docker images for Azure Functions.
 
    ```bash
 # From the root folder, get the registry name and endpoint
 AZURE_CONTAINER_REGISTRY_NAME=$(azd env get-value AZURE_CONTAINER_REGISTRY_NAME)
 AZURE_CONTAINER_REGISTRY_ENDPOINT=$(azd env get-value AZURE_CONTAINER_REGISTRY_ENDPOINT)
 
-# Navigate to the `functions` folder
+# Navigate to the functions folder
 cd functions
 
-# Login to Azure Container Registry using the environment variable
+# Login to Azure Container Registry
 az acr login --name $AZURE_CONTAINER_REGISTRY_NAME
 
-# Build the image using docker-compose and tag it for the registry
+# Build the Docker image
 docker compose build medbench-metrics
+
+# Tag the image for the registry
 docker tag functions-medbench-metrics:latest $AZURE_CONTAINER_REGISTRY_ENDPOINT/medbench-metrics:latest
 
-# Push the image to the container registry
+# Push the image to Azure Container Registry
 docker push $AZURE_CONTAINER_REGISTRY_ENDPOINT/medbench-metrics:latest
    ```
 
-## Azure OpenAI Configuration
+> [!NOTE]
+> After pushing the image, the Azure Function will automatically pull and deploy it. This may take a few minutes.
 
-You can find more information on available models at [Azure OpenAI Service models](https://learn.microsoft.com/en-us/azure/ai-foundry/openai/concepts/models?tabs=global-standard%2Cstandard-chat-completions).
+---
 
-### Option 1: Create New Azure OpenAI Service (Default)
+## Verification
 
-```bash
-# In .env file:
-CREATE_AZURE_OPENAI=true
-AZURE_OPENAI_DEPLOYMENT=o3-mini
-AZURE_OPENAI_MODEL_NAME=o3-mini
-AZURE_OPENAI_MODEL_VERSION=
-```
-
-### Option 2: Use Existing Azure OpenAI Service
+After deployment completes, verify your resources are running:
 
 ```bash
-# In .azure/{env_name}/.env file:
-CREATE_AZURE_OPENAI=false
-EXISTING_AZURE_OPENAI_ENDPOINT=https://your-openai-service.openai.azure.com/
-EXISTING_AZURE_OPENAI_KEY=your-api-key
-AZURE_OPENAI_DEPLOYMENT=your-deployment-name
+# Get deployment outputs
+azd env get-values
+
+# Check function app status
+az functionapp list --output table
+
+# Get your web app URL
+echo "Web App: $(azd env get-value WEB_BASE_URL)"
+echo "API URL: $(azd env get-value API_BASE_URL)"
 ```
 
-### Option 3: Configure via Environment Variables
+---
 
-```bash
-# Override defaults without editing .azure/{env_name}/.env
-azd env set CREATE_AZURE_OPENAI false
-azd env set EXISTING_AZURE_OPENAI_ENDPOINT "https://your-service.openai.azure.com/"
-azd env set EXISTING_AZURE_OPENAI_KEY "your-api-key"
-azd up
-```
+## Architecture Overview
 
-## Function Components
+### Components
 
-### Main Metrics Processor
-- **Purpose**: Standard evaluation metrics (ROUGE, BERTScore, exact match) + TBFact factual consistency
-- **Deployment**: Docker container
-- **Triggers**: Blob uploads to `metricjobs` container
-- **Outputs**: Results in `metricresults` container
+**Frontend**: React-based web application deployed to Azure Static Web Apps
+- User interface for model evaluation management
+- Authentication via Entra ID
 
-### Evaluator Addon (Optional)
-- **Purpose**: Custom model-as-judge evaluators
-- **Deployment**: Python zip package
-- **Triggers**: Blob uploads to `evaluatorjobs` container  
-- **Outputs**: Results in `evaluatorresults` container
+**Backend API**: .NET 8 API deployed to Azure Container Apps
+- RESTful API for evaluation orchestration
+- Cosmos DB for data persistence
+- Azure Storage for file management
 
-## Storage Containers
+**Metrics Functions**: Python-based Azure Functions for evaluation processing
+
+1. **Main Metrics Processor** (Docker-based)
+   - Purpose: Standard evaluation metrics (ROUGE, BERTScore, exact match) + TBFact factual consistency
+   - Deployment: Docker container in Premium V3 plan
+   - Triggers: Blob uploads to `metricjobs` container
+   - Outputs: Results in `metricresults` container
+   - Outputs: Results in `metricresults` container
+
+2. **Evaluator Addon** (Optional, Python zip package)
+   - Purpose: Custom model-as-judge evaluators
+   - Triggers: Blob uploads to `evaluatorjobs` container  
+   - Outputs: Results in `evaluatorresults` container
+
+### Storage Containers
 
 The shared storage account includes:
 
@@ -252,13 +334,21 @@ azd up
    azd up
    ```
 
-1. REVIEWME: **Location does not support desired model**
+1. **Location does not support desired model**
    > InvalidResourceProperties: The specified SKU 'Standard' of account deployment is not supported by the model
 
    If you have this error, try changing the region of the Azure OpenAI resource to another region that supports the model you want to deploy
 
+2. **Cosmos DB Capacity Issues**
+   > ServiceUnavailable: Database account creation failed... high demand in [region]
 
-2. **Function Deployment Failures**
+   Change the Cosmos DB region:
+   ```bash
+   azd env set AZURE_COSMOS_LOCATION westus2
+   azd up
+   ```
+
+4. **Function Deployment Failures**
    ```bash
    # Check Docker is running
    docker info
@@ -267,7 +357,7 @@ azd up
    azd deploy
    ```
 
-3. **Storage Access Issues**
+5. **Storage Access Issues**
    ```bash
    # Verify storage account exists
    az storage account show --name $(azd env get-value STORAGE_ACCOUNT_NAME)

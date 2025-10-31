@@ -8,11 +8,56 @@
     "location": {
       "value": "${AZURE_LOCATION}"
     },
+    "keyVaultLocation": {
+      "value": "${AZURE_KEYVAULT_LOCATION}"
+    },
+    "cosmosLocation": {
+      "value": "${AZURE_COSMOS_LOCATION}"
+    },
+    "containerRegistryLocation": {
+      "value": "${AZURE_CONTAINER_REGISTRY_LOCATION}"
+    },
+    "storageLocation": {
+      "value": "${AZURE_STORAGE_LOCATION}"
+    },
+    "functionsLocation": {
+      "value": "${AZURE_FUNCTIONS_LOCATION}"
+    },
+    "staticWebAppLocation": {
+      "value": "${AZURE_STATIC_WEB_APP_LOCATION}"
+    },
     "principalId": {
       "value": "${AZURE_PRINCIPAL_ID}"
     },
     "apiImageName": {
       "value": "${SERVICE_API_IMAGE_NAME}"
+    },
+    "openAIServiceName": {
+      "value": "${AZURE_OPENAI_SERVICE_NAME=}"
+    },
+    "cosmosAccountName": {
+      "value": "${AZURE_COSMOS_ACCOUNT_NAME=}"
+    },
+    "containerRegistryName": {
+      "value": "${AZURE_CONTAINER_REGISTRY_NAME=}"
+    },
+    "storageAccountName": {
+      "value": "${AZURE_STORAGE_ACCOUNT_NAME=}"
+    },
+    "keyVaultName": {
+      "value": "${AZURE_KEY_VAULT_NAME=}"
+    },
+    "containerAppsEnvName": {
+      "value": "${AZURE_CONTAINER_APPS_ENV_NAME=}"
+    },
+    "staticWebAppName": {
+      "value": "${AZURE_STATIC_WEB_APP_NAME=}"
+    },
+    "logAnalyticsName": {
+      "value": "${AZURE_LOG_ANALYTICS_NAME=}"
+    },
+    "applicationInsightsName": {
+      "value": "${AZURE_APPLICATION_INSIGHTS_NAME=}"
     },
     "createOpenAI": {
       "value": "${CREATE_AZURE_OPENAI=true}"
@@ -23,20 +68,23 @@
     "existingOpenAIKey": {
       "value": "${EXISTING_AZURE_OPENAI_KEY=}"
     },
-    "openAIDeploymentName": {
-      "value": "${AZURE_OPENAI_DEPLOYMENT=o3-mini}"
+    "model": {
+      "value": "${AZURE_OPENAI_MODEL}"
+    },
+    "modelCapacity": {
+      "value": "${AZURE_OPENAI_MODEL_CAPACITY}"
+    },
+    "modelSku": {
+      "value": "${AZURE_OPENAI_MODEL_SKU}"
+    },
+    "gptDeploymentLocation": {
+      "value": "${AZURE_GPT_LOCATION}"
     },
     "openAIApiVersion": {
       "value": "${AZURE_OPENAI_VERSION=2025-01-01-preview}"
     },
-    "openAIModelName": {
-      "value": "${AZURE_OPENAI_MODEL_NAME=o3-mini}"
-    },
-    "openAIModelVersion": {
-      "value": "${AZURE_OPENAI_MODEL_VERSION}"
-    },
     "enableEvaluatorAddon": {
-      "value": "${ENABLE_EVALUATOR_ADDON=true}"
+      "value": "${ENABLE_EVALUATOR_ADDON}"
     },
     "dockerImageTag": {
       "value": "${DOCKER_IMAGE_TAG=latest}"
@@ -67,6 +115,13 @@
     },
     "emailEnabled": {
       "value": "${EMAIL_ENABLED=false}"
+    },
+    "tags": {
+      "value": {
+        "Owner": "AI Team",
+        "Project": "healthcare-ai-model-evaluator",
+        "Toolkit": "Bicep"
+      }
     }
   }
 } 

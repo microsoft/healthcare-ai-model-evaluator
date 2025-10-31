@@ -1,6 +1,7 @@
 name: healthcare-ai-model-evaluator
 metadata:
-  template: healthcare-ai-model-evaluator@0.0.1-beta
+  # For traceability this is also set as a tag on all resources created. See infra/main.bicep
+  template: healthcare-ai-model-evaluator@0.0.1
 
 services:
   web:
