@@ -1,11 +1,34 @@
+targetScope = 'resourceGroup'
+
+// This is kept in sync with azure.yaml metadata.template, and it's used for telemetry and traceability.
+var azdTemplateId = 'healthcare-ai-model-evaluator@0.0.1'
+var projectName = 'healthcare-ai-model-evaluator'
+
 @minLength(1)
 @maxLength(64)
 @description('Name of the environment used to generate a short unique hash for resources.')
 param environmentName string
 
-@minLength(1)
 @description('Primary location for all resources')
-param location string
+param location string = resourceGroup().location
+
+@description('Location to deploy Key Vault')
+param keyVaultLocation string = resourceGroup().location
+
+@description('Location to deploy Cosmos DB')
+param cosmosLocation string = resourceGroup().location
+
+@description('Location to deploy Container Registry')
+param containerRegistryLocation string = resourceGroup().location
+
+@description('Location to deploy Storage Account')
+param storageLocation string = resourceGroup().location
+
+@description('Location to deploy Azure Functions')
+param functionsLocation string = resourceGroup().location
+
+@description('Location to deploy Static Web App')
+param staticWebAppLocation string = resourceGroup().location
 
 @description('Id of the user or app to assign application roles')
 param principalId string = deployer().objectId
@@ -13,7 +36,38 @@ param principalId string = deployer().objectId
 @description('The image name for the API service')
 param apiImageName string = ''
 
+// Resource name overrides (optional - automatically generated if left blank)
+@description('Name of the OpenAI service. Automatically generated if left blank')
+param openAIServiceName string = ''
+
+@description('Name of the Cosmos DB account. Automatically generated if left blank')
+param cosmosAccountName string = ''
+
+@description('Name of the Container Registry. Automatically generated if left blank')
+param containerRegistryName string = ''
+
+@description('Name of the Storage Account. Automatically generated if left blank')
+param storageAccountName string = ''
+
+@description('Name of the Key Vault. Automatically generated if left blank')
+param keyVaultName string = ''
+
+@description('Name of the Container Apps Environment. Automatically generated if left blank')
+param containerAppsEnvName string = ''
+
+@description('Name of the Static Web App. Automatically generated if left blank')
+param staticWebAppName string = ''
+
+@description('Name of the Log Analytics Workspace. Automatically generated if left blank')
+param logAnalyticsName string = ''
+
+@description('Name of the Application Insights. Automatically generated if left blank')
+param applicationInsightsName string = ''
+
 // Azure OpenAI configuration parameters
+@description('Location to deploy AI Services')
+param gptDeploymentLocation string = resourceGroup().location
+
 @description('Whether to create a new Azure OpenAI service or use existing')
 param createOpenAI bool = true
 
@@ -24,17 +78,24 @@ param existingOpenAIEndpoint string = ''
 @secure()
 param existingOpenAIKey string = ''
 
-@description('Azure OpenAI deployment name')
-param openAIDeploymentName string = 'o3-mini'
-
 @description('Azure OpenAI API version')
 param openAIApiVersion string = '2025-01-01-preview'
 
-@description('Azure OpenAI model configuration')
-param openAIModelName string = 'o3-mini'
-param openAIModelVersion string = ''
+@description('Azure OpenAI model name and version to deploy. See: https://learn.microsoft.com/en-us/azure/ai-foundry/openai/how-to/reasoning')
+@allowed(['o3-mini;2025-01-31', 'o4-mini;2025-04-16', 'gpt-4o;2024-08-06','gpt-4.1;2025-04-14','gpt-5;2025-08-07','gpt-5-mini;2025-08-07','gpt-5-nano;2025-08-07'])
+param model string
 
-@description('Enable Summary Evaluator addon deployment')
+var openAIModelName = split(model, ';')[0]
+var openAIModelVersion = split(model, ';')[1]
+
+@description('Tokens per minute capacity for the model. Units of 1000 (capacity = 100 means 100K tokens per minute)')
+param modelCapacity int
+// https://learn.microsoft.com/en-us/azure/ai-services/openai/how-to/deployment-types
+@description('Specify the deployment type of the model. "Standard" & "DataZoneStandard" only allow data processing and data storage within the specified Azure geography. GPT5 only supports "GlobalStandard" as of now. Please be aware that this can lead to data storage and data processing outside of your azure region!')
+@allowed(['DataZoneStandard', 'Standard','GlobalStandard'])
+param modelSku string
+
+@description('Enable Summary Evaluator Addon deployment (deployed as an extra Azure Function app)')
 param enableEvaluatorAddon bool = true
 
 @description('Docker image tag for functions')
@@ -69,103 +130,126 @@ param emailSmtpPass string = ''
 @description('SMTP SSL/TLS usage')
 param emailSmtpUseSsl bool = true
 
-
-// Generate a unique token to be used in naming resources
-var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
+@description('Tags for all AI resources created. JSON object')
+param tagParam object = {}
 
 // Tags that should be applied to all resources
-var tags = {
+var tags = union(tagParam, {
   'azd-env-name': environmentName
+  'azd-template-id': azdTemplateId
+})
+
+// Define templated deployment name for traceability
+var deploymentName = '${projectName}-${uniqueString(deployment().name)}'
+
+// Generate a unique token to be used in naming resources
+var uniqueSuffix = substring(uniqueString(subscription().id, resourceGroup().name, environmentName), 1, 3)
+
+// Load abbreviations for resource naming
+var abbrs = loadJsonContent('./abbreviations.json')
+
+// Centralized resource naming with override capability
+var names = {
+  openai: !empty(openAIServiceName) ? openAIServiceName : 'openai-${uniqueSuffix}'
+  cosmos: !empty(cosmosAccountName) ? cosmosAccountName : 'cosmos-${uniqueSuffix}'
+  registry: !empty(containerRegistryName) ? containerRegistryName : 'cr${uniqueSuffix}'
+  storage: !empty(storageAccountName) ? storageAccountName : 'st${uniqueSuffix}'
+  keyVault: !empty(keyVaultName) ? keyVaultName : 'kv-${uniqueSuffix}'
+  containerAppsEnv: !empty(containerAppsEnvName) ? containerAppsEnvName : 'cae-${uniqueSuffix}'
+  staticWebApp: !empty(staticWebAppName) ? staticWebAppName : 'swa-${uniqueSuffix}'
+  logAnalytics: !empty(logAnalyticsName) ? logAnalyticsName : 'log-${uniqueSuffix}'
+  appInsights: !empty(applicationInsightsName) ? applicationInsightsName : 'appi-${uniqueSuffix}'
 }
 
 // Core infrastructure first
 module monitoring './modules/monitoring.bicep' = {
-  name: '${deployment().name}-monitoring'
+  name: '${deploymentName}-monitoring'
   params: {
     location: location
     tags: tags
-    logAnalyticsName: 'log-${resourceToken}'
-    applicationInsightsName: 'appi-${resourceToken}'
+    logAnalyticsName: names.logAnalytics
+    applicationInsightsName: names.appInsights
   }
 }
 
 module registry './modules/registry.bicep' = {
-  name: '${deployment().name}-registry'
+  name: '${deploymentName}-registry'
   params: {
-    location: location
+    location: empty(containerRegistryLocation) ? location : containerRegistryLocation
     tags: tags
-    name: 'cr${resourceToken}'
+    name: names.registry
   }
 }
 
 module keyVault './modules/keyvault.bicep' = {
-  name: '${deployment().name}-keyvault'
+  name: '${deploymentName}-keyvault'
   params: {
-    location: location
+    location: empty(keyVaultLocation) ? location : keyVaultLocation
     tags: tags
-    name: 'kv-${resourceToken}'
+    name: names.keyVault
     principalId: principalId
   }
 }
 
 // Azure OpenAI service (depends on key vault for secret storage)
 module openAI './modules/openai.bicep' = {
-  name: '${deployment().name}-openai'
+  name: '${deploymentName}-openai'
   params: {
-    location: location
+    location: empty(gptDeploymentLocation) ? location : gptDeploymentLocation
     tags: tags
-    name: 'openai-${resourceToken}'
+    name: names.openai
     keyVaultName: keyVault.outputs.name
     createOpenAI: createOpenAI
     existingOpenAIEndpoint: existingOpenAIEndpoint
     existingOpenAIKey: existingOpenAIKey
-    openAIDeploymentName: openAIDeploymentName
     openAIApiVersion: openAIApiVersion
     openAIModelName: openAIModelName
     openAIModelVersion: openAIModelVersion
+    modelCapacity: modelCapacity
+    modelSku: modelSku
   }
 }
 
 // Data services (depends on key vault)
 module cosmos './modules/cosmos.bicep' = {
-  name: '${deployment().name}-cosmos'
+  name: '${deploymentName}-cosmos'
   params: {
-    location: location
+    location: empty(cosmosLocation) ? location : cosmosLocation
     tags: tags
-    accountName: 'cosmos-${resourceToken}'
+    accountName: names.cosmos
     databaseName: 'HAIMEDB'
     keyVaultName: keyVault.outputs.name
   }
 }
 
 module storage './modules/storage.bicep' = {
-  name: '${deployment().name}-storage'
+  name: '${deploymentName}-storage'
   params: {
-    location: location
+    location: empty(storageLocation) ? location : storageLocation
     tags: tags
-    name: 'st${resourceToken}'
+    name: names.storage
     keyVaultName: keyVault.outputs.name
   }
 }
 
 // Auth placeholder (simple, minimal dependencies)
 module auth './modules/auth.bicep' = {
-  name: '${deployment().name}-auth'
+  name: '${deploymentName}-auth'
   params: {
     location: location
     tags: tags
-    name: 'auth-${resourceToken}'
+    name: 'auth-${uniqueSuffix}'
     keyVaultName: keyVault.outputs.name
   }
 }
 
-// Azure Functions for metrics processing (depends on storage, registry, openai)
+// Azure Functions for metrics processing
 module functions './modules/functions.bicep' = {
-  name: '${deployment().name}-functions'
+  name: '${deploymentName}-functions'
   params: {
-    location: location
+    location: empty(functionsLocation) ? location : functionsLocation
     tags: tags
-    resourceToken: resourceToken
+    resourceToken: uniqueSuffix
     keyVaultName: keyVault.outputs.name
     storageAccountName: storage.outputs.name
     containerRegistryName: registry.outputs.name
@@ -178,10 +262,10 @@ module functions './modules/functions.bicep' = {
 
 // Azure Communication Services (optional)
 module acs './modules/communication.bicep' = if (enableAcs) {
-  name: '${deployment().name}-acs'
+  name: '${deploymentName}-acs'
   params: {
     tags: tags
-    name: 'acs-${resourceToken}'
+    name: 'acs-${uniqueSuffix}'
     keyVaultName: keyVault.outputs.name
     // You can override this via params if needed
     dataLocation: 'United States'
@@ -193,18 +277,18 @@ module acs './modules/communication.bicep' = if (enableAcs) {
 
 // Application services (depends on all infrastructure)
 module containerApps './modules/containerapps.bicep' = {
-  name: '${deployment().name}-containerapps'
+  name: '${deploymentName}-containerapps'
   params: {
     location: location
     tags: tags
-    containerAppsEnvName: 'cae-${resourceToken}'
+    containerAppsEnvName: names.containerAppsEnv
     containerRegistryName: registry.outputs.name
     logAnalyticsWorkspaceName: monitoring.outputs.logAnalyticsWorkspaceName
     applicationInsightsName: monitoring.outputs.applicationInsightsName
     keyVaultName: keyVault.outputs.name
     authClientId: auth.outputs.clientId
     apiImageName: apiImageName
-    resourceToken: resourceToken
+    resourceToken: uniqueSuffix
   // new params for web/email config
   webBaseUrl: empty(webBaseUrl) ? staticWebApp.outputs.uri : webBaseUrl
   emailFrom: emailFrom
@@ -221,10 +305,10 @@ module containerApps './modules/containerapps.bicep' = {
 
 // Conditional evaluator addon deployment
 module evaluatorAddon './modules/addons/evaluator.bicep' = if (enableEvaluatorAddon) {
-  name: '${deployment().name}-evaluator-addon'
+  name: '${deploymentName}-evaluator-addon'
   params: {
     location: location
-    resourceToken: resourceToken
+    resourceToken: uniqueSuffix
     storageAccountName: storage.outputs.name
     keyVaultName: keyVault.outputs.name
     azureOpenAIEndpoint: openAI.outputs.endpoint
@@ -232,19 +316,16 @@ module evaluatorAddon './modules/addons/evaluator.bicep' = if (enableEvaluatorAd
     azureOpenAIVersion: openAI.outputs.apiVersion
   }
   dependsOn: [
-    keyVault
-    storage
-    openAI
     functions
   ]
 }
 
 module staticWebApp './modules/staticwebapp.bicep' = {
-  name: '${deployment().name}-staticwebapp'
+  name: '${deploymentName}-staticwebapp'
   params: {
-    location: location
+    location: empty(staticWebAppLocation) ? location : staticWebAppLocation
     tags: tags
-    name: 'swa-${resourceToken}'
+    name: names.staticWebApp
     keyVaultName: keyVault.outputs.name
   authClientId: auth.outputs.clientId
   apiBaseUrl: ''

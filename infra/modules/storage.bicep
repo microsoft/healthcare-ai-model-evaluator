@@ -19,31 +19,13 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
   }
 }
 
-// Enable static website hosting and CORS
+// Blob service (required parent for blob containers)
 resource blobServices 'Microsoft.Storage/storageAccounts/blobServices@2022-09-01' = {
   parent: storageAccount
   name: 'default'
-  properties: {
-    cors: {
-      corsRules: [
-        {
-          allowedOrigins: ['*']
-          allowedMethods: ['GET', 'HEAD', 'OPTIONS', 'POST', 'PUT', 'DELETE']
-          allowedHeaders: ['*']
-          exposedHeaders: ['*']
-          maxAgeInSeconds: 86400
-        }
-      ]
-    }
-    staticWebsite: {
-      enabled: true
-      defaultIndexDocumentPath: 'index.html'
-      defaultErrorDocument404Path: 'index.html'
-    }
-  }
 }
 
-// Existing containers for the main application
+// Blob containers for the main application
 resource medicalImagesContainer 'Microsoft.Storage/storageAccounts/blobServices/containers@2022-09-01' = {
   parent: blobServices
   name: 'medical-images'

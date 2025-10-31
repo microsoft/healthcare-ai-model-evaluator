@@ -10,175 +10,18 @@ A comprehensive web application for evaluating the quality of Generative AI mode
 - **Advanced Evaluation**: TBFact factual consistency + custom model-as-judge evaluators
 - **Medical Focus**: Specialized metrics and workflows for healthcare AI
 
-## Deployment Options
+## Deployment
 
-### 🚀 Azure Deployment
+> [!IMPORTANT]
+> See [DEPLOYMENT.md](./DEPLOYMENT.md) for complete deployment guide, configuration options, and troubleshooting.
+
+### Quick start
 
 Deploy the complete Healthcare AI Model Evaluator platform with a single command using Azure Developer CLI (azd).
 
-#### Prerequisites
-- [Azure Developer CLI (azd)](https://docs.microsoft.com/azure/developer/azure-developer-cli/install-azd)
-- [Azure CLI](https://docs.microsoft.com/cli/azure/install-azure-cli)
-- [Docker](https://docs.docker.com/get-docker/) (for Azure Functions deployment)
-- An Azure subscription with appropriate permissions
-
-#### Quick Start
-
-1. **Clone the repository**
-   ```bash
-   git clone [your-repository-url]
-   cd healthcare-ai-model-evaluator
-   cp .env.example .env
-   ```
-
-1. **Initialize Azure Development Environment**:
-   ```
-   azd init
-   ```
-
-1. Copy the `.env.template` to the `azd` environment
-   ```
-   cp .env.template .azure/{env_name}/.env
-   ```
-
-1. **Edit .env file** with your preferences:
-   ```bash
-   # Basic configuration
-   AZURE_ENV_NAME=haime-dev
-   AZURE_LOCATION=eastus
-   AZURE_SUBSCRIPTION_ID=your-subscription-id
-
-   # Azure OpenAI (creates new service by default)
-   CREATE_AZURE_OPENAI=true
-   AZURE_OPENAI_DEPLOYMENT=gpt-4
-
-   # Function configuration
-   ENABLE_EVALUATOR_ADDON=true
-   ```
-
-1. **Deploy everything**
-   ```bash
-   azd up
-   ```
-
-This deploys the complete platform including frontend, backend, and Azure Functions with shared storage and Azure OpenAI configuration.
-
-#### What Gets Deployed
-
-The `azd up` command deploys:
-
-**Core Platform:**
-- **Azure Static Web App** - React frontend for Arena interface.
-- **Azure Container App** - .NET API backend.
-- **Azure Cosmos DB** - MongoDB API for data storage.
-- **Azure Blob Storage** - Medical images, reports, and evaluation workflows.
-
-**Evaluation Engine:**
-- **Metrics Function App** - Docker-based evaluation processing with TBFact integration
-- **Evaluator Function App** - Custom model-as-judge evaluators (optional)
-- **Azure OpenAI Service** - For LLM-based evaluation (or use existing)
-
-**Infrastructure:**
-- **Azure Container Registry** - Function container images
-- **Azure Key Vault** - Secure configuration management
-- **Log Analytics & App Insights** - Monitoring and observability
-
-#### Azure OpenAI Configuration
-
-**Option 1: Create New Service (Default)**
-```bash
-# In .env file:
-CREATE_AZURE_OPENAI=true
-AZURE_OPENAI_DEPLOYMENT=gpt-4
 ```
-
-**Option 2: Use Existing Service**
-```bash
-# In .env file:
-CREATE_AZURE_OPENAI=false
-EXISTING_AZURE_OPENAI_ENDPOINT=https://your-openai-service.openai.azure.com/
-EXISTING_AZURE_OPENAI_KEY=your-api-key
-```
-
-**Option 3: Environment Variables**
-```bash
-azd env set CREATE_AZURE_OPENAI false
-azd env set EXISTING_AZURE_OPENAI_ENDPOINT "your-endpoint"
-azd env set EXISTING_AZURE_OPENAI_KEY "your-key"
 azd up
 ```
-
-<!-- #### Testing the Deployment
-
-Upload a sample evaluation job:
-```bash
-# Test metrics processing
-az storage blob upload \
-  --account-name $(azd env get-values | grep STORAGE_ACCOUNT_NAME | cut -d'=' -f2) \
-  --container-name metricjobs \
-  --name sample.json \
-  --file functions/examples/model_run_sample.json
-
-# Monitor processing
-az functionapp logs tail \
-  --name $(azd env get-values | grep METRICS_FUNCTION_APP_NAME | cut -d'=' -f2)
-``` -->
-
-#### Deployment Configuration Options
-
-**Disable Evaluator Addon:**
-
-To know more about the evaluator addon refer to its [readme](./functions/addons/evaluator/README.md).
-
-The evaluator addon is enabled by default, to disable it do:
-```bash
-azd env set ENABLE_EVALUATOR_ADDON false
-azd up
-```
-
-**Change OpenAI Model:**
-```bash
-azd env set AZURE_OPENAI_DEPLOYMENT "gpt-35-turbo"
-azd up
-```
-
-#### Supported Azure Regions
-
-Choose regions that support all required services:
-- `eastus` ✅ (Recommended)
-- `westus2` ✅
-- `eastus2` ✅
-- `centralus` ✅
-- `westeurope` ✅
-
-#### Troubleshooting
-
-**Azure OpenAI Quota Issues:**
-```bash
-# Use existing service instead
-azd env set CREATE_AZURE_OPENAI false
-azd env set EXISTING_AZURE_OPENAI_ENDPOINT "your-endpoint"
-azd env set EXISTING_AZURE_OPENAI_KEY "your-key"
-azd up
-```
-
-**Function Deployment Issues:**
-```bash
-# Ensure Docker is running
-docker info
-
-# Rebuild and redeploy
-azd deploy
-```
-
-**Complete Cleanup:**
-```bash
-azd down --purge
-```
-
-See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions and troubleshooting.
-
----
 
 ## Local Development
 
@@ -268,7 +111,6 @@ docker-compose up
 
 Healthcare AI Model Evaluator integrates with external evaluation frameworks:
 - **MedHelm**: Data conversion utilities in `functions/notebooks/`
-- **BabelBench**: Shared dataset formats and workflows
 - **Custom Evaluators**: Extensible two-tiered evaluation architecture
 
 See the [functions README](functions/README.md) for detailed evaluation engine documentation.
