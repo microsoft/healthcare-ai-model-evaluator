@@ -83,11 +83,28 @@ export const SubNavigation = ({
 
     const handleIndexNavigation = (trialIndex: string) => {
         // Logic to navigate to a specific trial by its ID
-        if( parseInt(trialIndex) > doneTrailIds.length || isNaN(parseInt(trialIndex))){
-            trialIndex = doneTrailIds.length.toString();
-        }   
-        console.log('Navigating to trial ID:', trialIndex);
-        var trialId = doneTrailIds[parseInt(trialIndex) - 1];
+        var trialId = null;
+        // Check if trialIndex is a pure integer (not a GUID that starts with numbers)
+        const isInteger = /^\d+$/.test(trialIndex);
+        
+        if (isInteger) {
+            const index = parseInt(trialIndex);
+            if (index > doneTrailIds.length) {
+                trialIndex = doneTrailIds.length.toString();
+            }
+            trialId = doneTrailIds[parseInt(trialIndex) - 1];
+        } else {
+            // Treat as GUID
+            trialId = trialIndex;
+        }
+
+        console.log('Navigating to trial ID:', trialId);
+        if( doneTrailIds.indexOf(trialId) === -1 ){
+            console.error('Trial ID not found in doneTrialIds:', trialId);
+            toast.error('Trial ID not found');
+            return;
+        }
+        
         dispatch(getTrialById(trialId));
         //setTrialIndex("");
     }
