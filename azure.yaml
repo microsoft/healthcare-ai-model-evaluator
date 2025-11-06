@@ -31,14 +31,14 @@ services:
 
   # Summary evaluator addon function app
   evaluator:
-    project: ./functions/addons/evaluator/build
+    project: ./functions/addons/evaluator/
     language: python
     host: function
     module: .
     hooks:
       prepackage:
         shell: sh
-        run: ../../package_addon.sh evaluator
+        run: ../package_addon.sh evaluator
         continueOnError: false
 
 hooks:
