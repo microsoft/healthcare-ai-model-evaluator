@@ -123,6 +123,8 @@ AI Model Evaluation Tool Disclaimer
 
 DISCLAIMER: This tool showcases an AI model evaluation and benchmarking tool for healthcare that uses various AI technologies, including foundation models and large language models (such as Azure OpenAI GPT-4). It is not an existing Microsoft product, and Microsoft makes no commitment to build such a product. Generative AI can produce inaccurate or incomplete information. You must thoroughly test and validate that any AI model or evaluation result is suitable for its intended use and identify and mitigate any risks to end users. Carefully review the documentation for every AI tool and service employed.
 
+This tool allows the same congifured models to be used in both output generation and output evaluation.  However, it is generally not the best practice to use a model to evaluate the output of that same model (e.g., don't use GPT-4.1 as a judge to evaluate GPT-4.1) as this might lead to heavily skewed results.
+
 Microsoft products and services (1) are not designed, intended, or made available as a medical device, and (2) are not designed or intended to replace professional medical advice, diagnosis, treatment, or judgment and should not be used as a substitute for professional medical advice, diagnosis, treatment, or judgment. Customers and partners are responsible for ensuring that their solutions comply with all applicable laws and regulations.
 
 
