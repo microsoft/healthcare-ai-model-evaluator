@@ -35,11 +35,13 @@ Write-Host "Creating Azure AD App Registration as SPA..."
 $appName = "HealthcareAIModelEvaluator-App-$(Get-Random)"
 $redirectUris = @(
     "http://localhost:3000",
-    "https://localhost:3000"
+    "https://localhost:3000",
+    "http://localhost:3000/webapp/",
+    "https://localhost:3000/webapp/"
 )
 
 if ($webAppUrl) {
-    $redirectUris += $webAppUrl
+    $redirectUris += "$webAppUrl/webapp/"
 }
 
 $redirectUrisJson = $redirectUris | ConvertTo-Json -Compress
@@ -76,36 +78,7 @@ if ($LASTEXITCODE -eq 0) {
 }
 
 # Update Static Web App configuration
-Write-Host "Updating Static Web App configuration..."
-
-if ($resourceGroupName) {
-    # Get the static web app resource
-    $staticWebApp = az staticwebapp list `
-        --resource-group $resourceGroupName `
-        --query "[0]" -o json | ConvertFrom-Json
-
-    if ($staticWebApp -and $staticWebApp -ne "null") {
-        $staticWebAppName = $staticWebApp.name
-        Write-Host "Found Static Web App: $staticWebAppName"
-        
-        # Update app settings
-        az staticwebapp appsettings set `
-            --name $staticWebAppName `
-            --resource-group $resourceGroupName `
-            --setting-names VITE_CLIENT_ID=$clientId VITE_API_BASE_URL=$apiUrl VITE_TENANT_ID=$(az account show --query tenantId -o tsv) `
-            --output none
-        
-        if ($LASTEXITCODE -eq 0) {
-            Write-Host "✅ Successfully updated Static Web App configuration"
-        } else {
-            Write-Warning "⚠️  Failed to update Static Web App configuration"
-        }
-    } else {
-        Write-Warning "⚠️  No Static Web App found in resource group"
-    }
-} else {
-    Write-Warning "⚠️  Resource group name not available, skipping Static Web App configuration"
-}
+Write-Host "Skipping Static Web App configuration (using embedded web app in API)..."
 
 Write-Host ""
 Write-Host "🎉 Post-provision setup completed successfully!"

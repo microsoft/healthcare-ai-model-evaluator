@@ -5,7 +5,7 @@ This guide covers deploying the complete Healthcare AI Model Evaluator platform 
 ## Overview
 
 Healthcare AI Model Evaluator consists of:
-- **Frontend**: React-based web application (Static Web App)
+- **Frontend**: React-based web application (served from .NET API)
 - **Backend**: .NET API (Container App)
 - **Metrics Functions**: Python-based Azure Functions for evaluation processing
   - **Main Metrics Processor**: Docker-based function with TBFact integration
@@ -30,7 +30,8 @@ Healthcare AI Model Evaluator consists of:
   - You may select the model that best suit your needs.
 - **Azure Functions**: Premium or dedicated plan quota is required for containerized functions.
 - **Cosmos DB**: Availability varies by region. If you encounter capacity issues, try a different region (see troubleshooting).
-- **Static Web Apps**: Only available in specific regions, see [Product Availability by Region](https://azure.microsoft.com/en-us/explore/global-infrastructure/products-by-region/table).
+- **Container Apps**: Available in most Azure regions
+- **Azure Functions**: Available in most Azure regions
 - **Permissions**: 
    - A resource group where you have _Owner_ permissions for deployment (subscription-level owner permissions is OK too).
    - **Application Developer** role (or higher) in Entra ID to create App Registrations for authentication.
@@ -100,8 +101,8 @@ azd env set AZURE_GPT_LOCATION eastus2
 # Example: Deploy Azure Functions to a different region  
 azd env set AZURE_FUNCTIONS_LOCATION westus3
 
-# Example: Deploy Static Web App to a supported region (westus2, centralus, eastus2, westeurope, eastasia)
-azd env set AZURE_STATIC_WEB_APP_LOCATION westus2
+# Example: Deploy to a supported region
+azd env set AZURE_LOCATION westus2
 
 # Other location overrides if needed:
 # azd env set AZURE_KEYVAULT_LOCATION centralus
@@ -114,7 +115,7 @@ azd env set AZURE_STATIC_WEB_APP_LOCATION westus2
 > Only set location overrides if you have quota constraints. Most deployments work fine with a single region.
 
 > [!NOTE]
-> Static Web Apps have limited regional availability. Supported regions: `westus2`, `centralus`, `eastus2`, `westeurope`, `eastasia`.
+> All components can be deployed to most Azure regions. Choose a region that supports Container Apps and Azure Functions.
 
 **Feature Flags**: Control optional components:
 
@@ -131,6 +132,9 @@ azd env set ENABLE_ACS false
 Now that your environment is configured, you can deploy all necessary resources and infrastructure for the Healthcare AI Model Evaluator.
 
 > [!IMPORTANT]
+> **Security Consideration**: For production deployments in healthcare environments, consider integrating with your existing Azure Front Door after deployment. See the [Security Configuration](#security-configuration) section for Front Door integration steps.
+
+> [!IMPORTANT]
 > Deploying the infrastructure will create Azure resources in your subscription and may incur costs.
 
 To start the deployment process, run:
@@ -143,7 +147,7 @@ During deployment you will be prompted for any required variable not yet set, su
 
 This command will:
 - Provision all Azure infrastructure (Container Apps, Functions, Storage, Cosmos DB, etc.)
-- Deploy frontend Static Web App and backend API
+- Deploy backend API (with integrated frontend)
 - Create or configure Azure OpenAI service
 - Set up shared blob storage for all components
 - Configure authentication via Entra ID App Registration
@@ -195,9 +199,10 @@ azd env get-values
 # Check function app status
 az functionapp list --output table
 
-# Get your web app URL
-echo "Web App: $(azd env get-value WEB_BASE_URL)"
-echo "API URL: $(azd env get-value API_BASE_URL)"
+# Get your application URL (frontend and API served from same endpoint)
+echo "Application URL: $(azd env get-value API_BASE_URL)"
+echo "Frontend: $(azd env get-value API_BASE_URL)/webapp"
+echo "API: $(azd env get-value API_BASE_URL)/api"
 ```
 
 ---
@@ -206,7 +211,7 @@ echo "API URL: $(azd env get-value API_BASE_URL)"
 
 ### Components
 
-**Frontend**: React-based web application deployed to Azure Static Web Apps
+**Frontend**: React-based web application served from the .NET API at `/webapp`
 - User interface for model evaluation management
 - Authentication via Entra ID
 
@@ -253,7 +258,7 @@ The shared storage account includes:
 az functionapp list --output table
 
 # Get function app URLs
-azd env get-value FUNCTION_APP_URL
+echo "Metrics Function: $(azd env get-value METRICS_FUNCTION_APP_URL)"
 ```
 
 ### 2. Test Metrics Processing
@@ -320,6 +325,87 @@ azd up
 azd env set DOCKER_IMAGE_TAG "v2.0"
 azd up
 ```
+
+## Security Configuration
+
+### Protecting Your Deployment from Public Access (Recommended)
+
+For production healthcare environments, you should restrict access to your application. There are several approaches depending on your existing infrastructure and security requirements.
+
+### Option 1: Integrate with Existing Azure Front Door (Recommended)
+
+Most healthcare organizations already have Azure Front Door with WAF configured. You can integrate MedBench behind your existing Front Door.
+
+#### Configure Container Apps for Front Door Integration
+
+After deployment, configure your Container App to accept traffic only from your existing Front Door:
+
+```bash
+# Get your deployment details
+RESOURCE_GROUP=$(azd env get-value AZURE_RESOURCE_GROUP)
+CONTAINER_APP_NAME="api-$(azd env get-value AZURE_ENV_NAME)"
+
+# Get your existing Front Door's service tag or backend pool IP
+# Replace with your Front Door's actual service tag
+FRONT_DOOR_ID="AzureFrontDoor.Backend"
+
+# Restrict Container App ingress to Front Door only
+az containerapp ingress access-restriction add \
+  --name $CONTAINER_APP_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --rule-name "FrontDoorOnly" \
+  --service-tag $FRONT_DOOR_ID \
+  --action "Allow" \
+  --description "Allow traffic only from existing Front Door"
+
+# Block all other traffic
+az containerapp ingress access-restriction add \
+  --name $CONTAINER_APP_NAME \
+  --resource-group $RESOURCE_GROUP \
+  --rule-name "DenyAll" \
+  --ip-address-range "0.0.0.0/0" \
+  --action "Deny" \
+  --priority 1000 \
+  --description "Deny all other traffic"
+```
+
+#### Add MedBench Backend to Your Front Door
+
+Add the deployed Container App as a backend in your existing Front Door configuration:
+
+```bash
+# Get the Container App URL (without https://)
+BACKEND_HOST=$(azd env get-value API_BASE_URL | sed 's|https://||')
+
+# Add to your Front Door backend pool
+az network front-door backend-pool backend add \
+  --front-door-name "your-existing-frontdoor" \
+  --pool-name "your-backend-pool" \
+  --resource-group "your-frontdoor-rg" \
+  --address $BACKEND_HOST \
+  --http-port 80 \
+  --https-port 443 \
+  --priority 1 \
+  --weight 50
+```
+
+#### Update Front Door Routing Rules
+
+Configure routing to send MedBench traffic to the new backend:
+
+```bash
+# Create routing rule for MedBench
+az network front-door routing-rule create \
+  --front-door-name "your-existing-frontdoor" \
+  --resource-group "your-frontdoor-rg" \
+  --name "medbench-routing" \
+  --frontend-endpoints "your-frontend" \
+  --route-type Forward \
+  --backend-pool "your-backend-pool" \
+  --patterns "/medbench/*" \
+  --accepted-protocols Https
+```
+
 
 ## Troubleshooting
 

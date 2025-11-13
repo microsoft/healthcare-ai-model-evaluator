@@ -100,7 +100,7 @@ docker-compose up
 - **Outputs**: Structured evaluation results for Arena validation
 
 ### Infrastructure
-- **Hosting**: Container Apps + Static Web Apps + Azure Functions
+- **Hosting**: Container Apps + Azure Functions
 - **Database**: Azure Cosmos DB (MongoDB API, serverless)
 - **Storage**: Shared Azure Blob Storage with function triggers
 - **AI Services**: Azure OpenAI for LLM-based evaluation
