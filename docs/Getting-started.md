@@ -105,7 +105,7 @@ This example demonstrates configuration using GPT-4o mini from the Azure AI Foun
 1. Navigate to the **Experiments** screen
 2. Click **Add Experiment** in the upper left corner
 
-![alt text](/docs/screen-shots/task.png)
+![alt text](/docs/screen-shots/add-experiment.png)
 
 3. Configure the experiment settings:
    - **Name:** `Healthcare Open-ended Q&A`
