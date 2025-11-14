@@ -336,6 +336,9 @@ app.UseCors("default");
 
 app.UseHttpsRedirection();
 
+// Setup routing first, as per ASP.NET Core middleware ordering best practices
+app.UseRouting();
+
 // Configure static file serving - order matters!
 // First, serve files from the default wwwroot
 app.UseStaticFiles();
@@ -348,31 +351,24 @@ Console.WriteLine($"Directory exists: {Directory.Exists(webappPath)}");
 if (Directory.Exists(webappPath))
 {
     var assetsPath = Path.Combine(webappPath, "assets");
-    Console.WriteLine($"Assets directory exists: {Directory.Exists(assetsPath)}");
-    if (Directory.Exists(assetsPath))
+
+    // Configure static files with explicit options
+    app.UseStaticFiles(new StaticFileOptions
     {
-        var files = Directory.GetFiles(assetsPath, "*.js");
-        Console.WriteLine($"JS files in assets: {string.Join(", ", files.Select(Path.GetFileName))}");
-    }
+        FileProvider = new PhysicalFileProvider(webappPath),
+        RequestPath = "/webapp",
+        OnPrepareResponse = ctx =>
+        {
+            Console.WriteLine($"Static file middleware serving: {ctx.Context.Request.Path}");
+            Console.WriteLine($"File exists: {ctx.File.Exists}");
+            if (ctx.File.Exists)
+            {
+                Console.WriteLine($"Physical path: {ctx.File.PhysicalPath}");
+            }
+        }
+    });
 }
 
-// Configure static files with explicit options
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(webappPath),
-    RequestPath = "/webapp",
-    OnPrepareResponse = ctx =>
-    {
-        Console.WriteLine($"Static file middleware serving: {ctx.Context.Request.Path}");
-        Console.WriteLine($"File exists: {ctx.File.Exists}");
-        if (ctx.File.Exists)
-        {
-            Console.WriteLine($"Physical path: {ctx.File.PhysicalPath}");
-        }
-    }
-});
-
-app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<UserIdMiddleware>();
@@ -416,25 +412,25 @@ app.MapGet("/webapp", async (HttpContext context) =>
 });
 
 // Use MapFallback for React app routes - this has the lowest priority and only handles navigation routes
-app.MapFallback("/webapp/{*path}", async (HttpContext context) =>
+app.MapFallback("/webapp/{*path}", async (HttpContext context, ILogger<Program> logger) =>
 {
     var requestPath = context.Request.Path.Value ?? "";
     
     // Log for debugging
-    Console.WriteLine($"Fallback React route received request: {requestPath}");
+    logger.LogDebug("Fallback React route received request: {RequestPath}", requestPath);
     
     // If the request has a file extension, it's likely a static file that wasn't found
     // Let it 404 instead of serving the React app
     if (Path.HasExtension(requestPath))
     {
-        Console.WriteLine($"File request with extension, letting it 404: {requestPath}");
+        logger.LogDebug("File request with extension, letting it 404: {RequestPath}", requestPath);
         context.Response.StatusCode = 404;
         return;
     }
     
     // Serve index.html for React app navigation routes
     var indexPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "webapp", "index.html");
-    Console.WriteLine($"Serving index.html for React route: {requestPath}");
+    logger.LogDebug("Serving index.html for React route: {RequestPath}", requestPath);
     
     if (File.Exists(indexPath))
     {

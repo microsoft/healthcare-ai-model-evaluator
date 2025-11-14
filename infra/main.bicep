@@ -280,7 +280,7 @@ module containerApps './modules/containerapps.bicep' = {
     apiImageName: apiImageName
     resourceToken: uniqueSuffix
   // new params for web/email config
-  webBaseUrl: !empty(webBaseUrl) ? webBaseUrl : ''
+  webBaseUrl: webBaseUrl
   emailFrom: emailFrom
   emailSmtpHost: emailSmtpHost
   emailSmtpPort: emailSmtpPort
@@ -321,14 +321,13 @@ output COSMOS_ACCOUNT_NAME string = cosmos.outputs.accountName
 output STORAGE_ACCOUNT_NAME string = storage.outputs.name
 output AUTH_CLIENT_ID string = auth.outputs.clientId
 output API_BASE_URL string = containerApps.outputs.apiUri
-output WEB_BASE_URL string = containerApps.outputs.apiUri
+output WEB_BASE_URL string = '${containerApps.outputs.apiUri}/webapp'
 
 // Function app outputs
 output METRICS_FUNCTION_APP_NAME string = functions.outputs.metricsAppName
 output METRICS_FUNCTION_APP_URL string = 'https://${functions.outputs.metricsAppDefaultHostName}'
 output EVALUATOR_FUNCTION_APP_NAME string = enableEvaluatorAddon ? evaluatorAddon.outputs.evaluatorAppName : ''
 output EVALUATOR_FUNCTION_APP_URL string = enableEvaluatorAddon ? 'https://${evaluatorAddon.outputs.evaluatorAppDefaultHostName}' : ''
-
 
 // Azure OpenAI outputs
 output AZURE_OPENAI_ENDPOINT string = openAI.outputs.endpoint

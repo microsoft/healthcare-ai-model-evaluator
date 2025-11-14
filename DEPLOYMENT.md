@@ -31,7 +31,6 @@ Healthcare AI Model Evaluator consists of:
 - **Azure Functions**: Premium or dedicated plan quota is required for containerized functions.
 - **Cosmos DB**: Availability varies by region. If you encounter capacity issues, try a different region (see troubleshooting).
 - **Container Apps**: Available in most Azure regions
-- **Azure Functions**: Available in most Azure regions
 - **Permissions**: 
    - A resource group where you have _Owner_ permissions for deployment (subscription-level owner permissions is OK too).
    - **Application Developer** role (or higher) in Entra ID to create App Registrations for authentication.
@@ -328,11 +327,11 @@ azd up
 
 ## Security Configuration
 
-### Protecting Your Deployment from Public Access (Recommended)
+### Protecting Your Deployment from Public Access
 
 For production healthcare environments, you should restrict access to your application. There are several approaches depending on your existing infrastructure and security requirements.
 
-### Option 1: Integrate with Existing Azure Front Door (Recommended)
+### Integrate with Existing Azure Front Door
 
 Most healthcare organizations already have Azure Front Door with WAF configured. You can integrate MedBench behind your existing Front Door.
 
@@ -369,7 +368,7 @@ az containerapp ingress access-restriction add \
   --description "Deny all other traffic"
 ```
 
-#### Add MedBench Backend to Your Front Door
+#### Add HAIME Backend to Your Front Door
 
 Add the deployed Container App as a backend in your existing Front Door configuration:
 
