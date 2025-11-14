@@ -383,12 +383,6 @@ app.MapGet("/{filename}", (HttpContext context, string filename) =>
     if (commonFiles.Contains(filename.ToLowerInvariant()))
     {
         var webappFile = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "webapp", filename);
-        if (File.Exists(webappFile))
-        {
-            Console.WriteLine($"Redirecting {filename} from root to webapp");
-            context.Response.Redirect($"/webapp/{filename}", permanent: true);
-            return;
-        }
     }
     
     // If not a common file, return 404
