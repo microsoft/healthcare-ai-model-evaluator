@@ -31,7 +31,6 @@ Healthcare AI Model Evaluator consists of:
 - **Azure Functions**: Premium or dedicated plan quota is required for containerized functions.
 - **Cosmos DB**: Availability varies by region. If you encounter capacity issues, try a different region (see troubleshooting).
 - **Container Apps**: Available in most Azure regions
-- **Azure Functions**: Available in most Azure regions
 - **Permissions**: 
    - A resource group where you have _Owner_ permissions for deployment (subscription-level owner permissions is OK too).
    - **Application Developer** role (or higher) in Entra ID to create App Registrations for authentication.
