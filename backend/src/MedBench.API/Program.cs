@@ -405,26 +405,14 @@ app.MapGet("/webapp", async (HttpContext context) =>
     }
 });
 
-// Use MapFallback for React app routes - this has the lowest priority and only handles navigation routes
-app.MapFallback("/webapp/{*path}", async (HttpContext context, ILogger<Program> logger) =>
+// Handle React app navigation routes - use a more specific pattern that excludes static files
+app.MapFallback("/webapp/{path:regex(^(?!assets/|.*\\.).*$)}", async (HttpContext context, ILogger<Program> logger) =>
 {
     var requestPath = context.Request.Path.Value ?? "";
     
-    // Log for debugging
-    logger.LogDebug("Fallback React route received request: {RequestPath}", requestPath);
-    
-    // If the request has a file extension, it's likely a static file that wasn't found
-    // Let it 404 instead of serving the React app
-    if (Path.HasExtension(requestPath))
-    {
-        logger.LogDebug("File request with extension, letting it 404: {RequestPath}", requestPath);
-        context.Response.StatusCode = 404;
-        return;
-    }
     
     // Serve index.html for React app navigation routes
     var indexPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "webapp", "index.html");
-    logger.LogDebug("Serving index.html for React route: {RequestPath}", requestPath);
     
     if (File.Exists(indexPath))
     {
