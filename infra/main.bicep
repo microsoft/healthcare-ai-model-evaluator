@@ -280,7 +280,7 @@ module containerApps './modules/containerapps.bicep' = {
     apiImageName: apiImageName
     resourceToken: uniqueSuffix
   // new params for web/email config
-  webBaseUrl: !empty(webBaseUrl) ? webBaseUrl : ''
+  webBaseUrl: webBaseUrl
   emailFrom: emailFrom
   emailSmtpHost: emailSmtpHost
   emailSmtpPort: emailSmtpPort
