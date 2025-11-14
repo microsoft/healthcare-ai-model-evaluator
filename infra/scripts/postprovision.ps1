@@ -78,7 +78,6 @@ if ($LASTEXITCODE -eq 0) {
 }
 
 # Update Static Web App configuration
-Write-Host "Skipping Static Web App configuration (using embedded web app in API)..."
 
 Write-Host ""
 Write-Host "🎉 Post-provision setup completed successfully!"
