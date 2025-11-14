@@ -87,8 +87,8 @@ builder.Services.AddAuthentication(options =>
     .AddJwtBearer("LocalJwt", options =>
     {
         var secret = builder.Configuration["LocalAuth:JwtSecret"];
-        var issuer = builder.Configuration["LocalAuth:Issuer"] ?? "medbench-local";
-        var audience = builder.Configuration["LocalAuth:Audience"] ?? "medbench-api";
+        var issuer = builder.Configuration["LocalAuth:Issuer"] ?? "haime-local";
+        var audience = builder.Configuration["LocalAuth:Audience"] ?? "haime-api";
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
