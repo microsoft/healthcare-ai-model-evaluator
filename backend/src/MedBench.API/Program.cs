@@ -348,23 +348,23 @@ Console.WriteLine($"Directory exists: {Directory.Exists(webappPath)}");
 if (Directory.Exists(webappPath))
 {
     var assetsPath = Path.Combine(webappPath, "assets");
-    Console.WriteLine($"Assets directory exists: {Directory.Exists(assetsPath)}");
-    if (Directory.Exists(assetsPath))
-    {
-        var files = Directory.GetFiles(assetsPath, "*.js");
-        Console.WriteLine($"JS files in assets: {string.Join(", ", files.Select(Path.GetFileName))}");
-    }
-}
 
-// Configure static files with explicit options
-app.UseStaticFiles(new StaticFileOptions
-{
-    FileProvider = new PhysicalFileProvider(webappPath),
-    RequestPath = "/webapp",
-    OnPrepareResponse = ctx =>
+    // Configure static files with explicit options
+    app.UseStaticFiles(new StaticFileOptions
     {
-    }
-});
+        FileProvider = new PhysicalFileProvider(webappPath),
+        RequestPath = "/webapp",
+        OnPrepareResponse = ctx =>
+        {
+            Console.WriteLine($"Static file middleware serving: {ctx.Context.Request.Path}");
+            Console.WriteLine($"File exists: {ctx.File.Exists}");
+            if (ctx.File.Exists)
+            {
+                Console.WriteLine($"Physical path: {ctx.File.PhysicalPath}");
+            }
+        }
+    });
+}
 
 app.UseRouting();
 app.UseAuthentication();
