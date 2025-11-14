@@ -327,11 +327,11 @@ azd up
 
 ## Security Configuration
 
-### Protecting Your Deployment from Public Access (Recommended)
+### Protecting Your Deployment from Public Access
 
 For production healthcare environments, you should restrict access to your application. There are several approaches depending on your existing infrastructure and security requirements.
 
-### Option 1: Integrate with Existing Azure Front Door (Recommended)
+### Integrate with Existing Azure Front Door
 
 Most healthcare organizations already have Azure Front Door with WAF configured. You can integrate MedBench behind your existing Front Door.
 
