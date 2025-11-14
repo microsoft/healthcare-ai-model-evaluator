@@ -368,7 +368,7 @@ az containerapp ingress access-restriction add \
   --description "Deny all other traffic"
 ```
 
-#### Add MedBench Backend to Your Front Door
+#### Add HAIME Backend to Your Front Door
 
 Add the deployed Container App as a backend in your existing Front Door configuration:
 
