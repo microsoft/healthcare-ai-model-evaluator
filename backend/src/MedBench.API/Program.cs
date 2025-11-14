@@ -363,12 +363,6 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = "/webapp",
     OnPrepareResponse = ctx =>
     {
-        Console.WriteLine($"Static file middleware serving: {ctx.Context.Request.Path}");
-        Console.WriteLine($"File exists: {ctx.File.Exists}");
-        if (ctx.File.Exists)
-        {
-            Console.WriteLine($"Physical path: {ctx.File.PhysicalPath}");
-        }
     }
 });
 
