@@ -31,7 +31,7 @@ Current vendor leaderboards give only a surface view of model accuracy. What hea
 
 ## The Complexity Challenge
 
-Healthcare AI evaluation isn't just about accuracy scores. A credible benchmark must address the messy realities of clinical practice:
+Healthcare AI evaluation must address the messy realities of clinical practice:
 
 - Label noise and inter-rater variability among clinicians
 - Performance on rare diseases and minority subgroups
@@ -59,13 +59,16 @@ Healthcare AI Model Evaluator was designed from the ground up with healthcare re
 
 **Deploy in your own environment** – Keep sensitive data within your controlled, secure infrastructure
 
-**With Your Data** – Evaluate models using your actual patient populations and clinical scenarios, not synthetic benchmarks that may not reflect your reality.
+**With Your Data** – Evaluate models using your data that reflects your patient populations and clinical scenarios, beyond synthetic benchmarks that may not reflect your reality.
 **For Your Tasks** – Define clinical tasks and use cases that matter to your providers and stakeholders, from diagnostic support to administrative automation.
 **By Your Experts** – Leverage the clinical expertise within your organization to guide evaluation criteria and interpret results.
-**Using Your Metrics** – Measure what matters to your organization, whether that's clinical accuracy, workflow efficiency, or cost-effectiveness.
+**Using Your Metrics** – Measure what matters to your organization, whether that's clinical accuracy, workflow efficiency, safety, bias, or cost-effectiveness.
 **With Your Models** – Test any AI system – commercial endpoints, open-source models, or your own custom solutions.
 ### Key Features
 **No-Code Interface for Clinicians**
+
+![Human-Feedback](/docs/screen-shots/BBbox%20annotation.png)
+
 Healthcare AI Model Evaluator features an intuitive evaluation interface that requires no programming skills. Clinical staff can set up evaluations, review results, and provide feedback through a user-friendly web interface.
 **Flexible Dataset Management**
 

@@ -80,6 +80,7 @@ Deploy the evaluator within a secure, organization-controlled environment (e.g.,
 
 Empower clinical professionals to define context-specific metrics and benchmarks. The evaluator should allow creation of custom evaluation questions, scoring rubrics, and export of results for further analysis, ensuring that assessments reflect real-world clinical needs and priorities.
 
+**Important note:** This tool allows configured AI model endpoints to be used in both output generation and output evaluation.  However, it is generally not advisable to use a model to evaluate the output of that same model (e.g., don't use GPT-4.1 as a judge to evaluate GPT-4.1) as this might lead to heavily skewed results.
 ### Human-in-the-Loop Review:
 
 Integrate human expert review into the evaluation workflow. Assign qualified clinicians to assess model outputs for accuracy, relevance, and safety, supplementing automated scoring with domain expertise. This mitigates automation bias and ensures that AI recommendations are clinically sound.
