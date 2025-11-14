@@ -321,7 +321,7 @@ output COSMOS_ACCOUNT_NAME string = cosmos.outputs.accountName
 output STORAGE_ACCOUNT_NAME string = storage.outputs.name
 output AUTH_CLIENT_ID string = auth.outputs.clientId
 output API_BASE_URL string = containerApps.outputs.apiUri
-output WEB_BASE_URL string = containerApps.outputs.apiUri
+output WEB_BASE_URL string = '${containerApps.outputs.apiUri}/webapp'
 
 // Function app outputs
 output METRICS_FUNCTION_APP_NAME string = functions.outputs.metricsAppName
