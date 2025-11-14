@@ -336,6 +336,9 @@ app.UseCors("default");
 
 app.UseHttpsRedirection();
 
+// UseRouting must come before UseStaticFiles when using endpoint routing
+app.UseRouting();
+
 // Configure static file serving - order matters!
 // First, serve files from the default wwwroot
 app.UseStaticFiles();
@@ -365,8 +368,6 @@ if (Directory.Exists(webappPath))
         }
     });
 }
-
-app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<UserIdMiddleware>();
