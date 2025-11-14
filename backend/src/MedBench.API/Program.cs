@@ -216,6 +216,7 @@ builder.Services.AddSwaggerGen(c =>
 // Add logging to debug connection issues
 builder.Services.AddSingleton(sp =>
 {
+    var logger = sp.GetRequiredService<ILogger<Program>>();
     var connectionString = Environment.GetEnvironmentVariable("COSMOSDB_CONNECTION_STRING") 
         ?? builder.Configuration["CosmosDb:ConnectionString"];
         
@@ -245,7 +246,7 @@ builder.Services.AddSingleton(sp =>
     catch (Exception ex)
     {
         // Log the exception details
-        Console.WriteLine($"Failed to connect to MongoDB: {ex}");
+        logger.LogError(ex, "Failed to connect to MongoDB");
         throw;
     }
 });
@@ -342,17 +343,18 @@ app.UseStaticFiles();
 
 // Then, serve React app files from wwwroot/webapp at the /webapp path
 var webappPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "webapp");
-Console.WriteLine($"Setting up static files for webapp at: {webappPath}");
-Console.WriteLine($"Directory exists: {Directory.Exists(webappPath)}");
+var startupLogger = app.Services.GetRequiredService<ILogger<Program>>();
+startupLogger.LogInformation("Setting up static files for webapp at: {WebappPath}", webappPath);
+startupLogger.LogInformation("Directory exists: {DirectoryExists}", Directory.Exists(webappPath));
 
 if (Directory.Exists(webappPath))
 {
     var assetsPath = Path.Combine(webappPath, "assets");
-    Console.WriteLine($"Assets directory exists: {Directory.Exists(assetsPath)}");
+    startupLogger.LogInformation("Assets directory exists: {AssetsDirectoryExists}", Directory.Exists(assetsPath));
     if (Directory.Exists(assetsPath))
     {
         var files = Directory.GetFiles(assetsPath, "*.js");
-        Console.WriteLine($"JS files in assets: {string.Join(", ", files.Select(Path.GetFileName))}");
+        startupLogger.LogInformation("JS files in assets: {JsFiles}", string.Join(", ", files.Select(Path.GetFileName)));
     }
 }
 
@@ -374,7 +376,7 @@ app.UseMiddleware<UserIdMiddleware>();
 app.MapControllers();
 
 // Handle common files that might be requested from root and redirect to webapp
-app.MapGet("/{filename}", (HttpContext context, string filename) =>
+app.MapGet("/{filename}", (HttpContext context, string filename, ILogger<Program> logger) =>
 {
     var commonFiles = new[] { "favicon.ico", "logo.png", "favicon.svg", "apple-touch-icon.png", "manifest.json", "robots.txt" };
     
@@ -383,7 +385,7 @@ app.MapGet("/{filename}", (HttpContext context, string filename) =>
         var webappFile = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "webapp", filename);
         if (File.Exists(webappFile))
         {
-            Console.WriteLine($"Redirecting {filename} from root to webapp");
+            logger.LogDebug("Redirecting {Filename} from root to webapp", filename);
             context.Response.Redirect($"/webapp/{filename}", permanent: true);
             return;
         }
