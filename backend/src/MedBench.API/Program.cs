@@ -336,6 +336,9 @@ app.UseCors("default");
 
 app.UseHttpsRedirection();
 
+// Setup routing first, as per ASP.NET Core middleware ordering best practices
+app.UseRouting();
+
 // Configure static file serving - order matters!
 // First, serve files from the default wwwroot
 app.UseStaticFiles();
@@ -366,7 +369,6 @@ app.UseStaticFiles(new StaticFileOptions
     }
 });
 
-app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<UserIdMiddleware>();
