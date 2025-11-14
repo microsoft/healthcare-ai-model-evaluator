@@ -19,6 +19,7 @@ Download a sample healthcare Q&A dataset in JSONL format from Hugging Face:
 ```
 https://huggingface.co/datasets/adrianf12/healthcare-qa-dataset-jsonl/resolve/main/healthcare_qa_dataset.jsonl?download=true
 ```
+or you can use your own dataset, as long as it is in jsonl format and has at least one input and one output node per line.
 
 Save the file to your local machine for use in the next step.
 
