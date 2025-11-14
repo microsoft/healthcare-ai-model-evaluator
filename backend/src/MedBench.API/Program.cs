@@ -245,7 +245,8 @@ builder.Services.AddSingleton(sp =>
     catch (Exception ex)
     {
         // Log the exception details
-        Console.WriteLine($"Failed to connect to MongoDB: {ex}");
+        var logger = sp.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "Failed to connect to MongoDB");
         throw;
     }
 });
@@ -318,6 +319,9 @@ builder.Services.AddScoped<IEmailService, MedBench.Core.Services.EmailService>()
 
 var app = builder.Build();
 
+// Get logger for startup configuration
+var logger = app.Services.GetRequiredService<ILogger<Program>>();
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -342,17 +346,17 @@ app.UseStaticFiles();
 
 // Then, serve React app files from wwwroot/webapp at the /webapp path
 var webappPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "webapp");
-Console.WriteLine($"Setting up static files for webapp at: {webappPath}");
-Console.WriteLine($"Directory exists: {Directory.Exists(webappPath)}");
+logger.LogInformation("Setting up static files for webapp at: {WebappPath}", webappPath);
+logger.LogInformation("Directory exists: {DirectoryExists}", Directory.Exists(webappPath));
 
 if (Directory.Exists(webappPath))
 {
     var assetsPath = Path.Combine(webappPath, "assets");
-    Console.WriteLine($"Assets directory exists: {Directory.Exists(assetsPath)}");
+    logger.LogInformation("Assets directory exists: {AssetsDirectoryExists}", Directory.Exists(assetsPath));
     if (Directory.Exists(assetsPath))
     {
         var files = Directory.GetFiles(assetsPath, "*.js");
-        Console.WriteLine($"JS files in assets: {string.Join(", ", files.Select(Path.GetFileName))}");
+        logger.LogInformation("JS files in assets: {JsFiles}", string.Join(", ", files.Select(Path.GetFileName)));
     }
 }
 
@@ -363,11 +367,11 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = "/webapp",
     OnPrepareResponse = ctx =>
     {
-        Console.WriteLine($"Static file middleware serving: {ctx.Context.Request.Path}");
-        Console.WriteLine($"File exists: {ctx.File.Exists}");
+        logger.LogDebug("Static file middleware serving: {RequestPath}", ctx.Context.Request.Path);
+        logger.LogDebug("File exists: {FileExists}", ctx.File.Exists);
         if (ctx.File.Exists)
         {
-            Console.WriteLine($"Physical path: {ctx.File.PhysicalPath}");
+            logger.LogDebug("Physical path: {PhysicalPath}", ctx.File.PhysicalPath);
         }
     }
 });
@@ -389,7 +393,7 @@ app.MapGet("/{filename}", (HttpContext context, string filename) =>
         var webappFile = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "webapp", filename);
         if (File.Exists(webappFile))
         {
-            Console.WriteLine($"Redirecting {filename} from root to webapp");
+            logger.LogInformation("Redirecting {Filename} from root to webapp", filename);
             context.Response.Redirect($"/webapp/{filename}", permanent: true);
             return;
         }
@@ -421,20 +425,20 @@ app.MapFallback("/webapp/{*path}", async (HttpContext context) =>
     var requestPath = context.Request.Path.Value ?? "";
     
     // Log for debugging
-    Console.WriteLine($"Fallback React route received request: {requestPath}");
+    logger.LogDebug("Fallback React route received request: {RequestPath}", requestPath);
     
     // If the request has a file extension, it's likely a static file that wasn't found
     // Let it 404 instead of serving the React app
     if (Path.HasExtension(requestPath))
     {
-        Console.WriteLine($"File request with extension, letting it 404: {requestPath}");
+        logger.LogDebug("File request with extension, letting it 404: {RequestPath}", requestPath);
         context.Response.StatusCode = 404;
         return;
     }
     
     // Serve index.html for React app navigation routes
     var indexPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "webapp", "index.html");
-    Console.WriteLine($"Serving index.html for React route: {requestPath}");
+    logger.LogDebug("Serving index.html for React route: {RequestPath}", requestPath);
     
     if (File.Exists(indexPath))
     {
