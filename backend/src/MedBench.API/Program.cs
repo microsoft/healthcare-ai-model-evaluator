@@ -16,6 +16,7 @@ using Azure.Storage.Blobs;
 using System.Text.Json.Serialization;
 using MongoDB.Bson.Serialization.Conventions;
 using MongoDB.Bson.Serialization;
+using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -334,11 +335,108 @@ if (app.Environment.IsDevelopment())
 app.UseCors("default");
 
 app.UseHttpsRedirection();
+
+// Setup routing first, as per ASP.NET Core middleware ordering best practices
+app.UseRouting();
+
+// Configure static file serving - order matters!
+// First, serve files from the default wwwroot
+app.UseStaticFiles();
+
+// Then, serve React app files from wwwroot/webapp at the /webapp path
+var webappPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "webapp");
+Console.WriteLine($"Setting up static files for webapp at: {webappPath}");
+Console.WriteLine($"Directory exists: {Directory.Exists(webappPath)}");
+
+if (Directory.Exists(webappPath))
+{
+    var assetsPath = Path.Combine(webappPath, "assets");
+
+    // Configure static files with explicit options
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new PhysicalFileProvider(webappPath),
+        RequestPath = "/webapp",
+        OnPrepareResponse = ctx =>
+        {
+            Console.WriteLine($"Static file middleware serving: {ctx.Context.Request.Path}");
+            Console.WriteLine($"File exists: {ctx.File.Exists}");
+            if (ctx.File.Exists)
+            {
+                Console.WriteLine($"Physical path: {ctx.File.PhysicalPath}");
+            }
+        }
+    });
+}
+
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<UserIdMiddleware>();
 
 app.MapControllers();
+
+// Handle common files that might be requested from root and redirect to webapp
+app.MapGet("/{filename}", (HttpContext context, string filename) =>
+{
+    var commonFiles = new[] { "favicon.ico", "logo.png", "favicon.svg", "apple-touch-icon.png", "manifest.json", "robots.txt" };
+    
+    if (commonFiles.Contains(filename.ToLowerInvariant()))
+    {
+        var webappFile = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "webapp", filename);
+    }
+    
+    // If not a common file, return 404
+    context.Response.StatusCode = 404;
+});
+
+// Handle the root /webapp route specifically
+app.MapGet("/webapp", async (HttpContext context) =>
+{
+    var indexPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "webapp", "index.html");
+    if (File.Exists(indexPath))
+    {
+        context.Response.ContentType = "text/html";
+        await context.Response.SendFileAsync(indexPath);
+    }
+    else
+    {
+        context.Response.StatusCode = 404;
+        await context.Response.WriteAsync("React app not found.");
+    }
+});
+
+// Use MapFallback for React app routes - this has the lowest priority and only handles navigation routes
+app.MapFallback("/webapp/{*path}", async (HttpContext context, ILogger<Program> logger) =>
+{
+    var requestPath = context.Request.Path.Value ?? "";
+    
+    // Log for debugging
+    logger.LogDebug("Fallback React route received request: {RequestPath}", requestPath);
+    
+    // If the request has a file extension, it's likely a static file that wasn't found
+    // Let it 404 instead of serving the React app
+    if (Path.HasExtension(requestPath))
+    {
+        logger.LogDebug("File request with extension, letting it 404: {RequestPath}", requestPath);
+        context.Response.StatusCode = 404;
+        return;
+    }
+    
+    // Serve index.html for React app navigation routes
+    var indexPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "webapp", "index.html");
+    logger.LogDebug("Serving index.html for React route: {RequestPath}", requestPath);
+    
+    if (File.Exists(indexPath))
+    {
+        context.Response.ContentType = "text/html";
+        await context.Response.SendFileAsync(indexPath);
+    }
+    else
+    {
+        context.Response.StatusCode = 404;
+        await context.Response.WriteAsync("React app not found.");
+    }
+});
 
 // Add before app.Run()
 if (app.Environment.IsDevelopment())

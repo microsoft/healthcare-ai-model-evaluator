@@ -34,8 +34,8 @@ const FloatingInfo: React.FC = () => {
     return (
         <div style={{
             position: 'fixed',
-            bottom: 4,
-            right: 4,
+            bottom: 10,
+            right: 10,
             zIndex: 1000,
             background: 'rgba(255,255,255,0.95)',
             borderRadius: '50%',

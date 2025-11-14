@@ -138,8 +138,8 @@ EOF
             echo "Configuring SPA redirect URIs..."
             # Build redirect URIs JSON robustly with jq to avoid quoting issues
             SPA_REDIRECTS=("http://localhost:3000" "https://localhost:3000")
-            if [ -n "${WEB_APP_URL:-}" ]; then
-                SPA_REDIRECTS+=("$WEB_APP_URL")
+            if [ -n "${API_URL:-}" ]; then
+                SPA_REDIRECTS+=("${API_URL}/webapp")
             fi
             SPA_REDIRECT_URIS_JSON=$(printf '%s\n' "${SPA_REDIRECTS[@]}" | jq -R . | jq -s .)
             BODY=$(jq -n --argjson uris "$SPA_REDIRECT_URIS_JSON" '{spa: {redirectUris: $uris}}')
@@ -181,44 +181,6 @@ else
     exit 1
 fi
 
-# Update Static Web App configuration
-echo "Updating Static Web App configuration..."
-
-# Get the static web app resource
-if [ -n "$RESOURCE_GROUP_NAME" ]; then
-    STATIC_WEB_APP=$(az staticwebapp list \
-        --resource-group "$RESOURCE_GROUP_NAME" \
-        --query "[0]" -o json)
-
-    if [ "$STATIC_WEB_APP" != "null" ] && [ -n "$STATIC_WEB_APP" ]; then
-        STATIC_WEB_APP_NAME=$(echo "$STATIC_WEB_APP" | jq -r '.name')
-        echo "Found Static Web App: $STATIC_WEB_APP_NAME"
-        
-        TENANT_ID=$(az account show --query tenantId -o tsv)
-        
-        # Set Static Web App application settings (build-time environment variables)
-        echo "Setting Static Web App application settings..."
-        az staticwebapp appsettings set \
-            --name "$STATIC_WEB_APP_NAME" \
-            --resource-group "$RESOURCE_GROUP_NAME" \
-            --setting-names \
-                VITE_CLIENT_ID="$CLIENT_ID" \
-                VITE_API_BASE_URL="$API_URL" \
-                VITE_TENANT_ID="$TENANT_ID" \
-            --output none
-        
-        if [ $? -eq 0 ]; then
-            echo "✅ Successfully updated Static Web App application settings"
-        else
-            echo "⚠️  Warning: Failed to update Static Web App application settings"
-        fi
-    else
-        echo "⚠️  No Static Web App found in resource group"
-    fi
-else
-    echo "⚠️  Resource group name not available, skipping Static Web App configuration"
-fi
-
 echo ""
 if [ "$CLIENT_ID" = "00000000-0000-0000-0000-000000000000" ]; then
     echo "⚠️  Post-provision setup completed with placeholder CLIENT_ID!"
@@ -228,7 +190,7 @@ if [ "$CLIENT_ID" = "00000000-0000-0000-0000-000000000000" ]; then
     echo "2. Create a new registration with these settings:"
     echo "   - Name: HealthcareAIModelEvaluator-App-${AZURE_ENV_NAME}"
     echo "   - Supported account types: Single tenant"
-    echo "   - Redirect URI: SPA, $WEB_APP_URL"
+    echo "   - Redirect URI: SPA, ${API_URL}/webapp"
     echo "3. Copy the Application (client) ID"
     echo "4. Run: azd env set AUTH_CLIENT_ID <your-client-id>"
     echo "5. Run: azd deploy to update the configuration"
@@ -237,6 +199,6 @@ else
 fi
 echo ""
 echo "Your application URLs:"
-echo "  Frontend: $WEB_APP_URL"
+echo "  Application: ${API_URL}/webapp"
 echo "  API: $API_URL"
 echo "  Client ID: $CLIENT_ID"

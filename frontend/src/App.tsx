@@ -54,7 +54,7 @@ const App: React.FC = () => {
             <AuthProvider>
                 <Provider store={store}>
                     <Toaster position="top-right" />
-                    <Router>
+                    <Router basename="/webapp">
                         <div className="app">
                             <Navigation />
                             <main className="main-content">

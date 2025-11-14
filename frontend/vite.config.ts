@@ -4,7 +4,8 @@ import tsconfigPaths from 'vite-tsconfig-paths'
 import path from 'path'
 
 // https://vitejs.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  base: command === 'build' ? '/webapp/' : '/',
   plugins: [
     react(),
     tsconfigPaths() // This enables the path mapping from tsconfig.json
@@ -57,4 +58,4 @@ export default defineConfig({
   optimizeDeps: {
     include: ['react', 'react-dom']
   }
-})
+}))

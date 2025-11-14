@@ -4,23 +4,25 @@ metadata:
   template: healthcare-ai-model-evaluator@0.0.1
 
 services:
-  web:
-    project: ./frontend
-    dist: build
-    language: js
-    host: staticwebapp
-    hooks:
-      prebuild:
-        posix:
-          shell: sh
-          run: ../infra/scripts/update-env.sh
-          interactive: false
-          continueOnError: false
-  
   api:
     project: ./backend/src/MedBench.API
     language: dotnet
     host: containerapp
+    hooks:
+      prebuild:
+        posix:
+          shell: sh
+          run: |
+            # Build the frontend first
+            cd ../../../frontend
+            ../infra/scripts/update-env.sh
+            npm install
+            npm run build
+            # Copy built files to backend wwwroot
+            mkdir -p ../backend/src/MedBench.API/wwwroot/webapp
+            cp -r build/* ../backend/src/MedBench.API/wwwroot/webapp/
+          interactive: false
+          continueOnError: false
 
   # Main metrics processor function app (Docker-based)
   metrics:

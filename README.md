@@ -60,9 +60,9 @@ dotnet run
    dotnet user-secrets set "AzureStorage:ConnectionString" "your-azure-storage-connection-string" --project ./src/MedBench.API/
    ```
 
-> **NOTE**: When running CosmosDB and Azuer Storage emulators from docker images, the connection strings are: 
-> - For CosmosDB: `mongodb://localhost:10255/?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@localhost@`
-> - For Azurite: `DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://localhost:10000/devstoreaccount1;QueueEndpoint=http://localhost:10001/devstoreaccount1;TableEndpoint=http://localhost:10002/devstoreaccount1;`
+> **NOTE**: When running CosmosDB and Azure Storage emulators from docker images, use the standard development connection strings documented for each service:
+> - For CosmosDB: See MongoDB emulator documentation for localhost connection string
+> - For Azurite: See Azurite documentation for development connection string
 
 4. **Run the backend**
    ```bash
@@ -100,7 +100,7 @@ docker-compose up
 - **Outputs**: Structured evaluation results for Arena validation
 
 ### Infrastructure
-- **Hosting**: Container Apps + Static Web Apps + Azure Functions
+- **Hosting**: Container Apps + Azure Functions
 - **Database**: Azure Cosmos DB (MongoDB API, serverless)
 - **Storage**: Shared Azure Blob Storage with function triggers
 - **AI Services**: Azure OpenAI for LLM-based evaluation

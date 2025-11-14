@@ -27,9 +27,6 @@ param storageLocation string = resourceGroup().location
 @description('Location to deploy Azure Functions')
 param functionsLocation string = resourceGroup().location
 
-@description('Location to deploy Static Web App')
-param staticWebAppLocation string = resourceGroup().location
-
 @description('Id of the user or app to assign application roles')
 param principalId string = deployer().objectId
 
@@ -54,9 +51,6 @@ param keyVaultName string = ''
 
 @description('Name of the Container Apps Environment. Automatically generated if left blank')
 param containerAppsEnvName string = ''
-
-@description('Name of the Static Web App. Automatically generated if left blank')
-param staticWebAppName string = ''
 
 @description('Name of the Log Analytics Workspace. Automatically generated if left blank')
 param logAnalyticsName string = ''
@@ -145,9 +139,6 @@ var deploymentName = '${projectName}-${uniqueString(deployment().name)}'
 // Generate a unique token to be used in naming resources
 var uniqueSuffix = substring(uniqueString(subscription().id, resourceGroup().name, environmentName), 1, 3)
 
-// Load abbreviations for resource naming
-var abbrs = loadJsonContent('./abbreviations.json')
-
 // Centralized resource naming with override capability
 var names = {
   openai: !empty(openAIServiceName) ? openAIServiceName : 'openai-${uniqueSuffix}'
@@ -156,7 +147,6 @@ var names = {
   storage: !empty(storageAccountName) ? storageAccountName : 'st${uniqueSuffix}'
   keyVault: !empty(keyVaultName) ? keyVaultName : 'kv-${uniqueSuffix}'
   containerAppsEnv: !empty(containerAppsEnvName) ? containerAppsEnvName : 'cae-${uniqueSuffix}'
-  staticWebApp: !empty(staticWebAppName) ? staticWebAppName : 'swa-${uniqueSuffix}'
   logAnalytics: !empty(logAnalyticsName) ? logAnalyticsName : 'log-${uniqueSuffix}'
   appInsights: !empty(applicationInsightsName) ? applicationInsightsName : 'appi-${uniqueSuffix}'
 }
@@ -290,7 +280,7 @@ module containerApps './modules/containerapps.bicep' = {
     apiImageName: apiImageName
     resourceToken: uniqueSuffix
   // new params for web/email config
-  webBaseUrl: empty(webBaseUrl) ? staticWebApp.outputs.uri : webBaseUrl
+  webBaseUrl: webBaseUrl
   emailFrom: emailFrom
   emailSmtpHost: emailSmtpHost
   emailSmtpPort: emailSmtpPort
@@ -320,18 +310,6 @@ module evaluatorAddon './modules/addons/evaluator.bicep' = if (enableEvaluatorAd
   ]
 }
 
-module staticWebApp './modules/staticwebapp.bicep' = {
-  name: '${deploymentName}-staticwebapp'
-  params: {
-    location: empty(staticWebAppLocation) ? location : staticWebAppLocation
-    tags: tags
-    name: names.staticWebApp
-    keyVaultName: keyVault.outputs.name
-  authClientId: auth.outputs.clientId
-  apiBaseUrl: ''
-  }
-}
-
 // App outputs
 output AZURE_LOCATION string = location
 output AZURE_TENANT_ID string = tenant().tenantId
@@ -343,7 +321,7 @@ output COSMOS_ACCOUNT_NAME string = cosmos.outputs.accountName
 output STORAGE_ACCOUNT_NAME string = storage.outputs.name
 output AUTH_CLIENT_ID string = auth.outputs.clientId
 output API_BASE_URL string = containerApps.outputs.apiUri
-output WEB_BASE_URL string = staticWebApp.outputs.uri
+output WEB_BASE_URL string = '${containerApps.outputs.apiUri}/webapp'
 
 // Function app outputs
 output METRICS_FUNCTION_APP_NAME string = functions.outputs.metricsAppName
