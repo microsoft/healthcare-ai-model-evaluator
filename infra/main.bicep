@@ -326,6 +326,8 @@ output WEB_BASE_URL string = containerApps.outputs.apiUri
 // Function app outputs
 output METRICS_FUNCTION_APP_NAME string = functions.outputs.metricsAppName
 output METRICS_FUNCTION_APP_URL string = 'https://${functions.outputs.metricsAppDefaultHostName}'
+output EVALUATOR_FUNCTION_APP_NAME string = enableEvaluatorAddon ? evaluatorAddon.outputs.evaluatorAppName : ''
+output EVALUATOR_FUNCTION_APP_URL string = enableEvaluatorAddon ? 'https://${evaluatorAddon.outputs.evaluatorAppDefaultHostName}' : ''
 
 // Azure OpenAI outputs
 output AZURE_OPENAI_ENDPOINT string = openAI.outputs.endpoint
