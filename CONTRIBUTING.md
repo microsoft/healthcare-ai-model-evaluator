@@ -46,7 +46,7 @@ Providing the following information will increase the chances of your issue bein
 ### <a name="submit-pr"></a> Submitting a Pull Request (PR)
 Before you submit your Pull Request (PR) consider the following guidelines:
 
-* Search the repository (https://github.com/Azure-Samples/healthcare-agent-orchestrator/pulls) for an open or closed PR
+* Search the repository (https://github.com/microsoft/healthcare-ai-model-evaluator/pulls) for an open or closed PR
   that relates to your submission. You don't want to duplicate effort.
 
 * Make your changes in a new git fork:
