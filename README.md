@@ -29,7 +29,8 @@ azd up
 - Node.js (v18 or higher)
 - .NET 8.0 SDK
 - MongoDB or SQL Server (optional if using database)
-- Docker (optionally for running CosmosDB and Azuer Storage emulators) -->
+- Docker (optionally for running CosmosDB and Azure Storage emulators) or a azure storage account deployed
+-->
 
 ### Frontend setup
 ```bash
@@ -40,6 +41,9 @@ npm run start
 
 ### Backend Setup
 ```bash
+export AZURE_STORAGE_CONNECTION_STRING=[Your Storage Account connection string]
+export COSMOSDB_CONNECTION_STRING=[Your mongodb connection string]
+
 cd backend
 dotnet restore
 dotnet run
