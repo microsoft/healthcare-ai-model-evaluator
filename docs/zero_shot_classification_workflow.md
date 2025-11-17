@@ -163,7 +163,7 @@ with open('haime_dataset.jsonl', 'w') as f:
      - `ground_truth` (the correct label), as `Text`.
 6. Click **"Save"**
 
-![Screenshot of Create Dataset page](/docs/.attachments/zero_shot_create_dataset.png)
+![Screenshot of Create Dataset page](/docs/screen-shots/zero_shot_create_dataset.png)
 
 ### Step 3: Create Model
 
@@ -204,7 +204,7 @@ To include an AI reviewer alongside human experts:
 
 This LLM can later be assigned as an additional reviewer in the assignment step
 
-![Screenshot of Create Model page](/docs/.attachments/zero_shot_create_model_llm.png)
+![Screenshot of Create Model page](/docs/screen-shots/zero_shot_create_model_llm.png)
 
 ### Step 4: Create Clinical Task
 
@@ -233,7 +233,7 @@ This LLM can later be assigned as an additional reviewer in the assignment step
 >
 > Once the Clinical Task is created, you can select it, and click **"Generate Outputs"** from the top menu.
 
-![Screenshot of Create Clinical Task page](/docs/.attachments/zero_shot_create_clinical_task.png)
+![Screenshot of Create Clinical Task page](/docs/screen-shots/zero_shot_create_clinical_task.png)
 
 ### Step 5: Create Experiments
 
@@ -242,16 +242,19 @@ This LLM can later be assigned as an additional reviewer in the assignment step
    - **Experiment Name**: `MedImageInsight Zero-Shot Baseline Evaluation`
    - **Clinical Task**: Select `Chest X-Ray Pathology Classification Review`
    - **Models**: Check `MedImageInsight-ZeroShot-Baseline`
+      - If you generated outputs for another model, you may select them here too.
    - What you add under **Reviewer Instructions** will be shown to reviewers in the Arena UI.
    - **Allow Output Editing** is useful for generative AI outputs, with long text or image bounding boxes.
    - **Experiment Type** defines what reviewers will do:
-      - _Preference Assessment_: A/B test.
+      - _Preference Assessment_: A/B test between different model outputs.
       - _Single Evaluation_: question based evaluation (thumbs up and down, likert score...).
          - You may add extra **Experiment Questions**, to get annotations for specific criteria. Again, that is especially useful for more complex evaluation tasks.
 
 > [!TIP]
 > When adding additional **Experiment Questions**, they will be saved as a _New Metric_ for future experiments. Questions' answers are customizable, you can set the _Option Text_ (what the reviewer sees), and _Option Value_ (internal value of that answer, e.g. `Bad` is 1 and `Great` is 5).
-   
+
+![Screenshot of Experiment creation with multiple models](/docs/screen-shots/zero_shot_create_experiment.png)
+
 ### Step 6: Create Assignments
 
 1. Navigate to **Assignments** → **"New Assignment"**
