@@ -67,12 +67,12 @@ Healthcare AI Model Evaluator was designed from the ground up with healthcare re
 ### Key Features
 **No-Code Interface for Clinicians**
 
-![Human-Feedback](/docs/screen-shots/BBbox%20annotation.png)
+![Human-Feedback](/docs/private/screen-shots/BBbox%20annotation.png)
 
 Healthcare AI Model Evaluator features an intuitive evaluation interface that requires no programming skills. Clinical staff can set up evaluations, review results, and provide feedback through a user-friendly web interface.
 **Flexible Dataset Management**
 
-![Dataset-Management](/docs/screen-shots/Dataset-Mgmt.png)
+![Dataset-Management](/docs/private/screen-shots/Dataset-Mgmt.png)
 
 - Use  your own data under your control
 - Support for text-to-text tasks (clinical notes, patient summaries, treatment recommendations)
@@ -81,7 +81,7 @@ Healthcare AI Model Evaluator features an intuitive evaluation interface that re
 
 **Customizable Task Framework**
 
-![Clinical-Tasks](/docs/screen-shots/Clinical-Tasks.png)
+![Clinical-Tasks](/docs/private/screen-shots/Clinical-Tasks.png)
 
 - Define clinical tasks by creating or adapting prompts and evaluation criteria
 - Map inputs, outputs, and models for easy comparison
@@ -90,7 +90,7 @@ Healthcare AI Model Evaluator features an intuitive evaluation interface that re
 
 **Human-in-the-Loop Evaluation**
 
-![User-Management](/docs/screen-shots/User-Management.png)
+![User-Management](/docs/private/screen-shots/User-Management.png)
 
 - Combine quantitative metrics with qualitative clinical assessment
 - Support for different user roles and skill classifications
@@ -99,7 +99,7 @@ Healthcare AI Model Evaluator features an intuitive evaluation interface that re
 
 **Model Endpoint Management**
 
-![Models](/docs/screen-shots/Models.png)
+![Models](/docs/private/screen-shots/Models.png)
 
 - Connect to any AI model endpoint – commercial APIs, open-source models, or custom deployments
 - Virtual endpoints for evaluating existing datasets
@@ -108,7 +108,7 @@ Healthcare AI Model Evaluator features an intuitive evaluation interface that re
 
 **Comprehensive Reporting**
 
-![Metrics-Dashboard](/docs/screen-shots/Metrics-Dashboard-multi.png)
+![Metrics-Dashboard](/docs/private/screen-shots/Metrics-Dashboard-multi.png)
 
 - Visualize results by task, model, cost, or custom metrics
 - Export evaluation data for further analysis or regulatory documentation

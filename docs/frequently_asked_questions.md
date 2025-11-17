@@ -21,6 +21,9 @@ You can embed images using base64 encoding. Here's an example:
 }
 ```
 
+> [!NOTE]
+> The Base64 prefix (e.g `data:image/jpeg;base64,`) is required.
+
 ### Can I have multiple input fields?
 
 Yes. You can define multiple input fields as separate JSON keys in each line of your JSONL file. Just make sure the structure is consistent across all lines. During the data ingestion step, you'll map each field as an input.

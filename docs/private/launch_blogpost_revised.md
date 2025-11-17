@@ -92,13 +92,13 @@ Evaluate any AI system: commercial API endpoints, open-source models, proprietar
 
 ### No-Code Clinical Interface
 
-![Human-Feedback](/docs/screen-shots/BBbox%20annotation.png)
+![Human-Feedback](/docs/private/screen-shots/BBbox%20annotation.png)
 
 HAIME features an intuitive web interface designed for clinical staff without programming expertise. Healthcare professionals can configure evaluations, review model outputs, and provide expert feedback through a streamlined, user-friendly platform.
 
 ### Flexible Dataset Management
 
-![Dataset-Management](/docs/screen-shots/Dataset-Mgmt.png)
+![Dataset-Management](/docs/private/screen-shots/Dataset-Mgmt.png)
 
 **Complete Data Control**
 - Maintain all evaluation data within your security perimeter
@@ -108,7 +108,7 @@ HAIME features an intuitive web interface designed for clinical staff without pr
 
 ### Customizable Clinical Task Framework
 
-![Clinical-Tasks](/docs/screen-shots/Clinical-Tasks.png)
+![Clinical-Tasks](/docs/private/screen-shots/Clinical-Tasks.png)
 
 **Task-Specific Evaluation Design**
 - Define custom clinical tasks through prompt engineering and evaluation criteria specification
@@ -118,7 +118,7 @@ HAIME features an intuitive web interface designed for clinical staff without pr
 
 ### Human-in-the-Loop Evaluation
 
-![User-Management](/docs/screen-shots/User-Management.png)
+![User-Management](/docs/private/screen-shots/User-Management.png)
 
 **Hybrid Quantitative and Qualitative Assessment**
 - Combine automated metrics with expert clinical judgment
@@ -128,7 +128,7 @@ HAIME features an intuitive web interface designed for clinical staff without pr
 
 ### Comprehensive Model Endpoint Management
 
-![Models](/docs/screen-shots/Models.png)
+![Models](/docs/private/screen-shots/Models.png)
 
 **Universal Model Integration**
 - Connect to any AI model endpoint: commercial APIs, open-source models, or proprietary deployments
@@ -138,7 +138,7 @@ HAIME features an intuitive web interface designed for clinical staff without pr
 
 ### Advanced Analytics and Reporting
 
-![Metrics-Dashboard](/docs/screen-shots/Metrics-Dashboard-multi.png)
+![Metrics-Dashboard](/docs/private/screen-shots/Metrics-Dashboard-multi.png)
 
 **Actionable Insights**
 - Multi-dimensional visualization: task-level, model-level, cost analysis, and custom metrics

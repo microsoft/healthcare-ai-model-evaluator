@@ -2,7 +2,7 @@ Healthcare AI Model Evaluator collaboration framework
 --------------------------------
 (from the loop page): [Healthcare AI Model Evaluator High-level Feature Function Needs](https://microsoft.sharepoint.com/:fl:/s/63f2e58a-766f-4ca2-9b14-3c5f03640cb4/EXMidEMtfLlJiokxkHYO_sMB8LAXgObY2p5CMlZVw1ED0A?e=Xv6hka&nav=cz0lMkZzaXRlcyUyRjYzZjJlNThhLTc2NmYtNGNhMi05YjE0LTNjNWYwMzY0MGNiNCZkPWIlMjFnckRCd1UyVTJrZUk5dEZIdTBfTnlCNlY0eWFaeGs1TWxYQjB5dHBxT0lTNmRWUnYtbVVfU29vRGo0enZkTTZaJmY9MDFHSU4yMlMzVEVKMkVHTEw0WEZFWVZDSlJTQjNBNTdXRCZjPSUyRiZhPUxvb3BBcHAmcD0lNDBmbHVpZHglMkZsb29wLXBhZ2UtY29udGFpbmVyJng9JTdCJTIydyUyMiUzQSUyMlQwUlRVSHh0YVdOeWIzTnZablF1YzJoaGNtVndiMmx1ZEM1amIyMThZaUZuY2tSQ2QxVXlWVEpyWlVrNWRFWklkVEJmVG5sQ05sWTBlV0ZhZUdzMVRXeFlRakI1ZEhCeFQwbFRObVJXVW5ZdGJWVmZVMjl2UkdvMGVuWmtUVFphZkRBeFIwbE9NakpUV1VKRVNFeEtUelZOUlZvMVFsbEpXRTlhUjFsWFJrRXpURWclM0QlMjIlMkMlMjJpJTIyJTNBJTIyMDUyMzRmYmMtYTI1OC00ZmJlLThiNjMtNGM1MzliMjE3MDkyJTIyJTdE)
 
-![Benchmarking collaboration framework: Diagram describing proposed responsibilities between Microsoft and Partners](/docs/.attachments/==image_0==-89a9a13a-8d63-4409-89c4-e8e0628724f6.png) 
+![Benchmarking collaboration framework: Diagram describing proposed responsibilities between Microsoft and Partners](/docs/private/.attachments/==image_0==-89a9a13a-8d63-4409-89c4-e8e0628724f6.png) 
 
 Principles:
 
@@ -11,14 +11,14 @@ Principles:
 *   Microsoft enables internal and external partners/stakeholders to define their own datasets, use-cases and endpoints (right side).
   
 
-![Benchmarking collaboration framework: Diagram showing benchmarking steps](/docs/.attachments/==image_1==-62bf1088-861e-4616-8c7f-1ad7611aaff7.png) 
+![Benchmarking collaboration framework: Diagram showing benchmarking steps](/docs/private/.attachments/==image_1==-62bf1088-861e-4616-8c7f-1ad7611aaff7.png) 
 
   
 
 Propose Roadmap Progression
 ---------------------------
 
-![Proposed roadmap structured by benchmarking steps](/docs/.attachments/==image_2==-20628e53-f775-41a6-a556-e52151d3ce19.png) 
+![Proposed roadmap structured by benchmarking steps](/docs/private/.attachments/==image_2==-20628e53-f775-41a6-a556-e52151d3ce19.png) 
 
 1st phase (October – December 2024)
 
@@ -37,7 +37,7 @@ Propose Roadmap Progression
     *   Ability to use data/endpoint from own (customer’s) subscription
     *   Ability to use data/endpoint from 3rd party sources
 
-![Proposed roadmap with dates](/docs/.attachments/==image_3==-bfd3f7c6-84a3-4e23-9aa5-77a4ed3a1e01.png) 
+![Proposed roadmap with dates](/docs/private/.attachments/==image_3==-bfd3f7c6-84a3-4e23-9aa5-77a4ed3a1e01.png) 
 
 Capability Build-up to implement the roadmap
 --------------------------------------------

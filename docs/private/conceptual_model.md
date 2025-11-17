@@ -2,7 +2,7 @@
 
   (from loop page: [Healthcare AI Model Evaluator Conceptual Model](https://microsoft.sharepoint.com/:fl:/s/63f2e58a-766f-4ca2-9b14-3c5f03640cb4/EXk8wlEd39tCskNZ7Zim5D8BP90Qz4AnaGPTYYSIqPITvQ?e=aLlwAT&nav=cz0lMkZzaXRlcyUyRjYzZjJlNThhLTc2NmYtNGNhMi05YjE0LTNjNWYwMzY0MGNiNCZkPWIlMjFnckRCd1UyVTJrZUk5dEZIdTBfTnlCNlY0eWFaeGs1TWxYQjB5dHBxT0lTNmRWUnYtbVVfU29vRGo0enZkTTZaJmY9MDFHSU4yMlMzWkhUQkZDSE83M05CTEVRMlo1V01LTlpCNyZjPSUyRiZhPUxvb3BBcHAmcD0lNDBmbHVpZHglMkZsb29wLXBhZ2UtY29udGFpbmVyJng9JTdCJTIydyUyMiUzQSUyMlQwUlRVSHh0YVdOeWIzTnZablF1YzJoaGNtVndiMmx1ZEM1amIyMThZaUZuY2tSQ2QxVXlWVEpyWlVrNWRFWklkVEJmVG5sQ05sWTBlV0ZhZUdzMVRXeFlRakI1ZEhCeFQwbFRObVJXVW5ZdGJWVmZVMjl2UkdvMGVuWmtUVFphZkRBeFIwbE9NakpUV1VKRVNFeEtUelZOUlZvMVFsbEpXRTlhUjFsWFJrRXpURWclM0QlMjIlMkMlMjJpJTIyJTNBJTIyNmY5NzQxNTAtNTczNS00Y2ZkLTk4MjgtZmEwMDU3OGRlNmQxJTIyJTdE))
 
-![==image_0==.png](/docs/.attachments/==image_0==-888fe102-2fba-4968-a212-2da88f04713a.png) 
+![==image_0==.png](/docs/private/.attachments/==image_0==-888fe102-2fba-4968-a212-2da88f04713a.png) 
 
   
 
