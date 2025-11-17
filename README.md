@@ -40,6 +40,9 @@ npm run start
 
 ### Backend Setup
 ```bash
+export AZURE_STORAGE_CONNECTION_STRING=[Your Storage Account connection string>]
+export COSMOSDB_CONNECTION_STRING=[Your mongodb connection string]
+
 cd backend
 dotnet restore
 dotnet run
