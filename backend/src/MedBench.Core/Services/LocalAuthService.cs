@@ -119,8 +119,8 @@ public class LocalAuthService : ILocalAuthService
     private string GenerateJwt(User user)
     {
         var secret = _config["LocalAuth:JwtSecret"] ?? throw new InvalidOperationException("Missing LocalAuth:JwtSecret");
-        var issuer = _config["LocalAuth:Issuer"] ?? "medbench-local";
-        var audience = _config["LocalAuth:Audience"] ?? "medbench-api";
+        var issuer = _config["LocalAuth:Issuer"] ?? "haime-local";
+        var audience = _config["LocalAuth:Audience"] ?? "haime-api";
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secret));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 

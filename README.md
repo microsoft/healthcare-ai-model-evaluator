@@ -60,9 +60,9 @@ dotnet run
    dotnet user-secrets set "AzureStorage:ConnectionString" "your-azure-storage-connection-string" --project ./src/MedBench.API/
    ```
 
-> **NOTE**: When running CosmosDB and Azuer Storage emulators from docker images, the connection strings are: 
-> - For CosmosDB: `mongodb://localhost:10255/?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@localhost@`
-> - For Azurite: `DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://localhost:10000/devstoreaccount1;QueueEndpoint=http://localhost:10001/devstoreaccount1;TableEndpoint=http://localhost:10002/devstoreaccount1;`
+> **NOTE**: When running CosmosDB and Azure Storage emulators from docker images, use the standard development connection strings documented for each service:
+> - For CosmosDB: See MongoDB emulator documentation for localhost connection string
+> - For Azurite: See Azurite documentation for development connection string
 
 4. **Run the backend**
    ```bash
@@ -100,7 +100,7 @@ docker-compose up
 - **Outputs**: Structured evaluation results for Arena validation
 
 ### Infrastructure
-- **Hosting**: Container Apps + Static Web Apps + Azure Functions
+- **Hosting**: Container Apps + Azure Functions
 - **Database**: Azure Cosmos DB (MongoDB API, serverless)
 - **Storage**: Shared Azure Blob Storage with function triggers
 - **AI Services**: Azure OpenAI for LLM-based evaluation
@@ -122,6 +122,8 @@ Use of Microsoft trademarks or logos in modified versions of this project must n
 AI Model Evaluation Tool Disclaimer
 
 DISCLAIMER: This tool showcases an AI model evaluation and benchmarking tool for healthcare that uses various AI technologies, including foundation models and large language models (such as Azure OpenAI GPT-4). It is not an existing Microsoft product, and Microsoft makes no commitment to build such a product. Generative AI can produce inaccurate or incomplete information. You must thoroughly test and validate that any AI model or evaluation result is suitable for its intended use and identify and mitigate any risks to end users. Carefully review the documentation for every AI tool and service employed.
+
+This tool allows the same configured models to be used in both output generation and output evaluation.  However, it is generally not the best practice to use a model to evaluate the output of that same model (e.g., don't use GPT-4.1 as a judge to evaluate GPT-4.1) as this might lead to heavily skewed results.
 
 Microsoft products and services (1) are not designed, intended, or made available as a medical device, and (2) are not designed or intended to replace professional medical advice, diagnosis, treatment, or judgment and should not be used as a substitute for professional medical advice, diagnosis, treatment, or judgment. Customers and partners are responsible for ensuring that their solutions comply with all applicable laws and regulations.
 

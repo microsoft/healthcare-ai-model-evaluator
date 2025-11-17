@@ -5,6 +5,8 @@ import { fetchDoneTrialIds, getTrialById } from '../../reducers/arenaReducer';
 import { trialService } from '../../services/trialService';
 import { ITestScenario, ITrial } from '../../types/admin';
 import {TestScenarioItem} from './Arena';
+
+import { toast,Toaster } from 'react-hot-toast';
 // Removed unused IClinicalTaskStats interface
 
 
@@ -83,13 +85,30 @@ export const SubNavigation = ({
 
     const handleIndexNavigation = (trialIndex: string) => {
         // Logic to navigate to a specific trial by its ID
-        if( parseInt(trialIndex) > doneTrailIds.length || isNaN(parseInt(trialIndex))){
-            trialIndex = doneTrailIds.length.toString();
-        }   
-        console.log('Navigating to trial ID:', trialIndex);
-        var trialId = doneTrailIds[parseInt(trialIndex) - 1];
+        var trialId = null;
+        // Check if trialIndex is a pure integer (not a GUID that starts with numbers)
+        const isInteger = /^\d+$/.test(trialIndex);
+        
+        if (isInteger) {
+            const index = parseInt(trialIndex);
+            if (index > doneTrailIds.length) {
+                trialIndex = doneTrailIds.length.toString();
+            }
+            trialId = doneTrailIds[parseInt(trialIndex) - 1];
+        } else {
+            // Treat as GUID
+            trialId = trialIndex;
+        }
+
+        console.log('Navigating to trial ID:', trialId);
+        if( doneTrailIds.indexOf(trialId) === -1 ){
+            console.error('Trial ID not found in doneTrialIds:', trialId);
+            toast.error('Trial ID not found');
+            return;
+        }
+        
         dispatch(getTrialById(trialId));
-        //setTrialIndex("");
+        setTrialIndex((doneTrailIds.indexOf(trialId)+1).toString());
     }
 
     const items: ICommandBarItemProps[] = [
@@ -151,7 +170,7 @@ export const SubNavigation = ({
                 {inDoneTrialMode && (
                     <Stack style={{marginLeft: '8px'}} horizontal verticalAlign="center" tokens={{ childrenGap: 4 }}>
                         <input
-                            type="number"
+                            type="text"
                             min="1"
                             max={doneTrailIds.length}
                             placeholder="Go to trial"
@@ -166,8 +185,7 @@ export const SubNavigation = ({
                             }}
                             onChange={(e) => {
                                 try{
-                                    var index = Math.min(doneTrailIds.length,parseInt(e.target.value)).toString();
-                                    setTrialIndex(index)
+                                    setTrialIndex(e.target.value)
                                 } catch (error) {
                                    // setTrialIndex(doneTrailIds.length.toString());
                                     console.error('Error parsing trial index:', error);
@@ -179,14 +197,6 @@ export const SubNavigation = ({
                                 }
                             }}
 
-                            onKeyUp={(e) => {
-                                if( parseInt(trialIndex) === 0 || trialIndex === ''){
-                                    setTrialIndex('1');
-                                }
-                                if( parseInt(trialIndex) > doneTrailIds.length || isNaN(parseInt(trialIndex))){
-                                   // setTrialIndex(doneTrailIds.length.toString());
-                                }
-                            }}
                         />
                         <IconButton
                             iconProps={{ iconName: "NavigateForward" }}
