@@ -100,21 +100,22 @@ Healthcare AI Model Evaluator integrates with external evaluation frameworks:
 
 See the [functions README](functions/README.md) for detailed evaluation engine documentation.
 
-**Trademarks** 
+## Trademarks
+
 This project may contain trademarks or logos for projects, products, or services. Authorized use of Microsoft trademarks or logos is subject to and must follow [Microsoft’s Trademark & Brand Guidelines](https://www.microsoft.com/en-us/legal/intellectualproperty/trademarks/usage/general). 
 Use of Microsoft trademarks or logos in modified versions of this project must not cause confusion or imply Microsoft sponsorship. Any use of third-party trademarks or logos are subject to those third-party’s policies.
 
-AI Model Evaluation Tool Disclaimer
+## Disclaimers
 
-DISCLAIMER: This tool showcases an AI model evaluation and benchmarking tool for healthcare that uses various AI technologies, including foundation models and large language models (such as Azure OpenAI GPT-4). It is not an existing Microsoft product, and Microsoft makes no commitment to build such a product. Generative AI can produce inaccurate or incomplete information. You must thoroughly test and validate that any AI model or evaluation result is suitable for its intended use and identify and mitigate any risks to end users. Carefully review the documentation for every AI tool and service employed.
+### AI Model Evaluation Tool Disclaimer
+
+**DISCLAIMER**: This tool showcases an AI model evaluation and benchmarking tool for healthcare that uses various AI technologies, including foundation models and large language models (such as Azure OpenAI GPT-4). It is not an existing Microsoft product, and Microsoft makes no commitment to build such a product. Generative AI can produce inaccurate or incomplete information. You must thoroughly test and validate that any AI model or evaluation result is suitable for its intended use and identify and mitigate any risks to end users. Carefully review the documentation for every AI tool and service employed.
 
 This tool allows the same configured models to be used in both output generation and output evaluation.  However, it is generally not the best practice to use a model to evaluate the output of that same model (e.g., don't use GPT-4.1 as a judge to evaluate GPT-4.1) as this might lead to heavily skewed results.
 
 Microsoft products and services (1) are not designed, intended, or made available as a medical device, and (2) are not designed or intended to replace professional medical advice, diagnosis, treatment, or judgment and should not be used as a substitute for professional medical advice, diagnosis, treatment, or judgment. Customers and partners are responsible for ensuring that their solutions comply with all applicable laws and regulations.
 
-
-
-**Data Privacy Disclaimer**
+### Data Privacy Disclaimer
 
 DISCLAIMER: This tool illustrates an AI model evaluation and benchmarking tool for healthcare. It is not an official Microsoft product, and Microsoft makes no commitment to build such a product. All data you supply to this tool is your sole responsibility.
 
@@ -126,4 +127,5 @@ Before using this tool, verify that:
 3. You have the legal right, authority, and ownership to use the data, and its use here does not violate any contractual, licensing, or proprietary restrictions.  
 4. All downstream uses of the data remain compliant with relevant laws and regulations.
 
-**Microsoft products and services (1) are not designed, intended, or made available as a medical device, and (2) are not designed or intended to replace professional medical advice, diagnosis, treatment, or judgment and should not be used as a substitute for professional medical advice, diagnosis, treatment, or judgment. Customers and partners are responsible for ensuring that their solutions comply with all applicable laws and regulations.**
+>[!IMPORTANT] 
+> Microsoft products and services (1) are not designed, intended, or made available as a medical device, and (2) are not designed or intended to replace professional medical advice, diagnosis, treatment, or judgment and should not be used as a substitute for professional medical advice, diagnosis, treatment, or judgment. Customers and partners are responsible for ensuring that their solutions comply with all applicable laws and regulations.

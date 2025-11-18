@@ -717,7 +717,6 @@ az functionapp log download \
 
 ## See Also
 
-- [Architecture Overview](architecture.md) - System architecture and components
 - [Custom Evaluation Add-ons](custom_evaluation_addons.md) - Building custom evaluators
 - [Functions README](../functions/README.md) - Engine setup and configuration
 - [Project Overview](project_overview.md) - Platform overview

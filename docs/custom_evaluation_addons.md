@@ -828,7 +828,6 @@ We welcome community-contributed add-ons that extend Healthcare AI Model Evaluat
 
 **Resources**:
 - [Functions Add-ons Overview](../functions/addons/README.md) - Available add-ons catalog
-- [Architecture Documentation](architecture.md) - System architecture
 - [Evaluation Engine](evaluation_engine.md) - Engine deep dive
 - [GitHub Issues](https://github.com/microsoft/healthcare-ai-model-evaluator/issues) - Bug reports and feature requests
 
@@ -842,6 +841,5 @@ We welcome community-contributed add-ons that extend Healthcare AI Model Evaluat
 
 - [Available Add-ons Catalog](../functions/addons/README.md) - Browse existing add-ons
 - [Summary Evaluator](../functions/addons/evaluator/README.md) - Detailed example add-on
-- [Architecture Overview](architecture.md) - Platform architecture
 - [Evaluation Engine](evaluation_engine.md) - Core engine documentation
 - [Functions README](../functions/README.md) - Engine setup and configuration
