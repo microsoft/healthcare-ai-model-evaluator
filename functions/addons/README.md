@@ -4,7 +4,7 @@ This directory contains add-on functionality that extends the core Healthcare AI
 
 ## Overview
 
-Healthcare AI Model Evaluator is a medical AI model benchmarking engine that works in conjunction with Arena, Microsoft's model evaluation platform. While the core Healthcare AI Model Evaluator engine handles standard metrics (exact match, image similarity, text summarization), add-ons provide specialized evaluation capabilities for domain-specific use cases.
+Healthcare AI Model Evaluator is a medical AI model benchmarking platform. Part of it is an Evaluator Engine that handles standard metrics (exact match, image similarity, text summarization), add-ons provide specialized evaluation capabilities for domain-specific use cases.
 
 ### Core Architecture
 

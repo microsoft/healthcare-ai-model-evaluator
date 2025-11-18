@@ -2,13 +2,26 @@
 
 Healthcare AI Model Evaluator is a medical AI model benchmarking platform with integrated evaluation engine to assist multi-disciplinary healthcare teams build and validate AI systems.
 
-## Overview
-A comprehensive web application for evaluating the quality of Generative AI models in medical contexts, featuring:
+## Solution and Features Overview
 
-- **Arena Interface**: Web-based model comparison and validation
-- **Integrated Metrics Engine**: Azure Functions for automated evaluation processing
-- **Advanced Evaluation**: TBFact factual consistency + custom model-as-judge evaluators
-- **Medical Focus**: Specialized metrics and workflows for healthcare AI
+![High-level diagram showing main workflow of Healthcare AI Model Evaluator](./docs/images/haime_solution.png)
+
+
+The Healthcare AI Model Evaluator enables seamless collaboration between data scientists and clinical researchers, providing tools for both technical model development and expert medical validation:
+
+- **Arena Interface**: Intuitive web-based UI for model comparison and validation, designed for clinical teams without requiring deep technical expertise
+- **Expert Review Workflows**: Enable medical professionals to systematically validate model outputs with customizable evaluation criteria
+- **Multi-Reviewer Support**: Combine evaluations from multiple human experts and AI reviewers for comprehensive assessment
+- **Model-as-Judge**: LLM-based evaluation via Azure OpenAI for subjective metrics and complex assessments
+- **Built-in Metrics**: Automated computation including exact match, ROUGE, BERTScore, TBFact factual consistency, and Elo rankings
+- **Custom Evaluators**: Extensible add-on architecture for domain-specific metrics with transparent intermediate steps
+- **Built-in Model Connectors**: Direct integration with Azure OpenAI, AI Foundry Model Catalogue, Azure ML endpoints, and custom REST APIs
+- **Multimodal Support**: Handle text, images, and multimodal inputs across different model types
+- **Data Privacy**: Fully deployed in your Azure subscription. You maintain complete control over your data and models
+
+For a complete overview of the Healthcare AI Model Evaluator platform, refer to the [Project Overview](./docs/project_overview.md). And explore the Getting Started guides to familiarize with the UI and relevant use-cases:
+- [End user guide](./docs/getting_started_end_user_tutorial.md)
+- [Zero-Shot Classification Validation](./docs/getting_started_zero_shot_classification_workflow.md)
 
 ## Deployment
 
@@ -25,18 +38,11 @@ azd up
 
 ## Local Development
 
-<!-- ### Prerequisites
-- Node.js (v18 or higher)
-- .NET 8.0 SDK
-- MongoDB or SQL Server (optional if using database)
-- Docker (optionally for running CosmosDB and Azure Storage emulators) or a azure storage account deployed
--->
-
 ### Frontend setup
 ```bash
 cd frontend
 npm install
-npm run start
+npm run dev
 ```
 
 ### Backend Setup
@@ -46,33 +52,8 @@ export COSMOSDB_CONNECTION_STRING=[Your mongodb connection string]
 
 cd backend
 dotnet restore
-dotnet run
+dotnet run --project src/MedBench.API/MedBench.API.csproj
 ```
-
-<!-- #### Backend Setup (.NET)
-
-1. **Clone the repository**
-   ```bash
-   git clone [your-repository-url]
-   cd backend
-   ```
-
-2. **Configure secrets using dotnet user-secrets**
-   ```bash
-   # Set connection strings for local development
-   dotnet user-secrets set "CosmosDb:ConnectionString" "your-cosmosdb-connection-string" --project ./src/MedBench.API/
-   dotnet user-secrets set "AzureStorage:ConnectionString" "your-azure-storage-connection-string" --project ./src/MedBench.API/
-   ```
-
-> **NOTE**: When running CosmosDB and Azure Storage emulators from docker images, use the standard development connection strings documented for each service:
-> - For CosmosDB: See MongoDB emulator documentation for localhost connection string
-> - For Azurite: See Azurite documentation for development connection string
-
-4. **Run the backend**
-   ```bash
-   dotnet restore
-   dotnet run --project ./src/MedBench.API/
-   ``` -->
 
 ### Functions Setup
 ```bash
