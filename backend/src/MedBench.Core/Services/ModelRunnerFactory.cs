@@ -29,8 +29,7 @@ public class ModelRunnerFactory : IModelRunnerFactory
             "openai" => new OpenAIModelRunner(model.IntegrationSettings, _imageService, _scopeFactory, _logger, model.Id),
             "openai-reasoning" => new OpenAIReasoningModelRunner(model.IntegrationSettings, _imageService, _scopeFactory, _logger, model.Id),
             "cxrreportgen" => new CXRReportGenModelRunner(model.IntegrationSettings, _imageService, _scopeFactory, _logger, model.Id),
-            "deepseek" => new AzureServelessEndpointRunner(model.IntegrationSettings, _imageService, _scopeFactory, _logger, model.Id),
-            "phi4" => new AzureServelessEndpointRunner(model.IntegrationSettings, _imageService, _scopeFactory, _logger, model.Id),
+            "azure-serverless" => new AzureServelessEndpointRunner(model.IntegrationSettings, _imageService, _scopeFactory, _logger, model.Id),
             "functionapp" => new AzureFunctionAppRunner(model.IntegrationSettings, _imageService, _scopeFactory, _logger, model.Id),
             _ => throw new ArgumentException($"Unknown integration type: {model.IntegrationType}")
         };

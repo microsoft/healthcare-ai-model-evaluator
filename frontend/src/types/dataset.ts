@@ -4,7 +4,7 @@ export const AI_MODEL_TYPE_LABELS: Record<AIModelType, string> = {
     'text-to-text': 'Text to Text',
     'image-to-text': 'Image to Text'
 };
-export type ModelIntegrationType = 'cxrreportgen' | 'openai' | 'openai-reasoning' | 'deepseek' | 'phi4' | 'functionapp' | 'none' | '';
+export type ModelIntegrationType = 'cxrreportgen' | 'openai' | 'openai-reasoning' | 'azure-serverless' | 'functionapp' | 'none' | '';
 
 export interface DataContent {
     type: 'text' | 'imageurl';

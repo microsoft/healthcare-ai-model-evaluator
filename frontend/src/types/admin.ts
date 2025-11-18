@@ -22,13 +22,11 @@ export const RequiredIntegrationParameters: Record<string, string[]> = {
   'openai': ['ENDPOINT', 'API_KEY', 'DEPLOYMENT'],
   'openai-reasoning': ['ENDPOINT', 'API_KEY', 'DEPLOYMENT'],
   'cxrreportgen': ['ENDPOINT', 'API_KEY', 'DEPLOYMENT', 'VERSION'],
-  'deepseek': ['ENDPOINT', 'API_KEY'],
-  'phi4': ['ENDPOINT', 'API_KEY'],
+  'azure-serverless': ['ENDPOINT', 'API_KEY'],
   'functionapp': ['FunctionAppType']
 }
 
-export type IntegrationType = 'openai' | 'openai-reasoning' | 'cxrreportgen' | 'deepseek' | 'phi4' | 'functionapp';
-
+export type IntegrationType = 'openai' | 'openai-reasoning' | 'cxrreportgen' | 'azure-serverless' | 'functionapp';
 export interface IModel {
     id: string;
     name: string;

@@ -124,7 +124,7 @@ namespace MedBench.Core.Services
                 
                 var modelsNeedingIntegration = (await Task.WhenAll(testScenario.ModelIds
                     .Select(modelId => modelRepo.GetByIdAsync(modelId))))
-                    .Where(m => m.IntegrationType is "cxrreportgen" or "openai" or "openai-reasoning" or "deepseek" or "phi4" or "functionapp")
+                    .Where(m => m.IntegrationType is "cxrreportgen" or "openai" or "openai-reasoning" or "azure-serverless" or "functionapp")
                     .ToList();  
                 Console.WriteLine($"Models needing integration: {string.Join(", ", modelsNeedingIntegration.Select(m => m.Name))}");
                 if (modelsNeedingIntegration.Any())
@@ -135,9 +135,7 @@ namespace MedBench.Core.Services
                             "openai" => new OpenAIModelRunner(model.IntegrationSettings, _imageService, _scopeFactory, _logger, model.Id),
                             "openai-reasoning" => new OpenAIReasoningModelRunner(model.IntegrationSettings, _imageService, _scopeFactory, _logger, model.Id),
                             "cxrreportgen" => new CXRReportGenModelRunner(model.IntegrationSettings, _imageService, _scopeFactory, _logger, model.Id),
-                            "azure-serveless" => new AzureServelessEndpointRunner(model.IntegrationSettings, _imageService, _scopeFactory, _logger, model.Id),
-                            "deepseek" => new AzureServelessEndpointRunner(model.IntegrationSettings, _imageService, _scopeFactory, _logger, model.Id),
-                            "phi4" => new AzureServelessEndpointRunner(model.IntegrationSettings, _imageService, _scopeFactory, _logger, model.Id),
+                            "azure-serverless" => new AzureServelessEndpointRunner(model.IntegrationSettings, _imageService, _scopeFactory, _logger, model.Id),
                             "functionapp" => new AzureFunctionAppRunner(model.IntegrationSettings, _imageService, _scopeFactory, _logger, model.Id),
                             _ => throw new ArgumentException($"Unknown model type: {model.IntegrationType}")
                         });
