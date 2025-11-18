@@ -1,28 +1,54 @@
 # Healthcare AI Model Evaluator Project Overview
 
-Healthcare AI Model Evaluator is a comprehensive medical AI model benchmarking tool designed to facilitate evaluation of healthcare models on arbitrary datasets. Healthcare AI Model Evaluator consists of two main components working together:
+Healthcare AI Model Evaluator is a comprehensive medical AI model benchmarking platform consisting of two primary components that work together to provide evaluation, validation, and comparison capabilities for healthcare AI models.
+
+## System Components
+
+Healthcare AI Model Evaluator consists of two main architectural components:
 
 ### 1. Healthcare AI Model Evaluator Arena
-- **Technology**: .NET backend with React frontend
-- **Purpose**: User-friendly interface for medical professionals and data scientists
-- **Key Features**:
-  - Dataset upload and management (private and public datasets)
-  - Clinical task creation for human validation workflows
-  - Model validation functionality (A/B testing, thumbs up/down, Likert scale, full validation)
-  - Model connectors for inference and evaluation
-  - Metric collection and visualization
+
+The Arena is the user-facing interface and orchestration layer that enables medical professionals and data scientists to manage evaluation workflows.
+
+![Core components of HAIME Arena](./images/haime_core_concepts.png)
+
+**Technology Stack**:
+- **Backend**: .NET 8 Web API
+- **Frontend**: React 18 with TypeScript
+- **Database**: Azure Cosmos DB (MongoDB API, serverless)
+- **Storage**: Azure Blob Storage
+- **Authentication**: Azure AD integration via MSAL
+
+**Core Capabilities**:
+- Dataset management (private and public datasets)
+- Model registration and configuration
+- Clinical task creation for human validation workflows
+- Experiment design (A/B testing, simple evaluation, Arena comparison)
+- Model connector framework for inference integration
+- Built-in Model-as-judge integration
+- Results aggregation and visualization
+- Export capabilities for refined datasets
 
 ### 2. Healthcare AI Model Evaluator Engine
-- **Technology**: Python-based evaluation engine
-- **Purpose**: Custom metrics computation and model evaluation backend
-- **Key Features**:
-  - Standardized data schema compatible with Arena
-  - Custom evaluator implementations (model-as-judge)
-  - Advanced metrics computation including integrated TBFact factual consistency evaluation
-  - Azure Function Apps for scalable metric computation
-  - Integration with external evaluation frameworks
 
-### Design Principles
+The Engine is the Python-based evaluation backend that handles metric computation and specialized evaluation workflows.
+
+![Core Workflow HAIME engine](./images/haime_engine.png)
+
+**Technology Stack**:
+- **Runtime**: Azure Functions (Python 3.11)
+- **Triggers**: Blob storage events
+- **AI Services**: Azure OpenAI for LLM-based evaluation
+- **Processing**: Asynchronous, event-driven architecture
+
+**Core Capabilities**:
+- Standard metrics computation (exact match, ROUGE, BERTScore)
+- Integrated factual consistency evaluation (TBFact)
+- Model-as-judge evaluation via add-ons
+- External framework integration (MedHelm conversion utilities)
+- Extensible add-on architecture for custom evaluators
+
+## Design Principles
 
 1. **Separation of Concerns**: Clean separation between evaluation logic and Arena integration
 2. **Modularity**: Evaluators can be developed as standalone modules
@@ -71,8 +97,8 @@ Healthcare AI Model Evaluator Arena Platform (.NET + React)
 Refined Datasets & Models
 ```
 
-**AI Foundry Model Catalogue (Microsoft):**
-- **Purpose**: Azure AI Foundry as a provider of models.
+**Microsoft Azure Foundry Model Catalogue:**
+- **Purpose**: Azure Foundry as a provider of models.
 - **Integration**: Arena directly connects to models deployed through the Model Catalogue.
 - **Benefits**: Leverages a growing catalogue of models.
 
@@ -92,25 +118,6 @@ Healthcare AI Model Evaluator implements a standardized data schema shared betwe
     - Domain-specific metrics like TBFact for factual consistency
 3. **Model-as-Judge**: LLM-based evaluation for subjective metrics and complex use-cases
 4. **Human Validation**: Expert review and correction workflows
-
-### Deployment Architecture
-
-```mermaid
-flowchart TB
-    Arena["Healthcare AI Model Evaluator Arena<br/>(.NET/React)"]
-
-    subgraph AzureFunctions["Healthcare AI Model Evaluator Engine (Python)"]
-        Metrics["Metrics<br/>Function App"]
-        Judge["Model as Judge<br/>Add-on"]
-        Custom["Custom Add-ons<br/>(Future)"]
-    end
-
-    Arena --> Metrics
-    Arena --> Judge
-    Arena --> Custom
-
-    style AzureFunctions fill:#E0E0E0,color:#000
-```
 
 ## Key Workflows
 
@@ -132,30 +139,11 @@ flowchart TB
     - Models can act as evaluators for Arena experiments
     <!-- - Human experts can validate outputs of evaluator that use Healthcare AI Model Evaluator data objects.  -->
 
-## Future Roadmap
-
-### Short-term (Current Release)
-- ✅ Model-as-judge Azure ML deployment
-- ✅ TBFact evaluator
-- ✅ MedHelm data conversion capabilities
-- 🎯 Metrics Function Apps with custom metric integration
-- 🎯 Fine-tuning pipeline integration
-
-### Medium-term
-- Integration with Azure AI Foundry evaluators
-- Expanded MedHelm compatibility
-- Agent evaluation capabilities
-
-### Long-term
-- Advanced human-AI collaborative evaluation workflows
-- Real-time evaluation capabilities for production deployments
-
 ## Getting Started
 
 For detailed setup instructions, see:
-- [Deployment Guide](DEPLOYMENT_GUIDE.md) - Complete deployment instructions
-- [Developer Guide](DEVELOPER_GUIDE.md) - Development environment setup
-- [Custom Components Guide](CUSTOM_COMPONENTS.md) - Creating custom evaluators
+- [Deployment Guide](../DEPLOYMENT.md) - Complete deployment instructions
+- [Custom Evaluation Add-on](./custom_evaluation_addons.md) - Creating custom evaluators
 - [Add-ons Documentation](../addons/README.md) - Available extensions
 
 ## Contributing
@@ -166,4 +154,4 @@ Healthcare AI Model Evaluator is designed to be extensible and welcomes contribu
 - UI/UX improvements for medical professional workflows
 - Documentation and examples
 
-For contribution guidelines and development setup, see the [Developer Guide](DEVELOPER_GUIDE.md).
+For contribution guidelines and development setup, see the [CONTRIBUTING.md](CONTRIBUTING.md).

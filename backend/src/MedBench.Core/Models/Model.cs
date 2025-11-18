@@ -39,8 +39,7 @@ public class Model
         ["openai"] = new[] { "Endpoint", "ApiKey", "Deployment" },
         ["openai-reasoning"] = new[] { "Endpoint", "ApiKey", "Deployment" },
         ["cxrreportgen"] = new[] { "Endpoint", "ApiKey", "Deployment", "Version" },
-        ["deepseek"] = new[] { "Endpoint", "ApiKey" },
-        ["phi4"] = new[] { "Endpoint", "ApiKey" },
+        ["azure-serverless"] = new[] { "Endpoint", "ApiKey" },
         ["functionapp"] = new[] { "FunctionAppType" },
     };
 

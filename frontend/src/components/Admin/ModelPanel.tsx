@@ -27,8 +27,7 @@ const integrationTypeOptions: IDropdownOption[] = [
     { key: 'cxrreportgen', text: 'CXR Report Gen' },
     { key: 'openai', text: 'OpenAI' },
     { key: 'openai-reasoning', text: 'OpenAI Reasoning Model' },
-    { key: 'deepseek', text: 'DeepSeek' },
-    { key: 'phi4', text: 'Phi4' },
+    { key: 'azure-serverless', text: 'Azure Serverless Endpoint' },
     { key: 'functionapp', text: 'Azure Function App' }
 ];
 
