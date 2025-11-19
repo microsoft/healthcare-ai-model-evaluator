@@ -145,10 +145,10 @@ export const ClinicalTasksManagement: React.FC = () => {
                             let linkPath = '';
                             if (pair.isGroundTruth || pair.modelOutputIndex !== -1) {
                                 // Navigate to output index view
-                                linkPath = `/admin/clinical-tasks/dataset/${pair.dataSetId}/output/${pair.modelOutputIndex}`;
+                                linkPath = `/webapp/admin/clinical-tasks/dataset/${pair.dataSetId}/output/${pair.modelOutputIndex}`;
                             } else if (pair.generatedOutputKey && pair.generatedOutputKey !== model?.name) {
                                 // Navigate to generated output view
-                                linkPath = `/admin/clinical-tasks/dataset/${pair.dataSetId}/generated/${encodeURIComponent(pair.generatedOutputKey)}`;
+                                linkPath = `/webapp/admin/clinical-tasks/dataset/${pair.dataSetId}/generated/${encodeURIComponent(pair.generatedOutputKey)}`;
                             } else {
                                 // Default dataset view if neither condition is met
                                 linkPath = `/admin/data/${pair.dataSetId}`;
