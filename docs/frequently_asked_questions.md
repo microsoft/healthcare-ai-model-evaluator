@@ -1,5 +1,100 @@
 # Frequently Asked Questions
 
+## General
+
+### What is Healthcare AI Model Evaluator (HAIME)?
+
+HAIME is an open-source framework designed to help healthcare organizations rigorously evaluate AI models using their own data, clinical tasks, and success metrics. It empowers clinicians and organizations to make evidence-based decisions about AI adoption by providing transparent, customizable, and repeatable evaluation workflows.
+
+### Why is HAIME important for healthcare organizations?
+
+Healthcare AI adoption faces a trust gap due to generic benchmarks and opaque vendor claims. HAIME addresses this by enabling context-specific evaluations that reflect real-world patient populations, workflows, and organizational priorities.
+
+## Key Features
+
+### What are the main capabilities of HAIME?
+
+- No-code evaluation workflows for clinicians without programming expertise
+- Flexible dataset management for structured and unstructured data, including imaging
+- Customizable clinical task framework with prompt engineering and tailored metrics
+- Human-in-the-loop evaluation combining expert judgment with automated metrics
+- Universal model integration for any AI endpoint (commercial, open-source, proprietary)
+- Analytics and reporting with visualization tools and export options for regulatory needs
+
+### Does HAIME support multimodal evaluation?
+
+Yes. HAIME supports text and image data, enabling comprehensive evaluation across clinical documentation and medical imaging. 
+
+## Deployment & Integration
+
+### How can organizations deploy HAIME?
+
+Deploy locally to maintain full data control and privacy
+Customize workflows to align with clinical requirements
+Integrate seamlessly with existing AI endpoints and healthcare systems
+Scale strategically across departments and specialties 
+
+### Is HAIME integrated with Microsoft’s ecosystem?*
+
+Yes. HAIME complements Microsoft’s healthcare AI offerings, including Azure AI Foundry and Azure Machine Learning, and aligns with industry initiatives like MedHelm and HealthBench. 
+
+## Value Proposition for Teams
+
+### How does HAIME help Sales teams?
+
+It provides a clear differentiation by addressing the trust gap in healthcare AI adoption. Sales can position HAIME as a solution for customers seeking transparency, autonomy, and rigorous evaluation before committing to AI investments. 
+
+### What’s the marketing message?
+
+Empowering confident model selection with a purpose-built evaluation tool for healthcare
+To help ensure agentic AI delivers meaningful results in healthcare, organizations should select models that have demonstrated effectiveness for their specific tasks. Healthcare AI model evaluator, available now on GitHub, enables teams to test and validate model performance on relevant clinical tasks using their own data and in their own environment. Its intuitive and flexible interface allows organizations to create custom tests and designate human experts or AI models to evaluate the output. Purpose-built for healthcare needs, the evaluator supports evidence-based model selection to help reduce risk and build trust in AI.
+
+https://youtu.be/u4phpQHFgdM?si=vvPbWsa7rJEVz4oc
+
+
+### How does HAIME support customer success and IA teams?
+
+By reducing friction in AI evaluation, HAIME eliminates reliance on expensive consultants or custom-built tools, enabling faster AI adoption and continuous performance monitoring. 
+
+## Roadmap & Release
+
+### What is the release timeline?
+
+Ignite 2025: Open-source release / MVP
+
+Further features / improvements will be prioritized based on customer needs & feedback
+
+## Getting Started
+
+### Where can customers access HAIME?
+
+GitHub Repository: https://github.com/microsoft/Healthcare-AI-Model-Evaluator
+
+Demo Requests: hlsfrontierteam@microsoft.com 
+
+### How is HAIME different than Azure AI Foundry evaluation?
+
+https://learn.microsoft.com/en-us/azure/ai-foundry/how-to/evaluate-generative-ai-app?view=foundry-classic
+
+HAIME complements Azure AI Foundry's evaluation capabilities by providing additional customization for healthcare-specific evaluation scenarios:
+- Full deployment within customer environments under complete customer control
+- Customizable human evaluation workflows and UI/UX for text-based and image-based model outputs
+- Support for evaluation of AI models that do not use Microsoft/Azure based or compatible end-points
+- Multi-reviewer consensus workflows: Support for clinical review panels and inter-rater reliability tracking
+- Domain-specific metrics: Healthcare-focused evaluation metrics beyond general NLP measures
+- Custom evaluation rubrics: Define healthcare-specific scoring criteria aligned with clinical guidelines
+- Cost tracking and budgeting: Built-in token usage and cost monitoring across multiple model providers
+- Comprehensive data, user, experiment management, and reporting with workflow customization—no coding required
+- Complete operational transparency and feature extensibility through extensive import/export capabilities and open-source architecture
+
+HAIME and Azure AI Foundry are designed to work together. We recommend using both platforms in tandem to address your complete evaluation requirements.
+
+As a general guidance:
+- Use Azure AI Foundry for rapid prototyping and standard ML metrics; for evaluation and monitoring of models in a production environment
+- Use HAIME when you need more detailed clinical validation, full transparency and extensive documentation/logging, or specialized healthcare evaluation workflows in an isolated research or evaluation environment (prior to deploying into production)
+
+# Deployment / Usage
+
 ## Data Management
 
 ### What data formats does HAIME support?
@@ -224,10 +319,11 @@ HAIME is designed for deployment within your own secure infrastructure. All pati
 
 ### Is HAIME HIPAA compliant?
 
-HAIME operates within your security perimeter. All its operation, processing and storage is within this perimeter. The answer depends on your operational parameters. 
+HAIME operates entirely within your security perimeter, with all operations, processing, and storage under your control. However, HIPAA compliance depends on your specific deployment configuration and operational practices.
 
-Achieving HIPAA compliance requires proper configuration and operational practices by your organization. Consult with your compliance team for guidance.
+Since HAIME can integrate with external model endpoints that may not be HIPAA-compliant, we cannot guarantee end-to-end HIPAA compliance. We strongly recommend using only de-identified, PHI-free data for which you have appropriate usage rights and licenses.
 
+Consult with your compliance and legal teams to ensure your HAIME deployment meets all applicable regulatory requirements.
 ---
 
 ## Scalability
@@ -281,9 +377,10 @@ Verify that:
 ### Where can I find more documentation?
 
 Refer to:
-- **End-User Tutorial**: Step-by-step walkthrough for common workflows
-- **Project Overview**: High-level architecture and design principles
-- **GitHub Repository**: Technical documentation and source code
+- **Deployment**: https://github.com/microsoft/healthcare-ai-model-evaluator/blob/main/DEPLOYMENT.md
+- **End-User Tutorial**: Step-by-step walkthrough for common workflows https://github.com/microsoft/healthcare-ai-model-evaluator/blob/main/docs/getting_started_end_user_tutorial.md
+- **Project Overview**: High-level architecture and design principles https://github.com/microsoft/healthcare-ai-model-evaluator/blob/main/docs/project_overview.md
+- **GitHub Repository**: Technical documentation and source code https://github.com/microsoft/healthcare-ai-model-evaluator
 
 ### How do I report bugs or request features?
 
