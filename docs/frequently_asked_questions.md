@@ -29,12 +29,12 @@ Yes. HAIME supports text and image data, enabling comprehensive evaluation acros
 
 ### How can organizations deploy HAIME?
 
-Deploy locally to maintain full data control and privacy
-Customize workflows to align with clinical requirements
-Integrate seamlessly with existing AI endpoints and healthcare systems
-Scale strategically across departments and specialties 
+- Deploy locally to maintain full data control and privacy
+- Customize workflows to align with clinical requirements
+- Integrate seamlessly with existing AI endpoints and healthcare systems
+- Scale strategically across departments and specialties 
 
-### Is HAIME integrated with Microsoft’s ecosystem?*
+### Is HAIME integrated with Microsoft’s ecosystem?
 
 Yes. HAIME complements Microsoft’s healthcare AI offerings, including Azure AI Foundry and Azure Machine Learning, and aligns with industry initiatives like MedHelm and HealthBench. 
 
@@ -79,7 +79,7 @@ https://learn.microsoft.com/en-us/azure/ai-foundry/how-to/evaluate-generative-ai
 HAIME complements Azure AI Foundry's evaluation capabilities by providing additional customization for healthcare-specific evaluation scenarios:
 - Full deployment within customer environments under complete customer control
 - Customizable human evaluation workflows and UI/UX for text-based and image-based model outputs
-- Support for evaluation of AI models that do not use Microsoft/Azure based or compatible end-points
+- Support for evaluation of AI models that do not use Microsoft/Azure based or compatible endpoints
 - Multi-reviewer consensus workflows: Support for clinical review panels and inter-rater reliability tracking
 - Domain-specific metrics: Healthcare-focused evaluation metrics beyond general NLP measures
 - Custom evaluation rubrics: Define healthcare-specific scoring criteria aligned with clinical guidelines
