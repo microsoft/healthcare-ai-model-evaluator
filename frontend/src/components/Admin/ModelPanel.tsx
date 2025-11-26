@@ -10,6 +10,7 @@ import {
     Dropdown,
     IDropdownOption,
     IconButton,
+    Icon,
 } from '@fluentui/react';
 import { IModel, AIModelType, RequiredIntegrationParameters } from '../../types/admin';
 import type { AIModelTypeValues } from '../../types/admin';
@@ -101,7 +102,14 @@ export const ModelPanel: React.FC<ModelPanelProps> = ({
                 return false;
             }
             const missingParams = requiredParams.filter(
-                param => !integrationSettings?.[param]
+                param => {
+                    const value = integrationSettings?.[param];
+                    // Consider parameter as configured if:
+                    // 1. It has a regular value
+                    // 2. OR it shows as configured from Key Vault (***CONFIGURED***)
+                    // 3. AND the value is not just whitespace
+                    return !value || (value !== "***CONFIGURED***" && value.trim() === "");
+                }
             );
             if (missingParams.length > 0) {
                 console.log(missingParams);
@@ -197,12 +205,22 @@ export const ModelPanel: React.FC<ModelPanelProps> = ({
                                 <Stack.Item grow>
                                     <Stack verticalAlign="center" tokens={{ childrenGap: 5 }}>
                                         <Stack.Item grow><span>{key}:&nbsp;</span></Stack.Item>
-                                        <Stack.Item grow><span>{showPassword===key ? value: '•'.repeat(value.length>30?30:value.length)}</span>
-                                        <IconButton
-                                            iconProps={{ iconName: showPassword ? 'Hide' : 'RedEye' }}
-                                            onClick={() => setShowPassword(showPassword===key?false:key)}
-                                            styles={{ root: { marginLeft: 5 } }}
-                                        />
+                                        <Stack.Item grow>
+                                            {value === "***CONFIGURED***" ? (
+                                                <span style={{ color: '#107C10', fontWeight: 600 }}>
+                                                    <Icon iconName="Shield" style={{ marginRight: 4 }} />
+                                                    Configured securely
+                                                </span>
+                                            ) : (
+                                                <span>{showPassword === key ? value : '•'.repeat(value.length > 30 ? 30 : value.length)}</span>
+                                            )}
+                                            {value !== "***CONFIGURED***" && (
+                                                <IconButton
+                                                    iconProps={{ iconName: showPassword === key ? 'Hide' : 'RedEye' }}
+                                                    onClick={() => setShowPassword(showPassword === key ? false : key)}
+                                                    styles={{ root: { marginLeft: 5 } }}
+                                                />
+                                            )}
                                         </Stack.Item>
                                     </Stack>
                                 </Stack.Item>

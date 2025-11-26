@@ -35,6 +35,52 @@ public class DataObjectRepository : IDataObjectRepository
         return dataObject;
     }
 
+    public async Task<DataObject> GetByIdWithIndexAsync(string id)
+    {
+        var dataObject = await _collection.Find(x => x.Id == id).FirstOrDefaultAsync();
+        if (dataObject == null)
+            throw new KeyNotFoundException($"DataObject with ID {id} not found");
+
+        // Backwards compatibility: populate OriginalDataFile and OriginalIndex if needed
+        bool needsUpdate = false;
+
+        // If OriginalDataFile is blank, populate it with the first data file name from parent dataset
+        if (string.IsNullOrEmpty(dataObject.OriginalDataFile))
+        {
+            var dataset = await _dataSetCollection.Find(x => x.Id == dataObject.DataSetId).FirstOrDefaultAsync();
+            if (dataset?.DataFiles != null && dataset.DataFiles.Any())
+            {
+                dataObject.OriginalDataFile = dataset.DataFiles[0].FileName;
+                needsUpdate = true;
+            }
+        }
+
+        // If OriginalIndex is -1, populate it with the index in the filtered query results
+        if (dataObject.OriginalIndex == -1)
+        {
+            var allDataObjects = await _collection
+                .Find(x => x.DataSetId == dataObject.DataSetId)
+                .ToListAsync();
+            
+            var index = allDataObjects.FindIndex(x => x.Id == dataObject.Id);
+            if (index >= 0)
+            {
+                dataObject.OriginalIndex = index;
+                needsUpdate = true;
+            }
+        }
+
+        // Update the data object if we populated any missing fields
+        if (needsUpdate)
+        {
+            var filter = Builders<DataObject>.Filter.Eq(x => x.Id, dataObject.Id);
+            dataObject.UpdatedAt = DateTime.UtcNow;
+            await _collection.ReplaceOneAsync(filter, dataObject);
+        }
+
+        return dataObject;
+    }
+
     public async Task<IEnumerable<DataObject>> CreateManyAsync(IEnumerable<DataObject> dataObjects)
     {
         const int batchSize = 100;

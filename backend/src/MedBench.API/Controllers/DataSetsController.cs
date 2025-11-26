@@ -500,10 +500,26 @@ public class DataSetsController : ControllerBase
             // Process data objects to calculate tokens
             await ProcessDataObjectsAsync(dataObjects);
             
-            // Set the DataSetId for each object
+            // Set the DataSetId and populate OriginalDataFile/OriginalIndex for each object
+            var currentDataset = await _repository.GetByIdAsync(id);
+            var existingDataObjects = await _dataObjectRepository.GetByDataSetIdAsync(id);
+            var currentIndex = existingDataObjects.Count(); // Start index from existing count
+            
             foreach (var obj in dataObjects)
             {
                 obj.DataSetId = id;
+                
+                // Set OriginalDataFile if not already set
+                if (string.IsNullOrEmpty(obj.OriginalDataFile))
+                {
+                    obj.OriginalDataFile = currentDataset.DataFiles?.FirstOrDefault()?.FileName ?? "manual-entry";
+                }
+                
+                // Set OriginalIndex if not already set
+                if (obj.OriginalIndex == -1)
+                {
+                    obj.OriginalIndex = currentIndex++;
+                }
             }
             
             // Add the data objects

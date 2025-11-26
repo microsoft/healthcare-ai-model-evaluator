@@ -340,6 +340,11 @@ public class ExperimentsController : ControllerBase
             var enrichedTrials = new List<object>();
             foreach (var trial in trials)
             {
+                DataObject? dataObject = null;
+                if (!string.IsNullOrEmpty(trial.DataObjectId))
+                {
+                    dataObject = await _dataObjectRepository.GetByIdWithIndexAsync(trial.DataObjectId);
+                }
                 var enrichedTrial = new
                 {
                     id = trial.Id,
@@ -350,7 +355,7 @@ public class ExperimentsController : ControllerBase
                     experimentStatus = trial.ExperimentStatus,
                     prompt = trial.Prompt,
                     modelInputs = await EnrichDataContentWithImages(trial.ModelInputs),
-                    dataObjectId = trial.DataObjectId,
+                    originalDataObject = dataObject,
                     flags = trial.Flags,
                     dataSetId = trial.DataSetId,
                     modelOutputs = await EnrichModelOutputsWithImages(trial.ModelOutputs),

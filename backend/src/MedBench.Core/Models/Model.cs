@@ -30,16 +30,27 @@ public class Model
 
     public Dictionary<string, string> IntegrationSettings { get; set; } = new();
 
+    /// <summary>
+    /// Tracks which integration settings are stored as secrets in Key Vault.
+    /// Key: parameter name, Value: secret name in Key Vault
+    /// </summary>
+    public Dictionary<string, string> SecretReferences { get; set; } = new();
+
+    /// <summary>
+    /// Indicates whether this model has any settings stored in Key Vault
+    /// </summary>
+    public bool HasSecureSettings { get; set; } = false;
+
     public double CostPerToken { get; set; } = 0;
 
     public double CostPerTokenOut { get; set; } = 0;
 
     public static readonly Dictionary<string, string[]> RequiredIntegrationParameters = new()
     {
-        ["openai"] = new[] { "Endpoint", "ApiKey", "Deployment" },
-        ["openai-reasoning"] = new[] { "Endpoint", "ApiKey", "Deployment" },
-        ["cxrreportgen"] = new[] { "Endpoint", "ApiKey", "Deployment", "Version" },
-        ["azure-serverless"] = new[] { "Endpoint", "ApiKey" },
+        ["openai"] = new[] { "ENDPOINT", "API_KEY", "DEPLOYMENT" },
+        ["openai-reasoning"] = new[] { "ENDPOINT", "API_KEY", "DEPLOYMENT" },
+        ["cxrreportgen"] = new[] { "ENDPOINT", "API_KEY", "DEPLOYMENT", "VERSION" },
+        ["azure-serverless"] = new[] { "ENDPOINT", "API_KEY" },
         ["functionapp"] = new[] { "FunctionAppType" },
     };
 
