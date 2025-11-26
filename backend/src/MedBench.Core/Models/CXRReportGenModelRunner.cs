@@ -77,6 +77,9 @@ public class CXRReportGenModelRunner : ModelRunnerBase, IModelRunner
         if (!images.Any())
             return "no images provided";
 
+        Console.WriteLine($"Available settings keys: {string.Join(", ", _settings.Keys)}");
+        Console.WriteLine($"ENDPOINT value: '{_settings.GetValueOrDefault("ENDPOINT", "NOT_FOUND")}'");
+
         var payload = new
         {
             input_data = new
@@ -87,7 +90,13 @@ public class CXRReportGenModelRunner : ModelRunnerBase, IModelRunner
             }
         };
 
-        var response = await _client.PostAsJsonAsync(_settings["ENDPOINT"], payload);
+        var endpoint = _settings.GetValueOrDefault("ENDPOINT", "");
+        if (string.IsNullOrEmpty(endpoint))
+        {
+            throw new InvalidOperationException($"ENDPOINT setting is missing or empty. Available settings: {string.Join(", ", _settings.Keys)}");
+        }
+
+        var response = await _client.PostAsJsonAsync(endpoint, payload);
         Console.WriteLine("response: " + response);
         response.EnsureSuccessStatusCode();
 
