@@ -311,11 +311,12 @@ export const ExperimentManagement: React.FC = () => {
                 disabled: selectedExperiments.length !== 1,
                 onClick: async () => {
                     if (selectedExperiments.length === 1) {
+                        const loadingToastId = toast.loading('Exporting experiment data...');
                         try {
                             await exportExperimentData(selectedExperiments[0]);
-                            toast.success('Experiment data exported successfully');
+                            toast.success('Experiment data exported successfully', { id: loadingToastId });
                         } catch (err) {
-                            toast.error('Failed to export experiment data');
+                            toast.error('Failed to export experiment data', { id: loadingToastId });
                         }
                     }
                 },

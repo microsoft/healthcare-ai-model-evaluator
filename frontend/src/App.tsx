@@ -5,6 +5,7 @@ import { Provider } from 'react-redux';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { store } from './store/store';
 import { msalConfig } from './config/authConfig';
+import { appConfig } from './config/appConfig';
 import { Login } from './components/Login/Login';
 import { Navigation } from './components/Navigation/Navigation';
 import { Admin } from './components/Admin/Admin';
@@ -54,7 +55,7 @@ const App: React.FC = () => {
             <AuthProvider>
                 <Provider store={store}>
                     <Toaster position="top-right" />
-                    <Router basename="/webapp">
+                    <Router basename={appConfig.basePath}>
                         <div className="app">
                             <Navigation />
                             <main className="main-content">

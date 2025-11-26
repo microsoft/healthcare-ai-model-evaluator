@@ -5,7 +5,7 @@ import path from 'path'
 
 // https://vitejs.dev/config/
 export default defineConfig(({ command }) => ({
-  base: command === 'build' ? '/webapp/' : '/',
+  base: command === 'build' ? (process.env.VITE_BASE_PATH || '/webapp/') : '/',
   plugins: [
     react(),
     tsconfigPaths() // This enables the path mapping from tsconfig.json
