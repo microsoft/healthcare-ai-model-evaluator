@@ -35,32 +35,117 @@ Write-Host "Creating Azure AD App Registration as SPA..."
 $appName = "HealthcareAIModelEvaluator-App-$(Get-Random)"
 $redirectUris = @(
     "http://localhost:3000",
-    "https://localhost:3000",
-    "http://localhost:3000/webapp/",
-    "https://localhost:3000/webapp/"
+    "https://localhost:3000"
 )
 
-if ($webAppUrl) {
-    $redirectUris += "$webAppUrl/webapp/"
+if ($apiUrl) {
+    $redirectUris += "$apiUrl/webapp"
 }
 
-$redirectUrisJson = $redirectUris | ConvertTo-Json -Compress
+# For Microsoft tenant, we need a service management reference
+$serviceManagementReference = if ($env:SERVICE_MANAGEMENT_REFERENCE) { 
+    $env:SERVICE_MANAGEMENT_REFERENCE 
+} else { 
+    "b31d80b8-b7ef-49da-b3f9-c59ea728cb5f" 
+}
 
-# Create the app registration as SPA
-$appRegistration = az ad app create `
+# Try creating the app registration with service management reference first
+Write-Host "Attempting to create app registration with service management reference..."
+
+# Create permissions.json if it doesn't exist
+$permissionsFile = Join-Path $PSScriptRoot "permissions.json"
+if (-not (Test-Path $permissionsFile)) {
+    Write-Host "Creating basic permissions.json..."
+    $permissions = @(
+        @{
+            resourceAppId = "00000003-0000-0000-c000-000000000000"
+            resourceAccess = @(
+                @{
+                    id = "e1fe6dd8-ba31-4d61-89e7-88639da4683d"
+                    type = "Scope"
+                }
+            )
+        }
+    )
+    $permissions | ConvertTo-Json -Depth 4 | Out-File -FilePath $permissionsFile -Encoding UTF8
+}
+
+$appRegistration = $null
+$appCreationFailed = $false
+
+# First attempt with service management reference
+$result = az ad app create `
     --display-name $appName `
-    --sign-in-audience "AzureADMyOrg" `
-    --spa-redirect-uris $redirectUrisJson `
-    --enable-id-token-issuance true `
-    --query "{appId: appId, objectId: id}" -o json | ConvertFrom-Json
+    --enable-id-token-issuance `
+    --required-resource-accesses "@$permissionsFile" `
+    --service-management-reference $serviceManagementReference `
+    --query "{appId: appId, objectId: id}" -o json 2>&1
 
-if (-not $appRegistration) {
-    Write-Error "Failed to create Azure AD App Registration"
-    exit 1
+if ($LASTEXITCODE -eq 0) {
+    $appRegistration = $result | ConvertFrom-Json
+    Write-Host "✅ Successfully created app registration with service management reference"
+} else {
+    Write-Host "⚠️  Failed to create app with service management reference. Error:"
+    Write-Host $result
+    Write-Host "Retrying without service management reference..."
+    
+    # Second attempt without service management reference
+    $result = az ad app create `
+        --display-name $appName `
+        --enable-id-token-issuance `
+        --required-resource-accesses "@$permissionsFile" `
+        --query "{appId: appId, objectId: id}" -o json 2>&1
+    
+    if ($LASTEXITCODE -eq 0) {
+        $appRegistration = $result | ConvertFrom-Json
+        Write-Host "✅ Successfully created app registration without service management reference"
+    } else {
+        Write-Host "❌ Failed to create Azure AD App Registration. Error:"
+        Write-Host $result
+        $appCreationFailed = $true
+    }
 }
 
-$clientId = $appRegistration.appId
-Write-Host "Created SPA App Registration with Client ID: $clientId"
+if ($appCreationFailed -or -not $appRegistration) {
+    Write-Host "Using placeholder CLIENT_ID for now..."
+    $clientId = "00000000-0000-0000-0000-000000000000"
+    Write-Host "⚠️  Using placeholder CLIENT_ID: $clientId"
+    Write-Host "Please create an app registration manually and run: azd env set AUTH_CLIENT_ID <your-client-id>"
+} else {
+
+} else {
+    $clientId = $appRegistration.appId
+    $objectId = $appRegistration.objectId
+    Write-Host "Created App Registration with Client ID: $clientId"
+
+    # Configure SPA redirect URIs using Microsoft Graph API
+    Write-Host "Configuring SPA redirect URIs..."
+    $body = @{
+        spa = @{
+            redirectUris = $redirectUris
+        }
+    } | ConvertTo-Json -Depth 3
+
+    $result = az rest `
+        --method PATCH `
+        --uri "https://graph.microsoft.com/v1.0/applications/$objectId" `
+        --headers "Content-Type=application/json" `
+        --body $body `
+        --output none
+
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "✅ Successfully configured SPA redirect URIs"
+    } else {
+        Write-Host "⚠️  Warning: Failed to configure SPA redirect URIs, but app registration was created"
+        Write-Host "Please manually add the following redirect URIs in the Azure Portal:"
+        foreach ($uri in $redirectUris) {
+            Write-Host "  - $uri"
+        }
+    }
+}
+
+# Update azd environment with the CLIENT_ID (real or placeholder)
+az env set AUTH_CLIENT_ID $clientId
 
 # Update Key Vault secret with the actual client ID
 Write-Host "Updating Key Vault secret with Client ID..."
