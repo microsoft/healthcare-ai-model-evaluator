@@ -112,8 +112,6 @@ if ($appCreationFailed -or -not $appRegistration) {
     Write-Host "⚠️  Using placeholder CLIENT_ID: $clientId"
     Write-Host "Please create an app registration manually and run: azd env set AUTH_CLIENT_ID <your-client-id>"
 } else {
-
-} else {
     $clientId = $appRegistration.appId
     $objectId = $appRegistration.objectId
     Write-Host "Created App Registration with Client ID: $clientId"
@@ -145,7 +143,7 @@ if ($appCreationFailed -or -not $appRegistration) {
 }
 
 # Update azd environment with the CLIENT_ID (real or placeholder)
-az env set AUTH_CLIENT_ID $clientId
+azd env set AUTH_CLIENT_ID $clientId
 
 # Update Key Vault secret with the actual client ID
 Write-Host "Updating Key Vault secret with Client ID..."
