@@ -166,6 +166,7 @@ EOF
     
     # Update azd environment with the CLIENT_ID (real or placeholder)
     azd env set AUTH_CLIENT_ID "$CLIENT_ID"
+    azd env set AZURE_TENANT_ID "$AZURE_TENANT_ID"
 fi
 
 # Update Key Vault secret with the actual client ID
@@ -180,6 +181,11 @@ else
     echo "❌ Failed to update Key Vault secret"
     exit 1
 fi
+
+# Create first admin user if needed
+echo ""
+echo "Checking if admin user creation is needed..."
+"$(dirname "$0")/create-admin-user.sh"
 
 echo ""
 if [ "$CLIENT_ID" = "00000000-0000-0000-0000-000000000000" ]; then

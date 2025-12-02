@@ -116,6 +116,9 @@
     "emailEnabled": {
       "value": "${EMAIL_ENABLED=false}"
     },
+    "createAdminUser": {
+      "value": "${CREATE_ADMIN_USER=true}"
+    },
     "tags": {
       "value": {
         "Owner": "AI Team",

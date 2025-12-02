@@ -124,6 +124,9 @@ param emailSmtpPass string = ''
 @description('SMTP SSL/TLS usage')
 param emailSmtpUseSsl bool = true
 
+@description('Whether to prompt for admin user creation during first deployment')
+param createAdminUser bool = true
+
 @description('Tags for all AI resources created. JSON object')
 param tagParam object = {}
 
