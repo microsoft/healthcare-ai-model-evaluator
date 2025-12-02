@@ -1,4 +1,5 @@
 import { PublicClientApplication, Configuration } from "@azure/msal-browser";
+import { appConfig } from './appConfig';
 
 // Configuration that uses environment variables (available at build time via azd)
 const runtimeConfig = {
@@ -18,8 +19,8 @@ export const msalConfig: Configuration = {
     auth: {
         clientId: runtimeConfig.clientId,
         authority: `https://login.microsoftonline.com/${runtimeConfig.tenantId}`,
-        redirectUri: `${window.location.origin}/webapp/`,
-        postLogoutRedirectUri: `${window.location.origin}/webapp/`,
+        redirectUri: `${window.location.origin}${appConfig.getPath('')}`,
+        postLogoutRedirectUri: `${window.location.origin}${appConfig.getPath('')}`,
     },
     cache: {
         cacheLocation: "sessionStorage",
