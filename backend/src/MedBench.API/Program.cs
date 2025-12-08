@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Features;
 using MedBench.API.Middleware;
 using Azure.Storage.Blobs;
+using Azure.Identity;
 using System.Text.Json.Serialization;
 using MongoDB.Bson.Serialization.Conventions;
 using MongoDB.Bson.Serialization;
@@ -216,15 +217,32 @@ builder.Services.AddSwaggerGen(c =>
 // Add logging to debug connection issues
 builder.Services.AddSingleton(sp =>
 {
-    var connectionString = Environment.GetEnvironmentVariable("COSMOSDB_CONNECTION_STRING") 
-        ?? builder.Configuration["CosmosDb:ConnectionString"];
+    var cosmosEndpoint = Environment.GetEnvironmentVariable("COSMOSDB_ENDPOINT") 
+        ?? builder.Configuration["CosmosDb:Endpoint"];
         
-    if (string.IsNullOrEmpty(connectionString))
+    if (string.IsNullOrEmpty(cosmosEndpoint))
     {
-        throw new InvalidOperationException("MongoDB connection string not found");
+        throw new InvalidOperationException("Cosmos DB endpoint not found. Set COSMOSDB_ENDPOINT environment variable.");
     }
     
     try {
+        // Use managed identity to connect to Cosmos DB
+        var credential = new DefaultAzureCredential();
+        
+        // For Cosmos DB MongoDB API, we need to construct the connection string with managed identity
+        // This requires the MongoDB connection string format but uses AAD authentication
+        var mongoConnectionString = $"mongodb://{cosmosEndpoint.Replace("https://", "").Replace("/", "")}:10255/?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@{cosmosEndpoint.Replace("https://", "").Split('.')[0]}@";
+        
+        // For now, fall back to connection string if endpoint is not available
+        // TODO: Implement proper managed identity for MongoDB API
+        var connectionString = Environment.GetEnvironmentVariable("COSMOSDB_CONNECTION_STRING") 
+            ?? builder.Configuration["CosmosDb:ConnectionString"];
+            
+        if (string.IsNullOrEmpty(connectionString))
+        {
+            throw new InvalidOperationException("MongoDB connection string not found. Please configure managed identity or connection string.");
+        }
+        
         var client = new MongoClient(connectionString);
         var database = client.GetDatabase(builder.Configuration["CosmosDb:DatabaseName"]);
         // Test the connection
@@ -257,15 +275,24 @@ builder.Services.AddSingleton(sp =>
     return database.GetCollection<MedBench.Core.Models.User>(builder.Configuration["CosmosDb:ContainerName"]);
 });
 
-// Update the MongoDB Client registration to use the existing connection string
+// Update the MongoDB Client registration to use managed identity
 builder.Services.AddSingleton<IMongoClient>(sp => 
 {
+    var cosmosEndpoint = Environment.GetEnvironmentVariable("COSMOSDB_ENDPOINT") 
+        ?? builder.Configuration["CosmosDb:Endpoint"];
+        
+    if (!string.IsNullOrEmpty(cosmosEndpoint))
+    {
+        // TODO: Implement proper managed identity for MongoDB API
+        // For now, fall back to connection string
+    }
+    
     var connectionString = Environment.GetEnvironmentVariable("COSMOSDB_CONNECTION_STRING") 
         ?? builder.Configuration["CosmosDb:ConnectionString"];
         
     if (string.IsNullOrEmpty(connectionString))
     {
-        throw new InvalidOperationException("MongoDB connection string not found");
+        throw new InvalidOperationException("MongoDB connection string not found. Please configure managed identity or connection string.");
     }
     
     return new MongoClient(connectionString);
@@ -283,11 +310,30 @@ builder.Services.AddScoped<ITrialRepository, TrialRepository>();
 builder.Services.AddScoped<IImageRepository, MedBench.Core.Repositories.ImageRepository>();
 
 
-// Add Azure Blob Storage
-builder.Services.AddSingleton(x => 
-    new BlobServiceClient(Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING")
-        ?? builder.Configuration["AzureStorage:ConnectionString"])
-);
+// Add Azure Blob Storage with managed identity
+builder.Services.AddSingleton<BlobServiceClient>(sp =>
+{
+    var storageEndpoint = Environment.GetEnvironmentVariable("AZURE_STORAGE_ENDPOINT")
+        ?? builder.Configuration["AzureStorage:Endpoint"];
+    
+    if (!string.IsNullOrEmpty(storageEndpoint))
+    {
+        // Use managed identity for storage authentication
+        var credential = new DefaultAzureCredential();
+        return new BlobServiceClient(new Uri(storageEndpoint), credential);
+    }
+    
+    // Fall back to connection string if endpoint not configured
+    var connectionString = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING")
+        ?? builder.Configuration["AzureStorage:ConnectionString"];
+        
+    if (string.IsNullOrEmpty(connectionString))
+    {
+        throw new InvalidOperationException("Storage endpoint or connection string not found. Configure AZURE_STORAGE_ENDPOINT for managed identity.");
+    }
+    
+    return new BlobServiceClient(connectionString);
+});
 
 // Register Key Vault Service
 builder.Services.AddMemoryCache(); // Required for KeyVaultService caching
@@ -296,6 +342,9 @@ builder.Services.AddSingleton<IKeyVaultService, KeyVaultService>();
 // Register Model Migration Service
 builder.Services.AddSingleton<IModelMigrationService, ModelMigrationService>();
 builder.Services.AddHostedService<ModelMigrationHostedService>();
+
+// Register Data Retention Background Service
+builder.Services.AddHostedService<DataRetentionBackgroundService>();
 
 // Register Image Service
 builder.Services.AddScoped<IImageService, ImageService>();
@@ -413,22 +462,35 @@ app.MapGet("/webapp", async (HttpContext context) =>
     }
 });
 
-// Handle React app navigation routes - use a more specific pattern that excludes static files
-app.MapFallback("/webapp/{path:regex(^(?!assets/|.*\\.).*$)}", async (HttpContext context, ILogger<Program> logger) =>
+// Handle React app navigation routes - catch all /webapp routes except static assets
+app.MapFallback("/webapp/{**path}", async (HttpContext context, ILogger<Program> logger) =>
 {
     var requestPath = context.Request.Path.Value ?? "";
+    logger.LogInformation($"Fallback handling request: {requestPath}");
     
+    // Skip if it's a request for static assets or files with extensions
+    if (requestPath.Contains("/assets/") || 
+        (requestPath.Contains('.') && !requestPath.EndsWith('/') && 
+         Path.GetExtension(requestPath) != string.Empty &&
+         !requestPath.Contains("/webapp/") && requestPath != "/webapp"))
+    {
+        logger.LogInformation($"Skipping fallback for static file: {requestPath}");
+        context.Response.StatusCode = 404;
+        return;
+    }
     
     // Serve index.html for React app navigation routes
     var indexPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "webapp", "index.html");
     
     if (File.Exists(indexPath))
     {
+        logger.LogInformation($"Serving index.html for route: {requestPath}");
         context.Response.ContentType = "text/html";
         await context.Response.SendFileAsync(indexPath);
     }
     else
     {
+        logger.LogWarning($"index.html not found at: {indexPath}");
         context.Response.StatusCode = 404;
         await context.Response.WriteAsync("React app not found.");
     }

@@ -51,20 +51,23 @@ services:
         continueOnError: false
 
 hooks:
+  preprovision:
+    posix:
+      shell: sh
+      run: ./infra/hooks/preprovision.sh
+      continueOnError: false
+    windows:
+      shell: pwsh
+      run: ./infra/hooks/preprovision.ps1
+      continueOnError: false
   postprovision:
     - run: ./infra/scripts/postprovision.sh
       continueOnError: false
-    - shell: sh
-      run: |
-        # Now that environment variables are set, build frontend and redeploy API
-        echo "Building frontend with environment variables..."
-        cd frontend
-        ../infra/scripts/update-env.sh
-        npm install
-        npm run build
-        # Copy built files to backend wwwroot
-        mkdir -p ../backend/src/MedBench.API/wwwroot/webapp
-        cp -r build/* ../backend/src/MedBench.API/wwwroot/webapp/
-        echo "Redeploying API service with frontend..."
-        azd deploy api
-      continueOnError: false
+
+infra:
+  provider: bicep
+  path: infra
+  module: main
+  parameters:
+    enableWebIpFiltering: "${ENABLE_WEB_IP_FILTERING}"
+    allowedWebIp: "${ALLOWED_WEB_IP}"

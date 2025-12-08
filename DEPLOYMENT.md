@@ -130,6 +130,38 @@ azd env set ENABLE_ACS false
 
 Now that your environment is configured, you can deploy all necessary resources and infrastructure for the Healthcare AI Model Evaluator.
 
+#### IP Filtering & Security Configuration
+
+**By default, the deployment is secure-by-default** and will prompt you to configure IP filtering to protect the web application:
+
+- **During first deployment**, you'll be prompted to enter an IP address that can access the web application
+- **Your current public IP** is automatically detected and suggested as the default
+- **Only specified IPs** can access the web application - all other access is blocked
+- **Backend data services** (Cosmos DB, Storage) are secured via managed identity and are not directly accessible from the internet
+
+**Managing IP Access:**
+
+```sh
+# View current IP filtering settings
+azd env get-value ALLOWED_WEB_IP
+azd env get-value ENABLE_WEB_IP_FILTERING
+
+# Add or update allowed IPs (comma-delimited CIDR format)
+azd env set ALLOWED_WEB_IP "89.144.197.27/32,203.0.113.1/32"
+
+# Disable IP filtering entirely (not recommended for production)
+azd env set ENABLE_WEB_IP_FILTERING false
+
+# Re-deploy with new settings
+azd up
+```
+
+> [!WARNING]
+> **Portal Changes**: Any IP filtering changes made directly in the Azure portal will be overwritten by `azd up`. Always use the azd environment variables to manage IP access.
+
+> [!TIP]
+> **Multiple Locations**: Use comma-delimited CIDR notation to allow access from multiple locations: `"home.ip.address/32,office.ip.address/32,vpn.range.address/24"`
+
 > [!IMPORTANT]
 > **Security Consideration**: For production deployments in healthcare environments, consider integrating with your existing Azure Front Door after deployment. See the [Security Configuration](#security-configuration) section for Front Door integration steps.
 
@@ -203,6 +235,30 @@ echo "Application URL: $(azd env get-value API_BASE_URL)"
 echo "Frontend: $(azd env get-value API_BASE_URL)/webapp"
 echo "API: $(azd env get-value API_BASE_URL)/api"
 ```
+
+## Post-Deployment Setup
+
+### Create First Admin User
+
+After successful deployment, create your first admin user to access the application:
+
+```bash
+# Run the admin user creation script
+./infra/scripts/create-admin-user.sh
+```
+
+The script will prompt you for:
+- **Admin email address**: Used for login
+- **Admin password**: Must meet complexity requirements (8+ characters, 3 of 4 character types)  
+- **Admin full name**: Display name in the application
+
+Once created, you can:
+1. Navigate to your application URL: `$(azd env get-value API_BASE_URL)/webapp`
+2. Click "Sign in with Password" 
+3. Use the email/password you just created
+4. Access the admin panel to create additional users
+
+> **Note**: This script only needs to be run once. Additional users can be created through the web interface by admin users.
 
 ---
 

@@ -160,12 +160,6 @@ if ($LASTEXITCODE -eq 0) {
     exit 1
 }
 
-# Create first admin user if needed
-Write-Host ""
-Write-Host "Checking if admin user creation is needed..."
-$createAdminScript = Join-Path $PSScriptRoot "create-admin-user.ps1"
-& $createAdminScript
-
 # Update Static Web App configuration
 
 Write-Host ""

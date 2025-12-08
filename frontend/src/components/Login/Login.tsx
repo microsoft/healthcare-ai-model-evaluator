@@ -17,6 +17,7 @@ import {
 } from '@fluentui/react';
 import { useLocation } from 'react-router-dom';
 import authService from 'services/authService';
+import { validatePasswordComplexity } from '../../utils/passwordValidation';
 
 export const Login: React.FC = () => {
     const { login, loginWithPassword, error, isAuthenticated, loading } = useAuth();
@@ -44,6 +45,7 @@ export const Login: React.FC = () => {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [localError, setLocalError] = useState<string | null>(null);
+    const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
     const resetToken = useMemo(() => new URLSearchParams(location.search).get('resetToken') || '', [location.search]);
 
     if (isAuthenticated) {
@@ -143,16 +145,48 @@ export const Login: React.FC = () => {
                     <Stack tokens={{ childrenGap: 12 }}>
                         <Text variant="large">Reset your password</Text>
                         <Text>
-                            Password must be at least 8 characters and include 3 of the 4 categories: uppercase letters, lowercase letters, numbers, and symbols.
+                            Password requirements:
                         </Text>
-                        <TextField label="New password" type="password" canRevealPassword value={password} onChange={(_, v) => setPassword(v || '')} required />
+                        <ul style={{ margin: '0 0 10px 20px', fontSize: '14px' }}>
+                            <li>At least 8 characters long</li>
+                            <li>Include characters from at least 3 categories: uppercase letters, lowercase letters, numbers, and special characters</li>
+                            <li>Cannot contain your account name or display name</li>
+                            <li>Cannot be a common password</li>
+                        </ul>
+                        <TextField 
+                            label="New password" 
+                            type="password" 
+                            canRevealPassword 
+                            value={password} 
+                            onChange={(_, v) => {
+                                const pwd = v || '';
+                                setPassword(pwd);
+                                if (pwd) {
+                                    const validation = validatePasswordComplexity(pwd, email?.split('@')[0] || '');
+                                    setPasswordErrors(validation.errors);
+                                } else {
+                                    setPasswordErrors([]);
+                                }
+                            }} 
+                            required 
+                            errorMessage={passwordErrors.length > 0 ? passwordErrors.join(' ') : undefined}
+                        />
+                        {passwordErrors.length > 0 && (
+                            <MessageBar messageBarType={MessageBarType.error} isMultiline>
+                                <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                                    {passwordErrors.map((error, index) => (
+                                        <li key={index}>{error}</li>
+                                    ))}
+                                </ul>
+                            </MessageBar>
+                        )}
                         <TextField label="Confirm new password" type="password" canRevealPassword value={confirmPassword} onChange={(_, v) => setConfirmPassword(v || '')} required />
                         {localError && (
                             <MessageBar messageBarType={MessageBarType.error}>{localError}</MessageBar>
                         )}
                         <PrimaryButton
                             text={loading ? 'Resetting…' : 'Reset password'}
-                            disabled={loading || !password || !confirmPassword}
+                            disabled={loading || !password || !confirmPassword || passwordErrors.length > 0}
                             onClick={async () => {
                                 setLocalError(null);
                                 if (password !== confirmPassword) {
@@ -160,8 +194,8 @@ export const Login: React.FC = () => {
                                     return;
                                 }
                                 // client-side complexity check
-                                const ok = isComplex(password);
-                                if (!ok) {
+                                const validation = validatePasswordComplexity(password, email?.split('@')[0] || '');
+                                if (!validation.isValid) {
                                     setLocalError('Password does not meet complexity requirements');
                                     return;
                                 }
@@ -180,13 +214,3 @@ export const Login: React.FC = () => {
         </div>
     );
 };
-
-function isComplex(pwd: string): boolean {
-    if (!pwd || pwd.length < 8) return false;
-    const hasLower = /[a-z]/.test(pwd);
-    const hasUpper = /[A-Z]/.test(pwd);
-    const hasDigit = /\d/.test(pwd);
-    const hasSymbol = /[^a-zA-Z0-9]/.test(pwd);
-    const categories = [hasLower, hasUpper, hasDigit, hasSymbol].filter(Boolean).length;
-    return categories >= 3;
-}

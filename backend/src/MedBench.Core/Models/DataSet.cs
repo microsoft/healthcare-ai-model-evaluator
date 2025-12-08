@@ -56,5 +56,10 @@ public class DataSet
     public int TotalOutputTokens { get; set; } = 0;
     public Dictionary<string, int> TotalOutputTokensPerIndex { get; set; } = new Dictionary<string, int>();
     public List<DataFile> DataFiles { get; set; } = new List<DataFile>();
+    
+    // Data retention settings
+    public int DaysToAutoDelete { get; set; } = 180; // Default 180 days
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? DeletedAt { get; set; }
 } 
 

@@ -106,7 +106,7 @@ public class UsersController : ControllerBase
         public string Email { get; set; } = "";
     }
 
-    // DTO excluding password-related fields
+    // DTO excluding            -related fields
     public class UserDto
     {
         public string Id { get; set; } = string.Empty;

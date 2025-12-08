@@ -124,8 +124,11 @@ param emailSmtpPass string = ''
 @description('SMTP SSL/TLS usage')
 param emailSmtpUseSsl bool = true
 
-@description('Whether to prompt for admin user creation during first deployment')
-param createAdminUser bool = true
+@description('Enable IP filtering for the web application (when true, only allowedWebIp can access the Container App API)')
+param enableWebIpFiltering bool = true
+
+@description('IP addresses allowed to access the Container App web API (comma-delimited CIDR format, e.g., "203.0.113.1/32,198.51.100.0/24"). Storage and Cosmos use managed identity only.')
+param allowedWebIp string = ''
 
 @description('Tags for all AI resources created. JSON object')
 param tagParam object = {}
@@ -203,18 +206,7 @@ module openAI './modules/openai.bicep' = {
   }
 }
 
-// Data services (depends on key vault)
-module cosmos './modules/cosmos.bicep' = {
-  name: '${deploymentName}-cosmos'
-  params: {
-    location: empty(cosmosLocation) ? location : cosmosLocation
-    tags: tags
-    accountName: names.cosmos
-    databaseName: 'HAIMEDB'
-    keyVaultName: keyVault.outputs.name
-  }
-}
-
+// Storage and other infrastructure first
 module storage './modules/storage.bicep' = {
   name: '${deploymentName}-storage'
   params: {
@@ -222,6 +214,8 @@ module storage './modules/storage.bicep' = {
     tags: tags
     name: names.storage
     keyVaultName: keyVault.outputs.name
+    principalId: containerApps.outputs.apiPrincipalId
+    principalType: 'ServicePrincipal'
   }
 }
 
@@ -236,39 +230,7 @@ module auth './modules/auth.bicep' = {
   }
 }
 
-// Azure Functions for metrics processing
-module functions './modules/functions.bicep' = {
-  name: '${deploymentName}-functions'
-  params: {
-    location: empty(functionsLocation) ? location : functionsLocation
-    tags: tags
-    resourceToken: uniqueSuffix
-    keyVaultName: keyVault.outputs.name
-    storageAccountName: storage.outputs.name
-    containerRegistryName: registry.outputs.name
-    openAIEndpoint: openAI.outputs.endpoint
-    openAIDeploymentName: openAI.outputs.deploymentName
-    openAIApiVersion: openAI.outputs.apiVersion
-    dockerImageTag: dockerImageTag
-  }
-}
-
-// Azure Communication Services (optional)
-module acs './modules/communication.bicep' = if (enableAcs) {
-  name: '${deploymentName}-acs'
-  params: {
-    tags: tags
-    name: 'acs-${uniqueSuffix}'
-    keyVaultName: keyVault.outputs.name
-    // You can override this via params if needed
-    dataLocation: 'United States'
-  }
-}
-
-
-// Resolve ACS connection string (empty when disabled). Note: access output only when module is instantiated via ternary inline at usage sites.
-
-// Application services (depends on all infrastructure)
+// Application services (to get managed identity)
 module containerApps './modules/containerapps.bicep' = {
   name: '${deploymentName}-containerapps'
   params: {
@@ -293,8 +255,59 @@ module containerApps './modules/containerapps.bicep' = {
   // Azure Communication Services
   acsKeyVaultSecretName: enableAcs ? 'acs-connection-string' : ''
   emailEnabled: emailEnabled
+  // IP filtering
+  enableWebIpFiltering: enableWebIpFiltering
+  allowedWebIp: allowedWebIp
   }
 }
+
+// Data services (depends on container apps for managed identity)
+module cosmos './modules/cosmos.bicep' = {
+  name: '${deploymentName}-cosmos'
+  params: {
+    location: empty(cosmosLocation) ? location : cosmosLocation
+    tags: tags
+    accountName: names.cosmos
+    databaseName: 'HAIMEDB'
+    keyVaultName: keyVault.outputs.name
+    principalId: containerApps.outputs.apiPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Azure Functions for metrics processing
+module functions './modules/functions.bicep' = {
+  name: '${deploymentName}-functions'
+  params: {
+    location: empty(functionsLocation) ? location : functionsLocation
+    tags: tags
+    resourceToken: uniqueSuffix
+    keyVaultName: keyVault.outputs.name
+    storageAccountName: storage.outputs.name
+    containerRegistryName: registry.outputs.name
+    openAIEndpoint: openAI.outputs.endpoint
+    openAIDeploymentName: openAI.outputs.deploymentName
+    openAIApiVersion: openAI.outputs.apiVersion
+    dockerImageTag: dockerImageTag
+  }
+}
+
+// Data retention cleanup is now handled as a background service in the API
+
+// Azure Communication Services (optional)
+module acs './modules/communication.bicep' = if (enableAcs) {
+  name: '${deploymentName}-acs'
+  params: {
+    tags: tags
+    name: 'acs-${uniqueSuffix}'
+    keyVaultName: keyVault.outputs.name
+    // You can override this via params if needed
+    dataLocation: 'United States'
+  }
+}
+
+
+// Resolve ACS connection string (empty when disabled). Note: access output only when module is instantiated via ternary inline at usage sites.
 
 // Conditional evaluator addon deployment
 module evaluatorAddon './modules/addons/evaluator.bicep' = if (enableEvaluatorAddon) {
@@ -329,8 +342,11 @@ output WEB_BASE_URL string = '${containerApps.outputs.apiUri}/webapp'
 // Function app outputs
 output METRICS_FUNCTION_APP_NAME string = functions.outputs.metricsAppName
 output METRICS_FUNCTION_APP_URL string = 'https://${functions.outputs.metricsAppDefaultHostName}'
-output EVALUATOR_FUNCTION_APP_NAME string = enableEvaluatorAddon ? evaluatorAddon.outputs.evaluatorAppName : ''
-output EVALUATOR_FUNCTION_APP_URL string = enableEvaluatorAddon ? 'https://${evaluatorAddon.outputs.evaluatorAppDefaultHostName}' : ''
+// Data retention cleanup is now handled as a background service in the API
+
+// Evaluator addon outputs (conditional)
+output EVALUATOR_FUNCTION_APP_NAME string = ''
+output EVALUATOR_FUNCTION_APP_URL string = ''
 
 // Azure OpenAI outputs
 output AZURE_OPENAI_ENDPOINT string = openAI.outputs.endpoint

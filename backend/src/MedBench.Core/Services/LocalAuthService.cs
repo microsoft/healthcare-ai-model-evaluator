@@ -80,7 +80,7 @@ public class LocalAuthService : ILocalAuthService
         );
         if (user == null) throw new ArgumentException("Invalid or expired token");
 
-        ValidatePasswordComplexity(newPassword);
+        PasswordValidator.ValidatePasswordComplexity(newPassword, user.Email?.Split('@')[0], user.Name);
 
         user.PasswordHash = HashPassword(newPassword, out var salt);
         user.PasswordSalt = salt;
@@ -94,7 +94,7 @@ public class LocalAuthService : ILocalAuthService
         var normEmail = email.Trim().ToLowerInvariant();
         var user = await _users.FindByEmailAsync(normEmail);
         if (user == null) throw new ArgumentException("User not found");
-        ValidatePasswordComplexity(newPassword);
+        PasswordValidator.ValidatePasswordComplexity(newPassword, user.Email?.Split('@')[0], user.Name);
         user.PasswordHash = HashPassword(newPassword, out var salt);
         user.PasswordSalt = salt;
         user.PasswordResetToken = null;
@@ -147,16 +147,5 @@ public class LocalAuthService : ILocalAuthService
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
-    private static void ValidatePasswordComplexity(string password)
-    {
-        if (string.IsNullOrWhiteSpace(password) || password.Length < 8)
-            throw new ArgumentException("Password must be at least 8 characters.");
-        int categories = 0;
-        if (password.Any(char.IsLower)) categories++;
-        if (password.Any(char.IsUpper)) categories++;
-        if (password.Any(char.IsDigit)) categories++;
-        if (password.Any(ch => !char.IsLetterOrDigit(ch))) categories++;
-        if (categories < 3)
-            throw new ArgumentException("Password must include 3 of 4: upper, lower, number, symbol.");
-    }
+
 }

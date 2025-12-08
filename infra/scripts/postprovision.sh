@@ -182,11 +182,6 @@ else
     exit 1
 fi
 
-# Create first admin user if needed
-echo ""
-echo "Checking if admin user creation is needed..."
-"$(dirname "$0")/create-admin-user.sh"
-
 echo ""
 if [ "$CLIENT_ID" = "00000000-0000-0000-0000-000000000000" ]; then
     echo "⚠️  Post-provision setup completed with placeholder CLIENT_ID!"

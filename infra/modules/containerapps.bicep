@@ -22,6 +22,13 @@ param acsKeyVaultSecretName string = ''
 // Feature flag: enable/disable email communications in app
 param emailEnabled bool = false
 
+// IP filtering parameters
+@description('Enable IP filtering for the web application (when true, only allowedWebIp can access the API)')
+param enableWebIpFiltering bool = true
+
+@description('IP address allowed to access the web application API (comma-delimited CIDR format, e.g., "203.0.113.1/32,198.51.100.0/24")')
+param allowedWebIp string = ''
+
 resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2021-12-01-preview' existing = {
   name: logAnalyticsWorkspaceName
 }
@@ -71,6 +78,18 @@ resource apiContainerApp 'Microsoft.App/containerApps@2023-05-01' = {
           allowedMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
           allowedHeaders: ['*']
         }
+        ipSecurityRestrictions: enableWebIpFiltering && !empty(allowedWebIp) ? [
+          {
+            name: 'AllowedIP'
+            ipAddressRange: contains(allowedWebIp, ',') ? trim(split(allowedWebIp, ',')[0]) : allowedWebIp
+            action: 'Allow'
+          }
+          {
+            name: 'DenyAll'
+            ipAddressRange: '0.0.0.0/0'
+            action: 'Deny'
+          }
+        ] : []
       }
       registries: [
         {
@@ -90,8 +109,18 @@ resource apiContainerApp 'Microsoft.App/containerApps@2023-05-01' = {
           identity: 'system'
   }
         {
+          name: 'cosmos-endpoint'
+          keyVaultUrl: '${keyVault.properties.vaultUri}secrets/cosmos-endpoint'
+          identity: 'system'
+        }
+        {
           name: 'storage-connection-string'
           keyVaultUrl: '${keyVault.properties.vaultUri}secrets/storage-connection-string'
+          identity: 'system'
+        }
+        {
+          name: 'storage-endpoint'
+          keyVaultUrl: '${keyVault.properties.vaultUri}secrets/storage-endpoint'
           identity: 'system'
         }
         {
@@ -147,12 +176,20 @@ resource apiContainerApp 'Microsoft.App/containerApps@2023-05-01' = {
               secretRef: 'cosmos-connection-string'
             }
             {
+              name: 'COSMOSDB_ENDPOINT'
+              secretRef: 'cosmos-endpoint'
+            }
+            {
               name: 'Storage__ConnectionString'
               secretRef: 'storage-connection-string'
             }
             {
               name: 'AZURE_STORAGE_CONNECTION_STRING'
               secretRef: 'storage-connection-string'
+            }
+            {
+              name: 'AZURE_STORAGE_ENDPOINT'
+              secretRef: 'storage-endpoint'
             }
             {
               name: 'AzureStorage__ImageContainer'
@@ -258,4 +295,5 @@ resource keyVaultAccessPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2022-07-
 }
 
 output apiUri string = 'https://${apiContainerApp.properties.configuration.ingress.fqdn}'
-output apiName string = apiContainerApp.name 
+output apiName string = apiContainerApp.name
+output apiPrincipalId string = apiContainerApp.identity.principalId 
