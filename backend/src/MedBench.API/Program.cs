@@ -346,6 +346,14 @@ builder.Services.AddHostedService<ModelMigrationHostedService>();
 // Register Data Retention Background Service
 builder.Services.AddHostedService<DataRetentionBackgroundService>();
 
+// Register Key Vault Service
+builder.Services.AddMemoryCache(); // Required for KeyVaultService caching
+builder.Services.AddSingleton<IKeyVaultService, KeyVaultService>();
+
+// Register Model Migration Service
+builder.Services.AddSingleton<IModelMigrationService, ModelMigrationService>();
+builder.Services.AddHostedService<ModelMigrationHostedService>();
+
 // Register Image Service
 builder.Services.AddScoped<IImageService, ImageService>();
 

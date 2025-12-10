@@ -298,7 +298,7 @@ resource keyVaultAccessPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2022-07-
         tenantId: subscription().tenantId
         objectId: apiContainerApp.identity.principalId
         permissions: {
-          secrets: ['get']
+          secrets: ['get', 'list', 'set', 'delete']
         }
       }
     ]
