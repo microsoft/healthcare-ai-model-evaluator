@@ -410,7 +410,6 @@ app.UseStaticFiles();
 
 // Then, serve React app files from wwwroot/webapp at the /webapp path
 var webappPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "webapp");
-
 if (Directory.Exists(webappPath))
 {
     var assetsPath = Path.Combine(webappPath, "assets");
@@ -419,7 +418,16 @@ if (Directory.Exists(webappPath))
     app.UseStaticFiles(new StaticFileOptions
     {
         FileProvider = new PhysicalFileProvider(webappPath),
-        RequestPath = "/webapp"
+        RequestPath = "/webapp",
+        OnPrepareResponse = ctx =>
+        {
+            Console.WriteLine($"Static file middleware serving: {ctx.Context.Request.Path}");
+            Console.WriteLine($"File exists: {ctx.File.Exists}");
+            if (ctx.File.Exists)
+            {
+                Console.WriteLine($"Physical path: {ctx.File.PhysicalPath}");
+            }
+        }
     });
 }
 
@@ -433,31 +441,13 @@ app.MapControllers();
 
 
 // Handle common files that might be requested from root and redirect to webapp
-app.MapGet("/{filename}", async (HttpContext context, string filename) =>
+app.MapGet("/{filename}", (HttpContext context, string filename) =>
 {
     var commonFiles = new[] { "favicon.ico", "logo.png", "favicon.svg", "apple-touch-icon.png", "manifest.json", "robots.txt" };
     
     if (commonFiles.Contains(filename.ToLowerInvariant()))
     {
-        var webappFile = Path.Combine(app.Environment.ContentRootPath, "wwwroot",  filename);
-
-        if (File.Exists(webappFile))
-        {
-            // Set appropriate content type
-            var contentType = filename.ToLowerInvariant() switch
-            {
-                var f when f.EndsWith(".png") => "image/png",
-                var f when f.EndsWith(".svg") => "image/svg+xml",
-                var f when f.EndsWith(".ico") => "image/x-icon",
-                var f when f.EndsWith(".json") => "application/json",
-                var f when f.EndsWith(".txt") => "text/plain",
-                _ => "application/octet-stream"
-            };
-            
-            context.Response.ContentType = contentType;
-            await context.Response.SendFileAsync(webappFile);
-            return;
-        }
+        var webappFile = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "webapp", filename);
     }
     
     // If not a common file, return 404
@@ -480,19 +470,27 @@ app.MapGet("/webapp", async (HttpContext context) =>
     }
 });
 
-// Handle React app navigation routes - use catch-all parameter and check inside handler
+// Handle React app navigation routes - use a more specific pattern that excludes static files
 app.MapFallback("/webapp/{**path}", async (HttpContext context, ILogger<Program> logger) =>
 {
     var requestPath = context.Request.Path.Value ?? "";
     
-    // Skip fallback for assets or files with extensions
+    // Skip if this is a request for static assets (js, css, images, etc.)
     if (requestPath.Contains("/assets/") || 
-        (requestPath.Contains('.') && !requestPath.EndsWith('/')))
+        requestPath.EndsWith(".js") || 
+        requestPath.EndsWith(".css") || 
+        requestPath.EndsWith(".png") || 
+        requestPath.EndsWith(".jpg") || 
+        requestPath.EndsWith(".ico") || 
+        requestPath.EndsWith(".svg") ||
+        requestPath.EndsWith(".json") ||
+        requestPath.EndsWith(".txt"))
     {
         context.Response.StatusCode = 404;
         return;
     }
     
+    Console.WriteLine($"[Fallback] Handling React route: {requestPath}");
     // Serve index.html for React app navigation routes
     var indexPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "webapp", "index.html");
     
@@ -507,7 +505,6 @@ app.MapFallback("/webapp/{**path}", async (HttpContext context, ILogger<Program>
         await context.Response.WriteAsync("React app not found.");
     }
 });
-
 
 // Add before app.Run()
 if (app.Environment.IsDevelopment())

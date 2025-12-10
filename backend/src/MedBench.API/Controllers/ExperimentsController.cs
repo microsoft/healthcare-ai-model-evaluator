@@ -363,7 +363,8 @@ public class ExperimentsController : ControllerBase
                     trialResponse = trial.TrialResponse,
                     reviewerInstructions = trial.ReviewerInstructions,
                     createdAt = trial.CreatedAt,
-                    updatedAt = trial.UpdatedAt
+                    updatedAt = trial.UpdatedAt,
+                    questions = trial.Questions
                 };
                 enrichedTrials.Add(enrichedTrial);
             }
