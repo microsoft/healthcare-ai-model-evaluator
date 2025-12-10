@@ -182,6 +182,41 @@ else
     exit 1
 fi
 
+# Configure managed identity role assignments for data services
+echo "Configuring managed identity access to data services..."
+CONTAINER_APP_NAME="api-${AZURE_ENV_NAME}"
+PRINCIPAL_ID=$(az containerapp show --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP_NAME" --query "identity.principalId" -o tsv 2>/dev/null || echo "")
+
+if [ -n "$PRINCIPAL_ID" ] && [ "$PRINCIPAL_ID" != "null" ]; then
+    echo "Container App managed identity principal ID: $PRINCIPAL_ID"
+    
+    # Assign Cosmos DB role
+    if [ -n "$COSMOS_ACCOUNT_NAME" ]; then
+        echo "Assigning Cosmos DB role to Container App managed identity..."
+        az cosmosdb sql role assignment create \
+            --account-name "$COSMOS_ACCOUNT_NAME" \
+            --resource-group "$RESOURCE_GROUP_NAME" \
+            --principal-id "$PRINCIPAL_ID" \
+            --role-definition-id "5bd9cd88-fe45-4216-938b-f97437e15450" \
+            --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP_NAME/providers/Microsoft.DocumentDB/databaseAccounts/$COSMOS_ACCOUNT_NAME" \
+            --output none 2>/dev/null || echo "Role assignment may already exist"
+        echo "✅ Cosmos DB role assignment completed"
+    fi
+    
+    # Assign Storage role
+    if [ -n "$STORAGE_ACCOUNT_NAME" ]; then
+        echo "Assigning Storage role to Container App managed identity..."
+        az role assignment create \
+            --assignee "$PRINCIPAL_ID" \
+            --role "Storage Blob Data Contributor" \
+            --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP_NAME/providers/Microsoft.Storage/storageAccounts/$STORAGE_ACCOUNT_NAME" \
+            --output none 2>/dev/null || echo "Role assignment may already exist"
+        echo "✅ Storage role assignment completed"
+    fi
+else
+    echo "⚠️  Warning: Could not get Container App managed identity principal ID"
+fi
+
 echo ""
 if [ "$CLIENT_ID" = "00000000-0000-0000-0000-000000000000" ]; then
     echo "⚠️  Post-provision setup completed with placeholder CLIENT_ID!"

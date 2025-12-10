@@ -223,19 +223,6 @@ fi
 
 echo "✅ Connection string retrieved successfully"
 
-# Temporarily enable public network access for admin user creation
-echo "Temporarily enabling public network access for Cosmos DB..."
-az cosmosdb update \
-    --name "$COSMOS_ACCOUNT_NAME" \
-    --resource-group "$RESOURCE_GROUP_NAME" \
-    --enable-public-network true \
-    --output none 2>/dev/null || {
-    echo "⚠️  Warning: Could not enable public network access. This might fail if using private endpoints."
-}
-
-# Wait a moment for the setting to take effect
-sleep 10
-
 # Check if user already exists using MongoDB query
 echo "Checking if user already exists..."
 if command -v mongosh >/dev/null 2>&1; then
@@ -253,18 +240,6 @@ if [ "$EXISTING_USER" != "null" ] && [ "$EXISTING_USER" != "" ] && [ "$EXISTING_
     echo ""
     echo "Setting CREATE_ADMIN_USER=false to prevent prompting on future deployments"
     azd env set CREATE_ADMIN_USER false
-    
-    # Disable public network access again for security
-    echo "Disabling public network access for Cosmos DB..."
-    az cosmosdb update \
-        --name "$COSMOS_ACCOUNT_NAME" \
-        --resource-group "$RESOURCE_GROUP_NAME" \
-        --enable-public-network false \
-        --output none 2>/dev/null || {
-        echo "⚠️  Warning: Could not disable public network access."
-    }
-    
-    echo "🔒 Cosmos DB network access secured."
     exit 0
 fi
 
@@ -306,15 +281,5 @@ fi
 echo ""
 echo "✅ Admin user creation completed!"
 echo ""
-
-# Disable public network access again for security
-echo "Disabling public network access for Cosmos DB..."
-az cosmosdb update \
-    --name "$COSMOS_ACCOUNT_NAME" \
-    --resource-group "$RESOURCE_GROUP_NAME" \
-    --enable-public-network false \
-    --output none 2>/dev/null || {
-    echo "⚠️  Warning: Could not disable public network access."
-}
-
-echo "🔒 Cosmos DB network access secured."
+echo "Setting CREATE_ADMIN_USER=false to prevent prompting on future deployments"
+azd env set CREATE_ADMIN_USER false

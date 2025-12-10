@@ -402,8 +402,6 @@ app.UseStaticFiles();
 
 // Then, serve React app files from wwwroot/webapp at the /webapp path
 var webappPath = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "webapp");
-Console.WriteLine($"Setting up static files for webapp at: {webappPath}");
-Console.WriteLine($"Directory exists: {Directory.Exists(webappPath)}");
 
 if (Directory.Exists(webappPath))
 {
@@ -413,18 +411,10 @@ if (Directory.Exists(webappPath))
     app.UseStaticFiles(new StaticFileOptions
     {
         FileProvider = new PhysicalFileProvider(webappPath),
-        RequestPath = "/webapp",
-        OnPrepareResponse = ctx =>
-        {
-            Console.WriteLine($"Static file middleware serving: {ctx.Context.Request.Path}");
-            Console.WriteLine($"File exists: {ctx.File.Exists}");
-            if (ctx.File.Exists)
-            {
-                Console.WriteLine($"Physical path: {ctx.File.PhysicalPath}");
-            }
-        }
+        RequestPath = "/webapp"
     });
 }
+
 
 app.UseAuthentication();
 app.UseAuthorization();
@@ -432,14 +422,34 @@ app.UseMiddleware<UserIdMiddleware>();
 
 app.MapControllers();
 
+
+
 // Handle common files that might be requested from root and redirect to webapp
-app.MapGet("/{filename}", (HttpContext context, string filename) =>
+app.MapGet("/{filename}", async (HttpContext context, string filename) =>
 {
     var commonFiles = new[] { "favicon.ico", "logo.png", "favicon.svg", "apple-touch-icon.png", "manifest.json", "robots.txt" };
     
     if (commonFiles.Contains(filename.ToLowerInvariant()))
     {
-        var webappFile = Path.Combine(app.Environment.ContentRootPath, "wwwroot", "webapp", filename);
+        var webappFile = Path.Combine(app.Environment.ContentRootPath, "wwwroot",  filename);
+
+        if (File.Exists(webappFile))
+        {
+            // Set appropriate content type
+            var contentType = filename.ToLowerInvariant() switch
+            {
+                var f when f.EndsWith(".png") => "image/png",
+                var f when f.EndsWith(".svg") => "image/svg+xml",
+                var f when f.EndsWith(".ico") => "image/x-icon",
+                var f when f.EndsWith(".json") => "application/json",
+                var f when f.EndsWith(".txt") => "text/plain",
+                _ => "application/octet-stream"
+            };
+            
+            context.Response.ContentType = contentType;
+            await context.Response.SendFileAsync(webappFile);
+            return;
+        }
     }
     
     // If not a common file, return 404
@@ -462,19 +472,15 @@ app.MapGet("/webapp", async (HttpContext context) =>
     }
 });
 
-// Handle React app navigation routes - catch all /webapp routes except static assets
+// Handle React app navigation routes - use catch-all parameter and check inside handler
 app.MapFallback("/webapp/{**path}", async (HttpContext context, ILogger<Program> logger) =>
 {
     var requestPath = context.Request.Path.Value ?? "";
-    logger.LogInformation($"Fallback handling request: {requestPath}");
     
-    // Skip if it's a request for static assets or files with extensions
+    // Skip fallback for assets or files with extensions
     if (requestPath.Contains("/assets/") || 
-        (requestPath.Contains('.') && !requestPath.EndsWith('/') && 
-         Path.GetExtension(requestPath) != string.Empty &&
-         !requestPath.Contains("/webapp/") && requestPath != "/webapp"))
+        (requestPath.Contains('.') && !requestPath.EndsWith('/')))
     {
-        logger.LogInformation($"Skipping fallback for static file: {requestPath}");
         context.Response.StatusCode = 404;
         return;
     }
@@ -484,17 +490,16 @@ app.MapFallback("/webapp/{**path}", async (HttpContext context, ILogger<Program>
     
     if (File.Exists(indexPath))
     {
-        logger.LogInformation($"Serving index.html for route: {requestPath}");
         context.Response.ContentType = "text/html";
         await context.Response.SendFileAsync(indexPath);
     }
     else
     {
-        logger.LogWarning($"index.html not found at: {indexPath}");
         context.Response.StatusCode = 404;
         await context.Response.WriteAsync("React app not found.");
     }
 });
+
 
 // Add before app.Run()
 if (app.Environment.IsDevelopment())

@@ -36,11 +36,11 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
     apiProperties: {
       serverVersion: '4.2'
     }
-    // Use Azure service integration for security - disable public access by default
-    publicNetworkAccess: 'Disabled'  // Admin scripts will enable temporarily when needed
+    // Allow public access but secure with managed identity authentication
+    publicNetworkAccess: 'Enabled'  
     networkAclBypass: 'AzureServices' // Allow Azure services like Container Apps and Functions
     isVirtualNetworkFilterEnabled: false
-    ipRules: []  // No specific IP restrictions - rely on managed identity and Azure service integration
+    ipRules: []  // No specific IP restrictions - rely on managed identity authentication
   }
 }
 

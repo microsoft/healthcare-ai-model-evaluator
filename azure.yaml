@@ -52,13 +52,8 @@ services:
 
 hooks:
   preprovision:
-    posix:
-      shell: sh
+    - shell: sh
       run: ./infra/hooks/preprovision.sh
-      continueOnError: false
-    windows:
-      shell: pwsh
-      run: ./infra/hooks/preprovision.ps1
       continueOnError: false
   postprovision:
     - run: ./infra/scripts/postprovision.sh
@@ -71,3 +66,4 @@ infra:
   parameters:
     enableWebIpFiltering: "${ENABLE_WEB_IP_FILTERING}"
     allowedWebIp: "${ALLOWED_WEB_IP}"
+    authClientId: "${AUTH_CLIENT_ID}"

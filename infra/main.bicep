@@ -130,6 +130,9 @@ param enableWebIpFiltering bool = true
 @description('IP addresses allowed to access the Container App web API (comma-delimited CIDR format, e.g., "203.0.113.1/32,198.51.100.0/24"). Storage and Cosmos use managed identity only.')
 param allowedWebIp string = ''
 
+@description('Azure AD App Registration Client ID (will be set by postprovision script)')
+param authClientId string = '00000000-0000-0000-0000-000000000000'
+
 @description('Tags for all AI resources created. JSON object')
 param tagParam object = {}
 
@@ -206,7 +209,25 @@ module openAI './modules/openai.bicep' = {
   }
 }
 
-// Storage and other infrastructure first
+// Auth placeholder (simple, minimal dependencies)
+// Auth configuration is handled entirely by postprovision script
+// No Bicep module needed since it was overwriting existing values
+
+// Deploy data services first to create secrets that Container Apps will reference
+module cosmos './modules/cosmos.bicep' = {
+  name: '${deploymentName}-cosmos'
+  params: {
+    location: empty(cosmosLocation) ? location : cosmosLocation
+    tags: tags
+    accountName: names.cosmos
+    databaseName: 'HAIMEDB'
+    keyVaultName: keyVault.outputs.name
+    principalId: '' // Empty initially, role assignment will be done in postprovision
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// Storage deployed before Container Apps to create secrets
 module storage './modules/storage.bicep' = {
   name: '${deploymentName}-storage'
   params: {
@@ -214,23 +235,12 @@ module storage './modules/storage.bicep' = {
     tags: tags
     name: names.storage
     keyVaultName: keyVault.outputs.name
-    principalId: containerApps.outputs.apiPrincipalId
+    principalId: '' // Empty initially, role assignment will be done in postprovision
     principalType: 'ServicePrincipal'
   }
 }
 
-// Auth placeholder (simple, minimal dependencies)
-module auth './modules/auth.bicep' = {
-  name: '${deploymentName}-auth'
-  params: {
-    location: location
-    tags: tags
-    name: 'auth-${uniqueSuffix}'
-    keyVaultName: keyVault.outputs.name
-  }
-}
-
-// Application services (to get managed identity)
+// Container Apps deployed after data services so secrets exist
 module containerApps './modules/containerapps.bicep' = {
   name: '${deploymentName}-containerapps'
   params: {
@@ -241,38 +251,31 @@ module containerApps './modules/containerapps.bicep' = {
     logAnalyticsWorkspaceName: monitoring.outputs.logAnalyticsWorkspaceName
     applicationInsightsName: monitoring.outputs.applicationInsightsName
     keyVaultName: keyVault.outputs.name
-    authClientId: auth.outputs.clientId
+    authClientId: authClientId
     apiImageName: apiImageName
     resourceToken: uniqueSuffix
-  // new params for web/email config
-  webBaseUrl: webBaseUrl
-  emailFrom: emailFrom
-  emailSmtpHost: emailSmtpHost
-  emailSmtpPort: emailSmtpPort
-  emailSmtpUser: emailSmtpUser
-  emailSmtpPass: emailSmtpPass
-  emailSmtpUseSsl: emailSmtpUseSsl
-  // Azure Communication Services
-  acsKeyVaultSecretName: enableAcs ? 'acs-connection-string' : ''
-  emailEnabled: emailEnabled
-  // IP filtering
-  enableWebIpFiltering: enableWebIpFiltering
-  allowedWebIp: allowedWebIp
+    // new params for web/email config
+    webBaseUrl: webBaseUrl
+    emailFrom: emailFrom
+    emailSmtpHost: emailSmtpHost
+    emailSmtpPort: emailSmtpPort
+    emailSmtpUser: emailSmtpUser
+    emailSmtpPass: emailSmtpPass
+    emailSmtpUseSsl: emailSmtpUseSsl
+    // Azure Communication Services
+    acsKeyVaultSecretName: enableAcs ? 'acs-connection-string' : ''
+    emailEnabled: emailEnabled
+    // IP filtering
+    enableWebIpFiltering: enableWebIpFiltering
+    allowedWebIp: allowedWebIp
+    // Account names for direct connection string generation
+    cosmosAccountName: cosmos.outputs.accountName
+    storageAccountName: storage.outputs.name
   }
-}
-
-// Data services (depends on container apps for managed identity)
-module cosmos './modules/cosmos.bicep' = {
-  name: '${deploymentName}-cosmos'
-  params: {
-    location: empty(cosmosLocation) ? location : cosmosLocation
-    tags: tags
-    accountName: names.cosmos
-    databaseName: 'HAIMEDB'
-    keyVaultName: keyVault.outputs.name
-    principalId: containerApps.outputs.apiPrincipalId
-    principalType: 'ServicePrincipal'
-  }
+  dependsOn: [
+    cosmos
+    storage
+  ]
 }
 
 // Azure Functions for metrics processing
@@ -290,6 +293,9 @@ module functions './modules/functions.bicep' = {
     openAIApiVersion: openAI.outputs.apiVersion
     dockerImageTag: dockerImageTag
   }
+  dependsOn: [
+    containerApps
+  ]
 }
 
 // Data retention cleanup is now handled as a background service in the API
@@ -335,7 +341,7 @@ output AZURE_CONTAINER_REGISTRY_NAME string = registry.outputs.name
 output AZURE_KEY_VAULT_NAME string = keyVault.outputs.name
 output COSMOS_ACCOUNT_NAME string = cosmos.outputs.accountName
 output STORAGE_ACCOUNT_NAME string = storage.outputs.name
-output AUTH_CLIENT_ID string = auth.outputs.clientId
+output AUTH_CLIENT_ID string = authClientId
 output API_BASE_URL string = containerApps.outputs.apiUri
 output WEB_BASE_URL string = '${containerApps.outputs.apiUri}/webapp'
 

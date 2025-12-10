@@ -135,9 +135,10 @@ Now that your environment is configured, you can deploy all necessary resources 
 **By default, the deployment is secure-by-default** and will prompt you to configure IP filtering to protect the web application:
 
 - **During first deployment**, you'll be prompted to enter an IP address that can access the web application
-- **Your current public IP** is automatically detected and suggested as the default
-- **Only specified IPs** can access the web application - all other access is blocked
-- **Backend data services** (Cosmos DB, Storage) are secured via managed identity and are not directly accessible from the internet
+- **Your current public IP** is automatically detected and suggested as the default (using preprovision hooks)
+- **Only specified IPs** can access the web application - all other access is blocked at the Container App ingress level
+- **Backend data services** (Cosmos DB, Storage) use public endpoints but are secured via managed identity authentication and connection strings
+- **IP filtering applies only to the Container App** - Azure Functions, Storage, and Cosmos DB are secured through Azure's service-to-service authentication and managed identities
 
 **Managing IP Access:**
 
@@ -152,7 +153,31 @@ azd env set ALLOWED_WEB_IP "89.144.197.27/32,203.0.113.1/32"
 # Disable IP filtering entirely (not recommended for production)
 azd env set ENABLE_WEB_IP_FILTERING false
 
+# Open to the entire internet 
+azd env set ENABLE_WEB_IP_FILTERING false
+azd env set ALLOWED_WEB_IP ""
+
 # Re-deploy with new settings
+azd up
+```
+
+> [!WARNING]
+> **Opening to Internet**: Setting `ENABLE_WEB_IP_FILTERING=false` removes all IP restrictions and allows public internet access to your application. 
+
+**Quick Commands for Common Scenarios:**
+
+```sh
+# Development: Open to internet (use only for testing)
+azd env set ENABLE_WEB_IP_FILTERING false
+azd up
+
+# Production: Lock down to your office IP
+azd env set ENABLE_WEB_IP_FILTERING true
+azd env set ALLOWED_WEB_IP "your.office.ip.address/32"
+azd up
+
+# Multiple locations: Home + Office access
+azd env set ALLOWED_WEB_IP "home.ip.address/32,office.ip.address/32"
 azd up
 ```
 
@@ -489,7 +514,39 @@ az network front-door routing-rule create \
    azd up
    ```
 
-4. **Function Deployment Failures**
+4. **Cannot Access the Application (403 Forbidden)**
+   > This typically means your IP address is not in the allowed list
+
+   Check your current IP and update the allowed list:
+   ```bash
+   # Check what IP you're accessing from
+   curl ifconfig.me
+   
+   # View current filtering settings
+   azd env get-value ENABLE_WEB_IP_FILTERING
+   azd env get-value ALLOWED_WEB_IP
+   
+   # Update with your current IP
+   azd env set ALLOWED_WEB_IP "$(curl -s ifconfig.me)/32"
+   azd up
+   
+   # Or temporarily disable for troubleshooting (development only)
+   azd env set ENABLE_WEB_IP_FILTERING false
+   azd up
+   ```
+
+5. **IP Filtering Not Working as Expected**
+   ```bash
+   # Verify Container App ingress rules in Azure Portal
+   az containerapp ingress show \
+     --name "api-$(azd env get-value AZURE_ENV_NAME)" \
+     --resource-group "$(azd env get-value AZURE_RESOURCE_GROUP)"
+   
+   # Check if changes were applied (restart may be needed)
+   azd up
+   ```
+
+6. **Function Deployment Failures**
    ```bash
    # Check Docker is running
    docker info

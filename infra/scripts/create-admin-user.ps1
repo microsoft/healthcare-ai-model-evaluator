@@ -192,21 +192,6 @@ if (-not $cosmosConnectionString) {
 
 Write-Host "✅ Connection string retrieved successfully"
 
-# Temporarily enable public network access for admin user creation
-Write-Host "Temporarily enabling public network access for Cosmos DB..."
-try {
-    az cosmosdb update `
-        --name $cosmosAccountName `
-        --resource-group $resourceGroupName `
-        --enable-public-network true `
-        --output none 2>$null
-} catch {
-    Write-Host "⚠️  Warning: Could not enable public network access. This might fail if using private endpoints."
-}
-
-# Wait a moment for the setting to take effect
-Start-Sleep -Seconds 10
-
 # Check if user already exists using MongoDB query
 Write-Host "Checking if user already exists..."
 if (Get-Command mongosh -ErrorAction SilentlyContinue) {
@@ -229,20 +214,6 @@ if ($existingUser) {
     Write-Host ""
     Write-Host "Setting CREATE_ADMIN_USER=false to prevent prompting on future deployments"
     azd env set CREATE_ADMIN_USER false
-    
-    # Disable public network access again for security
-    Write-Host "Disabling public network access for Cosmos DB..."
-    try {
-        az cosmosdb update `
-            --name $cosmosAccountName `
-            --resource-group $resourceGroupName `
-            --enable-public-network false `
-            --output none 2>$null
-    } catch {
-        Write-Host "⚠️  Warning: Could not disable public network access."
-    }
-    
-    Write-Host "🔒 Cosmos DB network access secured."
     exit 0
 }
 
@@ -289,20 +260,6 @@ Write-Host "✅ Admin user creation completed!"
 Write-Host ""
 Write-Host "Setting CREATE_ADMIN_USER=false to prevent prompting on future deployments"
 azd env set CREATE_ADMIN_USER false
-
-# Disable public network access again for security
-Write-Host "Disabling public network access for Cosmos DB..."
-try {
-    az cosmosdb update `
-        --name $cosmosAccountName `
-        --resource-group $resourceGroupName `
-        --enable-public-network false `
-        --output none 2>$null
-} catch {
-    Write-Host "⚠️  Warning: Could not disable public network access."
-}
-
-Write-Host "🔒 Cosmos DB network access secured."
 
 # Clear password from memory
 $adminPassword = $null
