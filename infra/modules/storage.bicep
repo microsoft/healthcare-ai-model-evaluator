@@ -2,8 +2,10 @@ param location string
 param tags object = {}
 param name string
 param keyVaultName string
+param principalId string = ''
+param principalType string = 'ServicePrincipal'
 
-resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
+resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   name: name
   location: location
   tags: tags
@@ -16,6 +18,11 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2022-09-01' = {
     allowBlobPublicAccess: true
     minimumTlsVersion: 'TLS1_2'
     accessTier: 'Hot'
+    networkAcls: {
+      defaultAction: 'Allow'  // Allow Azure services and managed identity access
+      bypass: 'AzureServices'
+      ipRules: []  // No specific IP restrictions - rely on managed identity
+    }
   }
 }
 
@@ -95,5 +102,26 @@ resource storageConnectionStringSecret 'Microsoft.KeyVault/vaults/secrets@2022-0
   }
 }
 
+// Store Storage endpoint for managed identity authentication
+resource storageEndpointSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
+  parent: keyVault
+  name: 'storage-endpoint'
+  properties: {
+    value: storageAccount.properties.primaryEndpoints.blob
+  }
+}
+
+// Storage Blob Data Contributor role assignment for managed identity
+resource storageRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(principalId)) {
+  scope: storageAccount
+  name: guid(storageAccount.id, principalId, 'StorageBlobDataContributor')
+  properties: {
+    principalId: principalId
+    principalType: principalType
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe') // Storage Blob Data Contributor
+  }
+}
+
 output name string = storageAccount.name
+output endpoint string = storageAccount.properties.primaryEndpoints.blob
 output primaryEndpoints object = storageAccount.properties.primaryEndpoints 

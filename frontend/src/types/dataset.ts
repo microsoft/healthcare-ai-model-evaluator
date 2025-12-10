@@ -38,6 +38,11 @@ export interface DataSetListItem {
     modelOutputCount: number;
     generatedDataList: string[];
     files?: DataFileDto[];
+    
+    // Data retention
+    daysToAutoDelete: number;
+    createdAt: string;
+    deletedAt?: string;
 }
 
 export interface DataSet {
@@ -55,6 +60,11 @@ export interface DataSet {
     totalOutputTokens: number;
     files?: DataFileDto[];
     totalOutputTokensPerIndex: Record<string, number>;
+    
+    // Data retention
+    daysToAutoDelete: number;
+    createdAt: string;
+    deletedAt?: string;
 }
 
 export interface CreateDataSetRequest {
@@ -66,9 +76,12 @@ export interface CreateDataSetRequest {
     modelOutputCount: number;
     file: File | null;
     mapping: DataFileMapping | null;
+    daysToAutoDelete: number;
 }
 
-export type UpdateDataSetRequest = Omit<DataSet, 'dataObjectCount' | 'generatedDataList' | 'totalTokens' | 'dataObjects' | 'totalOutputTokens' | 'totalOutputTokensPerIndex' | 'totalInputTokens'>;
+export type UpdateDataSetRequest = Omit<DataSet, 'dataObjectCount' | 'generatedDataList' | 'totalTokens' | 'dataObjects' | 'totalOutputTokens' | 'totalOutputTokensPerIndex' | 'totalInputTokens' | 'createdAt' | 'deletedAt'> & {
+    daysToAutoDelete: number;
+};
 
 export enum DataFileProcessingStatus {
     Unprocessed = 'Unprocessed',

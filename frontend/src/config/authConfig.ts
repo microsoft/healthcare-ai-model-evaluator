@@ -1,10 +1,11 @@
 import { PublicClientApplication, Configuration } from "@azure/msal-browser";
+import { appConfig } from './appConfig';
 
 // Configuration that uses environment variables (available at build time via azd)
 const runtimeConfig = {
     clientId: import.meta.env.VITE_CLIENT_ID || "432521be-fddf-45d4-8a9e-f9ff8495db08",
     tenantId: import.meta.env.VITE_TENANT_ID || "72f988bf-86f1-41af-91ab-2d7cd011db47",
-    apiBaseUrl: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000"
+    apiBaseUrl: "http://localhost:5000"
 };
 
 console.log("Configuration loaded:", {
@@ -18,8 +19,8 @@ export const msalConfig: Configuration = {
     auth: {
         clientId: runtimeConfig.clientId,
         authority: `https://login.microsoftonline.com/${runtimeConfig.tenantId}`,
-        redirectUri: `${window.location.origin}/webapp/`,
-        postLogoutRedirectUri: `${window.location.origin}/webapp/`,
+        redirectUri: `${window.location.origin}${appConfig.getPath('')}`,
+        postLogoutRedirectUri: `${window.location.origin}${appConfig.getPath('')}`,
     },
     cache: {
         cacheLocation: "sessionStorage",

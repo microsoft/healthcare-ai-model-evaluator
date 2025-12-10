@@ -130,6 +130,63 @@ azd env set ENABLE_ACS false
 
 Now that your environment is configured, you can deploy all necessary resources and infrastructure for the Healthcare AI Model Evaluator.
 
+#### IP Filtering & Security Configuration
+
+**By default, the deployment is secure-by-default** and will prompt you to configure IP filtering to protect the web application:
+
+- **During first deployment**, you'll be prompted to enter an IP address that can access the web application
+- **Your current public IP** is automatically detected and suggested as the default (using preprovision hooks)
+- **Only specified IPs** can access the web application - all other access is blocked at the Container App ingress level
+- **Backend data services** (Cosmos DB, Storage) use public endpoints but are secured via managed identity authentication and connection strings
+- **IP filtering applies only to the Container App** - Azure Functions, Storage, and Cosmos DB are secured through Azure's service-to-service authentication and managed identities
+
+**Managing IP Access:**
+
+```sh
+# View current IP filtering settings
+azd env get-value ALLOWED_WEB_IP
+azd env get-value ENABLE_WEB_IP_FILTERING
+
+# Add or update allowed IPs (comma-delimited CIDR format)
+azd env set ALLOWED_WEB_IP "89.144.197.27/32,203.0.113.1/32"
+
+# Disable IP filtering entirely (not recommended for production)
+azd env set ENABLE_WEB_IP_FILTERING false
+
+# Open to the entire internet 
+azd env set ENABLE_WEB_IP_FILTERING false
+azd env set ALLOWED_WEB_IP ""
+
+# Re-deploy with new settings
+azd up
+```
+
+> [!WARNING]
+> **Opening to Internet**: Setting `ENABLE_WEB_IP_FILTERING=false` removes all IP restrictions and allows public internet access to your application. 
+
+**Quick Commands for Common Scenarios:**
+
+```sh
+# Development: Open to internet (use only for testing)
+azd env set ENABLE_WEB_IP_FILTERING false
+azd up
+
+# Production: Lock down to your office IP
+azd env set ENABLE_WEB_IP_FILTERING true
+azd env set ALLOWED_WEB_IP "your.office.ip.address/32"
+azd up
+
+# Multiple locations: Home + Office access
+azd env set ALLOWED_WEB_IP "home.ip.address/32,office.ip.address/32"
+azd up
+```
+
+> [!WARNING]
+> **Portal Changes**: Any IP filtering changes made directly in the Azure portal will be overwritten by `azd up`. Always use the azd environment variables to manage IP access.
+
+> [!TIP]
+> **Multiple Locations**: Use comma-delimited CIDR notation to allow access from multiple locations: `"home.ip.address/32,office.ip.address/32,vpn.range.address/24"`
+
 > [!IMPORTANT]
 > **Security Consideration**: For production deployments in healthcare environments, consider integrating with your existing Azure Front Door after deployment. See the [Security Configuration](#security-configuration) section for Front Door integration steps.
 
@@ -203,6 +260,30 @@ echo "Application URL: $(azd env get-value API_BASE_URL)"
 echo "Frontend: $(azd env get-value API_BASE_URL)/webapp"
 echo "API: $(azd env get-value API_BASE_URL)/api"
 ```
+
+## Post-Deployment Setup
+
+### Create First Admin User
+
+After successful deployment, create your first admin user to access the application:
+
+```bash
+# Run the admin user creation script
+./infra/scripts/create-admin-user.sh
+```
+
+The script will prompt you for:
+- **Admin email address**: Used for login
+- **Admin password**: Must meet complexity requirements (8+ characters, 3 of 4 character types)  
+- **Admin full name**: Display name in the application
+
+Once created, you can:
+1. Navigate to your application URL: `$(azd env get-value API_BASE_URL)/webapp`
+2. Click "Sign in with Password" 
+3. Use the email/password you just created
+4. Access the admin panel to create additional users
+
+> **Note**: This script only needs to be run once. Additional users can be created through the web interface by admin users.
 
 ---
 
@@ -433,7 +514,39 @@ az network front-door routing-rule create \
    azd up
    ```
 
-4. **Function Deployment Failures**
+4. **Cannot Access the Application (403 Forbidden)**
+   > This typically means your IP address is not in the allowed list
+
+   Check your current IP and update the allowed list:
+   ```bash
+   # Check what IP you're accessing from
+   curl ifconfig.me
+   
+   # View current filtering settings
+   azd env get-value ENABLE_WEB_IP_FILTERING
+   azd env get-value ALLOWED_WEB_IP
+   
+   # Update with your current IP
+   azd env set ALLOWED_WEB_IP "$(curl -s ifconfig.me)/32"
+   azd up
+   
+   # Or temporarily disable for troubleshooting (development only)
+   azd env set ENABLE_WEB_IP_FILTERING false
+   azd up
+   ```
+
+5. **IP Filtering Not Working as Expected**
+   ```bash
+   # Verify Container App ingress rules in Azure Portal
+   az containerapp ingress show \
+     --name "api-$(azd env get-value AZURE_ENV_NAME)" \
+     --resource-group "$(azd env get-value AZURE_RESOURCE_GROUP)"
+   
+   # Check if changes were applied (restart may be needed)
+   azd up
+   ```
+
+6. **Function Deployment Failures**
    ```bash
    # Check Docker is running
    docker info

@@ -18,6 +18,7 @@ import { IExperiment, IModel, ITrial } from '../../types/admin';
 import { userService } from '../../services/userService';
 import { User } from '../../types/user';
 import { modelService } from 'services/modelService';
+import { appConfig } from '../../config/appConfig';
 
 export const ExperimentDetail: React.FC = () => {
     const [experiment, setExperiment] = useState<IExperiment | null>(null);
@@ -149,7 +150,7 @@ export const ExperimentDetail: React.FC = () => {
 
                         {selectedTrial.dataObjectId && (
                             <Link 
-                                href={`/admin/data/${selectedTrial.dataSetId}/object/${selectedTrial.dataObjectId}`}
+                                href={appConfig.getPath(`/admin/data/${selectedTrial.dataSetId}/object/${selectedTrial.dataObjectId}`)}
                             >
                                 View Data Object
                             </Link>

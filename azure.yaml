@@ -13,14 +13,21 @@ services:
         posix:
           shell: sh
           run: |
-            # Build the frontend first
-            cd ../../../frontend
-            ../infra/scripts/update-env.sh
-            npm install
-            npm run build
-            # Copy built files to backend wwwroot
-            mkdir -p ../backend/src/MedBench.API/wwwroot/webapp
-            cp -r build/* ../backend/src/MedBench.API/wwwroot/webapp/
+            # Check if environment variables are available before building frontend
+            if azd env get-value AUTH_CLIENT_ID >/dev/null 2>&1 && azd env get-value API_BASE_URL >/dev/null 2>&1; then
+              echo "Environment variables found - building frontend..."
+              cd ../../../frontend
+              ../infra/scripts/update-env.sh
+              npm install
+              npm run build
+              # Copy built files to backend wwwroot
+              mkdir -p ../backend/src/MedBench.API/wwwroot/webapp
+              cp -r build/* ../backend/src/MedBench.API/wwwroot/webapp/
+              echo "Frontend build completed"
+            else
+              echo "Environment variables not yet available - skipping frontend build"
+              echo "Frontend will be built after infrastructure is provisioned"
+            fi
           interactive: false
           continueOnError: false
 
@@ -44,6 +51,19 @@ services:
         continueOnError: false
 
 hooks:
+  preprovision:
+    - shell: sh
+      run: ./infra/hooks/preprovision.sh
+      continueOnError: false
   postprovision:
     - run: ./infra/scripts/postprovision.sh
       continueOnError: false
+
+infra:
+  provider: bicep
+  path: infra
+  module: main
+  parameters:
+    enableWebIpFiltering: "${ENABLE_WEB_IP_FILTERING}"
+    allowedWebIp: "${ALLOWED_WEB_IP}"
+    authClientId: "${AUTH_CLIENT_ID}"

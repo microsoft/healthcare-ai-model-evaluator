@@ -34,6 +34,7 @@ public class ModelsController : ControllerBase
     [Authorize(Policy = "RequireAuthenticatedUser")]
     public async Task<ActionResult<IEnumerable<Model>>> GetAll()
     {
+        // GetAllAsync returns models with display-safe settings by default
         var models = await _modelRepository.GetAllAsync();
         return Ok(models);
     }
@@ -44,6 +45,7 @@ public class ModelsController : ControllerBase
     {
         try
         {
+            // GetByIdAsync returns model with display-safe settings by default
             var model = await _modelRepository.GetByIdAsync(id);
             return Ok(model);
         }
@@ -137,7 +139,8 @@ public class ModelsController : ControllerBase
         {
             _logger.LogInformation($"Testing integration for model ID: {id}");
             
-            var model = await _modelRepository.GetByIdAsync(id);
+            // Use GetByIdWithSecretsAsync to get the model with actual secrets for testing
+            var model = await _modelRepository.GetByIdWithSecretsAsync(id);
             _logger.LogInformation($"Found model: {model.Name} with integration type: {model.IntegrationType}");
             
             var modelRunner = _modelRunnerFactory.CreateModelRunner(model);

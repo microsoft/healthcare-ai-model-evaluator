@@ -41,6 +41,8 @@ export interface IModel {
     updatedAt?: Date;
     integrationType?: string;
     integrationSettings?: Record<string, string>;
+    secretReferences?: Record<string, string>;
+    hasSecureSettings?: boolean;
     costPerToken?: number;
     costPerTokenOut?: number;
 }

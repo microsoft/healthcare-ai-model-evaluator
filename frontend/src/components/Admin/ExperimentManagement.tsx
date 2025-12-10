@@ -33,67 +33,15 @@ import { fetchScenarios } from '../../reducers/testScenarioReducer';
 import { fetchModels } from '../../reducers/modelReducer';
 import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
-import { trialService } from '../../services/trialService';
-import { dataObjectService } from '../../services/dataObjectService';
+import { experimentService } from '../../services/experimentService';
 import { FloatingCommandBar } from './FloatingCommandBar';
 
 // Add export function for experiments
 const exportExperimentData = async (experiment: IExperiment) => {
     try {
-        // Fetch trials for this experiment
-        const trials = await trialService.getTrialsByExperimentId(experiment.id);
+        // Use the new backend export endpoint instead of client-side data fetching
+        const exportData = await experimentService.exportExperiment(experiment.id);
         
-        // Get unique data object IDs and dataset IDs from trials
-        const dataObjectIds = new Set<string>();
-        const dataSetIds = new Set<string>();
-        
-        trials.forEach(trial => {
-            if (trial.dataObjectId) {
-                dataObjectIds.add(trial.dataObjectId);
-            }
-            if (trial.dataSetId) {
-                dataSetIds.add(trial.dataSetId);
-            }
-        });
-        
-        // Fetch all data objects
-        const dataObjects = [];
-        for (const dataSetId of Array.from(dataSetIds)) {
-            try {
-                const objects = await dataObjectService.getByDataSetId(dataSetId);
-                // Filter to only include objects that are referenced in trials
-                const filteredObjects = objects.filter(obj => dataObjectIds.has(obj.id));
-                dataObjects.push(...filteredObjects);
-            } catch (error) {
-                console.warn(`Failed to fetch data objects for dataset ${dataSetId}:`, error);
-            }
-        }
-        
-        const exportData = {
-            experiment: {
-                id: experiment.id,
-                name: experiment.name,
-                description: experiment.description,
-                status: experiment.status,
-                processingStatus: experiment.processingStatus,
-                testScenarioId: experiment.testScenarioId,
-                experimentType: experiment.experimentType,
-                tags: experiment.tags,
-                reviewerIds: experiment.reviewerIds,
-                modelIds: experiment.modelIds,
-                createdAt: experiment.createdAt,
-                updatedAt: experiment.updatedAt,
-                pendingTrials: experiment.pendingTrials,
-                totalTrials: experiment.totalTrials,
-                totalCost: experiment.totalCost,
-                reviewerInstructions: experiment.reviewerInstructions
-            },
-            trials: trials,
-            dataObjects: dataObjects,
-            exportedAt: new Date().toISOString(),
-            exportType: 'experiment'
-        };
-
         const dataStr = JSON.stringify(exportData, null, 2);
         const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
         
@@ -363,11 +311,12 @@ export const ExperimentManagement: React.FC = () => {
                 disabled: selectedExperiments.length !== 1,
                 onClick: async () => {
                     if (selectedExperiments.length === 1) {
+                        const loadingToastId = toast.loading('Exporting experiment data...');
                         try {
                             await exportExperimentData(selectedExperiments[0]);
-                            toast.success('Experiment data exported successfully');
+                            toast.success('Experiment data exported successfully', { id: loadingToastId });
                         } catch (err) {
-                            toast.error('Failed to export experiment data');
+                            toast.error('Failed to export experiment data', { id: loadingToastId });
                         }
                     }
                 },

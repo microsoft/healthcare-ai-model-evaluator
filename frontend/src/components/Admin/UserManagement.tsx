@@ -42,6 +42,7 @@ import { userService } from '../../services/userService';
 import { toast,Toaster } from 'react-hot-toast';
 import { IModel } from '../../types/admin';
 import { fetchModels } from '../../reducers/modelReducer';
+import { validatePasswordComplexity } from '../../utils/passwordValidation';
 const commandButtonStyles = {
     // root: { 
     //     backgroundColor: '#0078d4',
@@ -98,6 +99,14 @@ export const UserManagement: React.FC = () => {
     }));
     const [emailEnabled, setEmailEnabled] = useState<boolean>(false);
     const [newPassword, setNewPassword] = useState<string>('');
+    const [passwordErrors, setPasswordErrors] = useState<string[]>([]);
+    
+    const validatePassword = (password: string, email: string, name: string) => {
+        const validation = validatePasswordComplexity(password, email?.split('@')[0], name);
+        setPasswordErrors(validation.errors);
+        return validation.isValid;
+    };
+    
     useEffect(() => {
         fetch('/api/auth/config')
             .then(r => r.ok ? r.json() : { emailEnabled: false })
@@ -511,20 +520,49 @@ export const UserManagement: React.FC = () => {
                                 type="password"
                                 canRevealPassword
                                 value={newPassword}
-                                onChange={(_, v) => setNewPassword(v || '')}
+                                onChange={(_, v) => {
+                                    const pwd = v || '';
+                                    setNewPassword(pwd);
+                                    if (pwd) {
+                                        const email = formData.email || editingUser?.email || '';
+                                        const name = formData.name || editingUser?.name || '';
+                                        validatePassword(pwd, email, name);
+                                    } else {
+                                        setPasswordErrors([]);
+                                    }
+                                }}
                                 placeholder="Set password (admin)"
+                                errorMessage={passwordErrors.length > 0 ? passwordErrors.join(' ') : undefined}
                             />
+                            {passwordErrors.length > 0 && (
+                                <MessageBar messageBarType={MessageBarType.error} isMultiline>
+                                    <ul style={{ margin: 0, paddingLeft: '20px' }}>
+                                        {passwordErrors.map((error, index) => (
+                                            <li key={index}>{error}</li>
+                                        ))}
+                                    </ul>
+                                </MessageBar>
+                            )}
                             </Stack.Item>
                             <Stack.Item>
                                 <DefaultButton
                                 onClick={async () => {
                                     const target = formData.email || editingUser?.email || '';
+                                    const name = formData.name || editingUser?.name || '';
                                     if (!target) { setError('Enter an email first'); return; }
                                     if (!newPassword) { setError('Enter a new password'); return; }
+                                    
+                                    // Validate password complexity
+                                    if (!validatePassword(newPassword, target, name)) {
+                                        setError('Password does not meet complexity requirements');
+                                        return;
+                                    }
+                                    
                                     setIsLoading(true);
                                     try {
                                         await userService.adminSetPassword(target, newPassword);
                                         setNewPassword('');
+                                        setPasswordErrors([]);
                                         toast.success('Password updated');
                                         setError(null);
                                         setEditingUser(null);
@@ -536,7 +574,7 @@ export const UserManagement: React.FC = () => {
                                         setIsLoading(false);
                                     }
                                 }}
-                                disabled={isLoading}
+                                disabled={isLoading || passwordErrors.length > 0}
                             >
                                 Set Password
                             </DefaultButton>

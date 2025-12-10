@@ -27,6 +27,11 @@ public class DataSetListDto
     public int TotalOutputTokens { get; set; }
 
     public int TotalInputTokens { get; set; }
+    
+    // Data retention
+    public int DaysToAutoDelete { get; set; } = 180;
+    public DateTime CreatedAt { get; set; }
+    public DateTime? DeletedAt { get; set; }
 }
 
 public class DataSetDetailDto
@@ -42,6 +47,11 @@ public class DataSetDetailDto
     public int ModelOutputCount { get; set; }
     public List<string> GeneratedDataList { get; set; } = new List<string>();
     public List<DataFile> Files { get; set; } = new List<DataFile>();
+    
+    // Data retention
+    public int DaysToAutoDelete { get; set; } = 180;
+    public DateTime CreatedAt { get; set; }
+    public DateTime? DeletedAt { get; set; }
 }
 
 public class CreateDataSetDto
@@ -54,6 +64,7 @@ public class CreateDataSetDto
     public List<string> Tags { get; set; } = new List<string>();
     public List<DataObject> DataObjects { get; set; } = new List<DataObject>();
     public int ModelOutputCount { get; set; }
+    public int DaysToAutoDelete { get; set; } = 180; // Default 180 days
 
 }
 public class UpdateDataSetDto
@@ -67,6 +78,7 @@ public class UpdateDataSetDto
     public List<string> Tags { get; set; } = new List<string>();
     public List<DataObject>? DataObjects { get; set; } = new List<DataObject>();
     public int ModelOutputCount { get; set; }
+    public int DaysToAutoDelete { get; set; } = 180;
     
 }
 
@@ -108,6 +120,7 @@ public class CreateDataSetWithFileDto
     public string? Description { get; set; } = string.Empty;
     public string AiModelType { get; set; } = string.Empty;
     public string? Tags { get; set; } = "[]";
+    public int DaysToAutoDelete { get; set; } = 180;
     
     // File upload properties
     public IFormFile? File { get; set; }
@@ -154,7 +167,10 @@ public class DataSetsController : ControllerBase
             Files = ds.DataFiles,
             TotalOutputTokensPerIndex = ds.TotalOutputTokensPerIndex,
             TotalOutputTokens = ds.TotalOutputTokens,
-            TotalInputTokens = ds.TotalInputTokens
+            TotalInputTokens = ds.TotalInputTokens,
+            DaysToAutoDelete = ds.DaysToAutoDelete,
+            CreatedAt = ds.CreatedAt,
+            DeletedAt = ds.DeletedAt
         });
         return Ok(dtos);
     }
@@ -178,7 +194,10 @@ public class DataSetsController : ControllerBase
                 DataObjectCount = dataset.DataObjectCount,
                 ModelOutputCount = dataset.ModelOutputCount,
                 GeneratedDataList = dataset.GeneratedDataList,
-                Files = dataset.DataFiles
+                Files = dataset.DataFiles,
+                DaysToAutoDelete = dataset.DaysToAutoDelete,
+                CreatedAt = dataset.CreatedAt,
+                DeletedAt = dataset.DeletedAt
             };
 
             return Ok(detailDto);
@@ -293,7 +312,9 @@ public class DataSetsController : ControllerBase
                 ModelOutputCount = 0,
                 TotalTokens = 0,
                 GeneratedDataList = new List<string>(),
-                DataFiles = new List<DataFile>()
+                DataFiles = new List<DataFile>(),
+                DaysToAutoDelete = createDto.DaysToAutoDelete,
+                CreatedAt = DateTime.UtcNow
             };
             
             // Create the dataset
@@ -412,7 +433,8 @@ public class DataSetsController : ControllerBase
                 TotalTokens = updateDto.DataObjects?.Sum(obj => obj.TotalTokens) ?? 0,
                 TotalInputTokens = updateDto.DataObjects?.Sum(obj => obj.TotalInputTokens) ?? 0,
                 TotalOutputTokens = updateDto.DataObjects?.Sum(obj => obj.TotalOutputTokens) ?? 0,
-                TotalOutputTokensPerIndex = totalOutputTokensPerIndex
+                TotalOutputTokensPerIndex = totalOutputTokensPerIndex,
+                DaysToAutoDelete = updateDto.DaysToAutoDelete
             };
             
             // Delete existing data objects for this dataset
@@ -500,10 +522,26 @@ public class DataSetsController : ControllerBase
             // Process data objects to calculate tokens
             await ProcessDataObjectsAsync(dataObjects);
             
-            // Set the DataSetId for each object
+            // Set the DataSetId and populate OriginalDataFile/OriginalIndex for each object
+            var currentDataset = await _repository.GetByIdAsync(id);
+            var existingDataObjects = await _dataObjectRepository.GetByDataSetIdAsync(id);
+            var currentIndex = existingDataObjects.Count(); // Start index from existing count
+            
             foreach (var obj in dataObjects)
             {
                 obj.DataSetId = id;
+                
+                // Set OriginalDataFile if not already set
+                if (string.IsNullOrEmpty(obj.OriginalDataFile))
+                {
+                    obj.OriginalDataFile = currentDataset.DataFiles?.FirstOrDefault()?.FileName ?? "manual-entry";
+                }
+                
+                // Set OriginalIndex if not already set
+                if (obj.OriginalIndex == -1)
+                {
+                    obj.OriginalIndex = currentIndex++;
+                }
             }
             
             // Add the data objects

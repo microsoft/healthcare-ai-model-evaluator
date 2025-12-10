@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.38.33.27573",
-      "templateHash": "16155990743071810482"
+      "templateHash": "16203331742690831046"
     }
   },
   "parameters": {
@@ -271,6 +271,27 @@
       "defaultValue": true,
       "metadata": {
         "description": "SMTP SSL/TLS usage"
+      }
+    },
+    "enableWebIpFiltering": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable IP filtering for the web application (when true, only allowedWebIp can access the Container App API)"
+      }
+    },
+    "allowedWebIp": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "IP addresses allowed to access the Container App web API (comma-delimited CIDR format, e.g., \"203.0.113.1/32,198.51.100.0/24\"). Storage and Cosmos use managed identity only."
+      }
+    },
+    "authClientId": {
+      "type": "string",
+      "defaultValue": "00000000-0000-0000-0000-000000000000",
+      "metadata": {
+        "description": "Azure AD App Registration Client ID (will be set by postprovision script)"
       }
     },
     "tagParam": {
@@ -779,6 +800,12 @@
           },
           "keyVaultName": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-keyvault', variables('deploymentName'))), '2025-04-01').outputs.name.value]"
+          },
+          "principalId": {
+            "value": ""
+          },
+          "principalType": {
+            "value": "ServicePrincipal"
           }
         },
         "template": {
@@ -788,7 +815,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.38.33.27573",
-              "templateHash": "6422253443753428590"
+              "templateHash": "8832229776776407734"
             }
           },
           "parameters": {
@@ -807,6 +834,14 @@
             },
             "keyVaultName": {
               "type": "string"
+            },
+            "principalId": {
+              "type": "string",
+              "defaultValue": ""
+            },
+            "principalType": {
+              "type": "string",
+              "defaultValue": "ServicePrincipal"
             }
           },
           "resources": [
@@ -841,7 +876,11 @@
                 ],
                 "apiProperties": {
                   "serverVersion": "4.2"
-                }
+                },
+                "publicNetworkAccess": "Enabled",
+                "networkAclBypass": "AzureServices",
+                "isVirtualNetworkFilterEnabled": false,
+                "ipRules": []
               }
             },
             {
@@ -863,6 +902,32 @@
               "name": "[format('{0}/{1}', parameters('keyVaultName'), 'cosmos-connection-string')]",
               "properties": {
                 "value": "[listConnectionStrings(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('accountName')), '2023-04-15').connectionStrings[0].connectionString]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('accountName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2022-07-01",
+              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'cosmos-endpoint')]",
+              "properties": {
+                "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('accountName')), '2023-04-15').documentEndpoint]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('accountName'))]"
+              ]
+            },
+            {
+              "condition": "[not(empty(parameters('principalId')))]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.DocumentDB/databaseAccounts/{0}', parameters('accountName'))]",
+              "name": "[guid(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('accountName')), parameters('principalId'), 'CosmosDBAccountContributor')]",
+              "properties": {
+                "principalId": "[parameters('principalId')]",
+                "principalType": "[parameters('principalType')]",
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '5bd9cd88-fe45-4216-938b-f97437e15450')]"
               },
               "dependsOn": [
                 "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('accountName'))]"
@@ -908,6 +973,12 @@
           },
           "keyVaultName": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-keyvault', variables('deploymentName'))), '2025-04-01').outputs.name.value]"
+          },
+          "principalId": {
+            "value": ""
+          },
+          "principalType": {
+            "value": "ServicePrincipal"
           }
         },
         "template": {
@@ -917,7 +988,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.38.33.27573",
-              "templateHash": "10563763415814922906"
+              "templateHash": "10739301976722933747"
             }
           },
           "parameters": {
@@ -933,12 +1004,20 @@
             },
             "keyVaultName": {
               "type": "string"
+            },
+            "principalId": {
+              "type": "string",
+              "defaultValue": ""
+            },
+            "principalType": {
+              "type": "string",
+              "defaultValue": "ServicePrincipal"
             }
           },
           "resources": [
             {
               "type": "Microsoft.Storage/storageAccounts",
-              "apiVersion": "2022-09-01",
+              "apiVersion": "2023-01-01",
               "name": "[parameters('name')]",
               "location": "[parameters('location')]",
               "tags": "[parameters('tags')]",
@@ -950,7 +1029,12 @@
                 "supportsHttpsTrafficOnly": true,
                 "allowBlobPublicAccess": true,
                 "minimumTlsVersion": "TLS1_2",
-                "accessTier": "Hot"
+                "accessTier": "Hot",
+                "networkAcls": {
+                  "defaultAction": "Allow",
+                  "bypass": "AzureServices",
+                  "ipRules": []
+                }
               }
             },
             {
@@ -1043,7 +1127,33 @@
               "apiVersion": "2022-07-01",
               "name": "[format('{0}/{1}', parameters('keyVaultName'), 'storage-connection-string')]",
               "properties": {
-                "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix=core.windows.net', parameters('name'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('name')), '2022-09-01').keys[0].value)]"
+                "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix=core.windows.net', parameters('name'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('name')), '2023-01-01').keys[0].value)]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('name'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2022-07-01",
+              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'storage-endpoint')]",
+              "properties": {
+                "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('name')), '2023-01-01').primaryEndpoints.blob]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('name'))]"
+              ]
+            },
+            {
+              "condition": "[not(empty(parameters('principalId')))]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.Storage/storageAccounts/{0}', parameters('name'))]",
+              "name": "[guid(resourceId('Microsoft.Storage/storageAccounts', parameters('name')), parameters('principalId'), 'StorageBlobDataContributor')]",
+              "properties": {
+                "principalId": "[parameters('principalId')]",
+                "principalType": "[parameters('principalType')]",
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe')]"
               },
               "dependsOn": [
                 "[resourceId('Microsoft.Storage/storageAccounts', parameters('name'))]"
@@ -1055,9 +1165,13 @@
               "type": "string",
               "value": "[parameters('name')]"
             },
+            "endpoint": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('name')), '2023-01-01').primaryEndpoints.blob]"
+            },
             "primaryEndpoints": {
               "type": "object",
-              "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('name')), '2022-09-01').primaryEndpoints]"
+              "value": "[reference(resourceId('Microsoft.Storage/storageAccounts', parameters('name')), '2023-01-01').primaryEndpoints]"
             }
           }
         }
@@ -1069,7 +1183,7 @@
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
-      "name": "[format('{0}-auth', variables('deploymentName'))]",
+      "name": "[format('{0}-containerapps', variables('deploymentName'))]",
       "properties": {
         "expressionEvaluationOptions": {
           "scope": "inner"
@@ -1082,11 +1196,60 @@
           "tags": {
             "value": "[variables('tags')]"
           },
-          "name": {
-            "value": "[format('auth-{0}', variables('uniqueSuffix'))]"
+          "containerAppsEnvName": {
+            "value": "[variables('names').containerAppsEnv]"
+          },
+          "containerRegistryName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-registry', variables('deploymentName'))), '2025-04-01').outputs.name.value]"
+          },
+          "logAnalyticsWorkspaceName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-monitoring', variables('deploymentName'))), '2025-04-01').outputs.logAnalyticsWorkspaceName.value]"
+          },
+          "applicationInsightsName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-monitoring', variables('deploymentName'))), '2025-04-01').outputs.applicationInsightsName.value]"
           },
           "keyVaultName": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-keyvault', variables('deploymentName'))), '2025-04-01').outputs.name.value]"
+          },
+          "authClientId": {
+            "value": "[parameters('authClientId')]"
+          },
+          "apiImageName": {
+            "value": "[parameters('apiImageName')]"
+          },
+          "resourceToken": {
+            "value": "[variables('uniqueSuffix')]"
+          },
+          "webBaseUrl": {
+            "value": "[parameters('webBaseUrl')]"
+          },
+          "emailFrom": {
+            "value": "[parameters('emailFrom')]"
+          },
+          "emailSmtpHost": {
+            "value": "[parameters('emailSmtpHost')]"
+          },
+          "emailSmtpPort": {
+            "value": "[parameters('emailSmtpPort')]"
+          },
+          "emailSmtpUser": {
+            "value": "[parameters('emailSmtpUser')]"
+          },
+          "emailSmtpPass": {
+            "value": "[parameters('emailSmtpPass')]"
+          },
+          "emailSmtpUseSsl": {
+            "value": "[parameters('emailSmtpUseSsl')]"
+          },
+          "acsKeyVaultSecretName": "[if(parameters('enableAcs'), createObject('value', 'acs-connection-string'), createObject('value', ''))]",
+          "emailEnabled": {
+            "value": "[parameters('emailEnabled')]"
+          },
+          "enableWebIpFiltering": {
+            "value": "[parameters('enableWebIpFiltering')]"
+          },
+          "allowedWebIp": {
+            "value": "[parameters('allowedWebIp')]"
           }
         },
         "template": {
@@ -1096,7 +1259,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.38.33.27573",
-              "templateHash": "15271158015425670942"
+              "templateHash": "5911388042232753310"
             }
           },
           "parameters": {
@@ -1107,45 +1270,209 @@
               "type": "object",
               "defaultValue": {}
             },
-            "name": {
+            "containerAppsEnvName": {
+              "type": "string"
+            },
+            "containerRegistryName": {
+              "type": "string"
+            },
+            "logAnalyticsWorkspaceName": {
+              "type": "string"
+            },
+            "applicationInsightsName": {
               "type": "string"
             },
             "keyVaultName": {
               "type": "string"
+            },
+            "authClientId": {
+              "type": "string"
+            },
+            "apiImageName": {
+              "type": "string"
+            },
+            "resourceToken": {
+              "type": "string"
+            },
+            "webBaseUrl": {
+              "type": "string",
+              "defaultValue": ""
+            },
+            "emailFrom": {
+              "type": "string",
+              "defaultValue": "no-reply@haime.local"
+            },
+            "emailSmtpHost": {
+              "type": "string",
+              "defaultValue": ""
+            },
+            "emailSmtpPort": {
+              "type": "int",
+              "defaultValue": 587
+            },
+            "emailSmtpUser": {
+              "type": "string",
+              "defaultValue": ""
+            },
+            "emailSmtpPass": {
+              "type": "securestring",
+              "defaultValue": ""
+            },
+            "emailSmtpUseSsl": {
+              "type": "bool",
+              "defaultValue": true
+            },
+            "acsKeyVaultSecretName": {
+              "type": "string",
+              "defaultValue": ""
+            },
+            "emailEnabled": {
+              "type": "bool",
+              "defaultValue": false
+            },
+            "enableWebIpFiltering": {
+              "type": "bool",
+              "defaultValue": true,
+              "metadata": {
+                "description": "Enable IP filtering for the web application (when true, only allowedWebIp can access the API)"
+              }
+            },
+            "allowedWebIp": {
+              "type": "string",
+              "defaultValue": "",
+              "metadata": {
+                "description": "IP address allowed to access the web application API (comma-delimited CIDR format, e.g., \"203.0.113.1/32,198.51.100.0/24\")"
+              }
             }
           },
           "resources": [
             {
-              "type": "Microsoft.KeyVault/vaults/secrets",
-              "apiVersion": "2022-07-01",
-              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'auth-client-id')]",
+              "type": "Microsoft.App/managedEnvironments",
+              "apiVersion": "2023-05-01",
+              "name": "[parameters('containerAppsEnvName')]",
+              "location": "[parameters('location')]",
+              "tags": "[parameters('tags')]",
               "properties": {
-                "value": "placeholder-will-be-updated-by-script"
+                "appLogsConfiguration": {
+                  "destination": "log-analytics",
+                  "logAnalyticsConfiguration": {
+                    "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName')), '2021-12-01-preview').customerId]",
+                    "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName')), '2021-12-01-preview').primarySharedKey]"
+                  }
+                }
               }
             },
             {
-              "type": "Microsoft.KeyVault/vaults/secrets",
-              "apiVersion": "2022-07-01",
-              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'auth-tenant-id')]",
+              "type": "Microsoft.App/containerApps",
+              "apiVersion": "2023-05-01",
+              "name": "[format('api-{0}', parameters('resourceToken'))]",
+              "location": "[parameters('location')]",
+              "tags": "[union(parameters('tags'), createObject('azd-service-name', 'api'))]",
               "properties": {
-                "value": "[subscription().tenantId]"
-              }
+                "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppsEnvName'))]",
+                "configuration": {
+                  "activeRevisionsMode": "Single",
+                  "ingress": {
+                    "external": true,
+                    "targetPort": 8080,
+                    "corsPolicy": {
+                      "allowedOrigins": [
+                        "*"
+                      ],
+                      "allowedMethods": [
+                        "GET",
+                        "POST",
+                        "PUT",
+                        "DELETE",
+                        "OPTIONS"
+                      ],
+                      "allowedHeaders": [
+                        "*"
+                      ]
+                    },
+                    "ipSecurityRestrictions": "[if(and(parameters('enableWebIpFiltering'), not(empty(parameters('allowedWebIp')))), createArray(createObject('name', 'AllowedIP', 'ipAddressRange', if(contains(parameters('allowedWebIp'), ','), trim(split(parameters('allowedWebIp'), ',')[0]), parameters('allowedWebIp')), 'action', 'Allow'), createObject('name', 'DenyAll', 'ipAddressRange', '0.0.0.0/0', 'action', 'Deny')), createArray())]"
+                  },
+                  "registries": [
+                    {
+                      "server": "[reference(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2021-09-01').loginServer]",
+                      "username": "[listCredentials(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2021-09-01').username]",
+                      "passwordSecretRef": "container-registry-password"
+                    }
+                  ],
+                  "secrets": "[concat(createArray(createObject('name', 'container-registry-password', 'value', listCredentials(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2021-09-01').passwords[0].value), createObject('name', 'cosmos-connection-string', 'keyVaultUrl', format('{0}secrets/cosmos-connection-string', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2022-07-01').vaultUri), 'identity', 'system'), createObject('name', 'cosmos-endpoint', 'keyVaultUrl', format('{0}secrets/cosmos-endpoint', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2022-07-01').vaultUri), 'identity', 'system'), createObject('name', 'storage-connection-string', 'keyVaultUrl', format('{0}secrets/storage-connection-string', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2022-07-01').vaultUri), 'identity', 'system'), createObject('name', 'storage-endpoint', 'keyVaultUrl', format('{0}secrets/storage-endpoint', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2022-07-01').vaultUri), 'identity', 'system'), createObject('name', 'auth-client-id', 'keyVaultUrl', format('{0}secrets/auth-client-id', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2022-07-01').vaultUri), 'identity', 'system')), if(empty(parameters('emailSmtpPass')), createArray(), createArray(createObject('name', 'email-smtp-password', 'value', parameters('emailSmtpPass')))), if(empty(parameters('acsKeyVaultSecretName')), createArray(), createArray(createObject('name', 'acs-connection-string', 'keyVaultUrl', format('{0}secrets/{1}', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2022-07-01').vaultUri, parameters('acsKeyVaultSecretName')), 'identity', 'system'))))]"
+                },
+                "template": {
+                  "containers": [
+                    {
+                      "image": "[if(not(empty(parameters('apiImageName'))), parameters('apiImageName'), 'mcr.microsoft.com/dotnet/aspnet:8.0')]",
+                      "name": "api",
+                      "env": "[concat(createArray(createObject('name', 'ASPNETCORE_ENVIRONMENT', 'value', 'Production'), createObject('name', 'ASPNETCORE_URLS', 'value', 'http://+:8080'), createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', reference(resourceId('Microsoft.Insights/components', parameters('applicationInsightsName')), '2020-02-02').ConnectionString), createObject('name', 'CosmosDb__ConnectionString', 'secretRef', 'cosmos-connection-string'), createObject('name', 'CosmosDb__DatabaseName', 'value', 'HAIMEDB'), createObject('name', 'CosmosDb__ContainerName', 'value', 'Users'), createObject('name', 'COSMOSDB_CONNECTION_STRING', 'secretRef', 'cosmos-connection-string'), createObject('name', 'COSMOSDB_ENDPOINT', 'secretRef', 'cosmos-endpoint'), createObject('name', 'Storage__ConnectionString', 'secretRef', 'storage-connection-string'), createObject('name', 'AZURE_STORAGE_CONNECTION_STRING', 'secretRef', 'storage-connection-string'), createObject('name', 'AZURE_STORAGE_ENDPOINT', 'secretRef', 'storage-endpoint'), createObject('name', 'AzureStorage__ImageContainer', 'value', 'images'), createObject('name', 'AzureAd__ClientId', 'secretRef', 'auth-client-id'), createObject('name', 'AzureAd__Audience', 'value', parameters('authClientId')), createObject('name', 'AzureAd__TenantId', 'value', subscription().tenantId), createObject('name', 'Email__Smtp__Port', 'value', string(parameters('emailSmtpPort'))), createObject('name', 'Email__Smtp__UseSsl', 'value', string(parameters('emailSmtpUseSsl')))), if(empty(parameters('webBaseUrl')), createArray(), createArray(createObject('name', 'Web__BaseUrl', 'value', parameters('webBaseUrl')))), createArray(createObject('name', 'Email__Enabled', 'value', string(parameters('emailEnabled')))), if(empty(parameters('acsKeyVaultSecretName')), createArray(), createArray(createObject('name', 'Email__Acs__ConnectionString', 'secretRef', 'acs-connection-string'))), if(empty(parameters('emailFrom')), createArray(), createArray(createObject('name', 'Email__From', 'value', parameters('emailFrom')))), if(empty(parameters('emailSmtpHost')), createArray(), createArray(createObject('name', 'Email__Smtp__Host', 'value', parameters('emailSmtpHost')))), if(empty(parameters('emailSmtpUser')), createArray(), createArray(createObject('name', 'Email__Smtp__User', 'value', parameters('emailSmtpUser')))), if(empty(parameters('emailSmtpPass')), createArray(), createArray(createObject('name', 'Email__Smtp__Pass', 'secretRef', 'email-smtp-password'))))]",
+                      "resources": {
+                        "cpu": "[json('0.5')]",
+                        "memory": "1Gi"
+                      }
+                    }
+                  ],
+                  "scale": {
+                    "minReplicas": 0,
+                    "maxReplicas": 3
+                  }
+                }
+              },
+              "identity": {
+                "type": "SystemAssigned"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppsEnvName'))]"
+              ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/accessPolicies",
+              "apiVersion": "2022-07-01",
+              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'add')]",
+              "properties": {
+                "accessPolicies": [
+                  {
+                    "tenantId": "[subscription().tenantId]",
+                    "objectId": "[reference(resourceId('Microsoft.App/containerApps', format('api-{0}', parameters('resourceToken'))), '2023-05-01', 'full').identity.principalId]",
+                    "permissions": {
+                      "secrets": [
+                        "get",
+                        "list",
+                        "set",
+                        "delete"
+                      ]
+                    }
+                  }
+                ]
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.App/containerApps', format('api-{0}', parameters('resourceToken')))]"
+              ]
             }
           ],
           "outputs": {
-            "clientId": {
+            "apiUri": {
               "type": "string",
-              "value": "placeholder-will-be-updated-by-script"
+              "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', format('api-{0}', parameters('resourceToken'))), '2023-05-01').configuration.ingress.fqdn)]"
             },
-            "tenantId": {
+            "apiName": {
               "type": "string",
-              "value": "[subscription().tenantId]"
+              "value": "[format('api-{0}', parameters('resourceToken'))]"
+            },
+            "apiPrincipalId": {
+              "type": "string",
+              "value": "[reference(resourceId('Microsoft.App/containerApps', format('api-{0}', parameters('resourceToken'))), '2023-05-01', 'full').identity.principalId]"
             }
           }
         }
       },
       "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', format('{0}-keyvault', variables('deploymentName')))]"
+        "[resourceId('Microsoft.Resources/deployments', format('{0}-cosmos', variables('deploymentName')))]",
+        "[resourceId('Microsoft.Resources/deployments', format('{0}-keyvault', variables('deploymentName')))]",
+        "[resourceId('Microsoft.Resources/deployments', format('{0}-monitoring', variables('deploymentName')))]",
+        "[resourceId('Microsoft.Resources/deployments', format('{0}-registry', variables('deploymentName')))]",
+        "[resourceId('Microsoft.Resources/deployments', format('{0}-storage', variables('deploymentName')))]"
       ]
     },
     {
@@ -1355,6 +1682,7 @@
         }
       },
       "dependsOn": [
+        "[resourceId('Microsoft.Resources/deployments', format('{0}-containerapps', variables('deploymentName')))]",
         "[resourceId('Microsoft.Resources/deployments', format('{0}-keyvault', variables('deploymentName')))]",
         "[resourceId('Microsoft.Resources/deployments', format('{0}-openai', variables('deploymentName')))]",
         "[resourceId('Microsoft.Resources/deployments', format('{0}-registry', variables('deploymentName')))]",
@@ -1451,271 +1779,6 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.Resources/deployments', format('{0}-keyvault', variables('deploymentName')))]"
-      ]
-    },
-    {
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2025-04-01",
-      "name": "[format('{0}-containerapps', variables('deploymentName'))]",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "location": {
-            "value": "[parameters('location')]"
-          },
-          "tags": {
-            "value": "[variables('tags')]"
-          },
-          "containerAppsEnvName": {
-            "value": "[variables('names').containerAppsEnv]"
-          },
-          "containerRegistryName": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-registry', variables('deploymentName'))), '2025-04-01').outputs.name.value]"
-          },
-          "logAnalyticsWorkspaceName": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-monitoring', variables('deploymentName'))), '2025-04-01').outputs.logAnalyticsWorkspaceName.value]"
-          },
-          "applicationInsightsName": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-monitoring', variables('deploymentName'))), '2025-04-01').outputs.applicationInsightsName.value]"
-          },
-          "keyVaultName": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-keyvault', variables('deploymentName'))), '2025-04-01').outputs.name.value]"
-          },
-          "authClientId": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-auth', variables('deploymentName'))), '2025-04-01').outputs.clientId.value]"
-          },
-          "apiImageName": {
-            "value": "[parameters('apiImageName')]"
-          },
-          "resourceToken": {
-            "value": "[variables('uniqueSuffix')]"
-          },
-          "webBaseUrl": "[if(not(empty(parameters('webBaseUrl'))), createObject('value', parameters('webBaseUrl')), createObject('value', ''))]",
-          "emailFrom": {
-            "value": "[parameters('emailFrom')]"
-          },
-          "emailSmtpHost": {
-            "value": "[parameters('emailSmtpHost')]"
-          },
-          "emailSmtpPort": {
-            "value": "[parameters('emailSmtpPort')]"
-          },
-          "emailSmtpUser": {
-            "value": "[parameters('emailSmtpUser')]"
-          },
-          "emailSmtpPass": {
-            "value": "[parameters('emailSmtpPass')]"
-          },
-          "emailSmtpUseSsl": {
-            "value": "[parameters('emailSmtpUseSsl')]"
-          },
-          "acsKeyVaultSecretName": "[if(parameters('enableAcs'), createObject('value', 'acs-connection-string'), createObject('value', ''))]",
-          "emailEnabled": {
-            "value": "[parameters('emailEnabled')]"
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.38.33.27573",
-              "templateHash": "14266777634361074476"
-            }
-          },
-          "parameters": {
-            "location": {
-              "type": "string"
-            },
-            "tags": {
-              "type": "object",
-              "defaultValue": {}
-            },
-            "containerAppsEnvName": {
-              "type": "string"
-            },
-            "containerRegistryName": {
-              "type": "string"
-            },
-            "logAnalyticsWorkspaceName": {
-              "type": "string"
-            },
-            "applicationInsightsName": {
-              "type": "string"
-            },
-            "keyVaultName": {
-              "type": "string"
-            },
-            "authClientId": {
-              "type": "string"
-            },
-            "apiImageName": {
-              "type": "string"
-            },
-            "resourceToken": {
-              "type": "string"
-            },
-            "webBaseUrl": {
-              "type": "string",
-              "defaultValue": ""
-            },
-            "emailFrom": {
-              "type": "string",
-              "defaultValue": "no-reply@haime.local"
-            },
-            "emailSmtpHost": {
-              "type": "string",
-              "defaultValue": ""
-            },
-            "emailSmtpPort": {
-              "type": "int",
-              "defaultValue": 587
-            },
-            "emailSmtpUser": {
-              "type": "string",
-              "defaultValue": ""
-            },
-            "emailSmtpPass": {
-              "type": "securestring",
-              "defaultValue": ""
-            },
-            "emailSmtpUseSsl": {
-              "type": "bool",
-              "defaultValue": true
-            },
-            "acsKeyVaultSecretName": {
-              "type": "string",
-              "defaultValue": ""
-            },
-            "emailEnabled": {
-              "type": "bool",
-              "defaultValue": false
-            }
-          },
-          "resources": [
-            {
-              "type": "Microsoft.App/managedEnvironments",
-              "apiVersion": "2023-05-01",
-              "name": "[parameters('containerAppsEnvName')]",
-              "location": "[parameters('location')]",
-              "tags": "[parameters('tags')]",
-              "properties": {
-                "appLogsConfiguration": {
-                  "destination": "log-analytics",
-                  "logAnalyticsConfiguration": {
-                    "customerId": "[reference(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName')), '2021-12-01-preview').customerId]",
-                    "sharedKey": "[listKeys(resourceId('Microsoft.OperationalInsights/workspaces', parameters('logAnalyticsWorkspaceName')), '2021-12-01-preview').primarySharedKey]"
-                  }
-                }
-              }
-            },
-            {
-              "type": "Microsoft.App/containerApps",
-              "apiVersion": "2023-05-01",
-              "name": "[format('api-{0}', parameters('resourceToken'))]",
-              "location": "[parameters('location')]",
-              "tags": "[union(parameters('tags'), createObject('azd-service-name', 'api'))]",
-              "properties": {
-                "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppsEnvName'))]",
-                "configuration": {
-                  "activeRevisionsMode": "Single",
-                  "ingress": {
-                    "external": true,
-                    "targetPort": 8080,
-                    "corsPolicy": {
-                      "allowedOrigins": [
-                        "*"
-                      ],
-                      "allowedMethods": [
-                        "GET",
-                        "POST",
-                        "PUT",
-                        "DELETE",
-                        "OPTIONS"
-                      ],
-                      "allowedHeaders": [
-                        "*"
-                      ]
-                    }
-                  },
-                  "registries": [
-                    {
-                      "server": "[reference(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2021-09-01').loginServer]",
-                      "username": "[listCredentials(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2021-09-01').username]",
-                      "passwordSecretRef": "container-registry-password"
-                    }
-                  ],
-                  "secrets": "[concat(createArray(createObject('name', 'container-registry-password', 'value', listCredentials(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2021-09-01').passwords[0].value), createObject('name', 'cosmos-connection-string', 'keyVaultUrl', format('{0}secrets/cosmos-connection-string', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2022-07-01').vaultUri), 'identity', 'system'), createObject('name', 'storage-connection-string', 'keyVaultUrl', format('{0}secrets/storage-connection-string', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2022-07-01').vaultUri), 'identity', 'system'), createObject('name', 'auth-client-id', 'keyVaultUrl', format('{0}secrets/auth-client-id', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2022-07-01').vaultUri), 'identity', 'system')), if(empty(parameters('emailSmtpPass')), createArray(), createArray(createObject('name', 'email-smtp-password', 'value', parameters('emailSmtpPass')))), if(empty(parameters('acsKeyVaultSecretName')), createArray(), createArray(createObject('name', 'acs-connection-string', 'keyVaultUrl', format('{0}secrets/{1}', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2022-07-01').vaultUri, parameters('acsKeyVaultSecretName')), 'identity', 'system'))))]"
-                },
-                "template": {
-                  "containers": [
-                    {
-                      "image": "[if(not(empty(parameters('apiImageName'))), parameters('apiImageName'), 'mcr.microsoft.com/dotnet/aspnet:8.0')]",
-                      "name": "api",
-                      "env": "[concat(createArray(createObject('name', 'ASPNETCORE_ENVIRONMENT', 'value', 'Production'), createObject('name', 'ASPNETCORE_URLS', 'value', 'http://+:8080'), createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', reference(resourceId('Microsoft.Insights/components', parameters('applicationInsightsName')), '2020-02-02').ConnectionString), createObject('name', 'CosmosDb__ConnectionString', 'secretRef', 'cosmos-connection-string'), createObject('name', 'CosmosDb__DatabaseName', 'value', 'HAIMEDB'), createObject('name', 'CosmosDb__ContainerName', 'value', 'Users'), createObject('name', 'COSMOSDB_CONNECTION_STRING', 'secretRef', 'cosmos-connection-string'), createObject('name', 'Storage__ConnectionString', 'secretRef', 'storage-connection-string'), createObject('name', 'AZURE_STORAGE_CONNECTION_STRING', 'secretRef', 'storage-connection-string'), createObject('name', 'AzureStorage__ImageContainer', 'value', 'images'), createObject('name', 'AzureAd__ClientId', 'secretRef', 'auth-client-id'), createObject('name', 'AzureAd__Audience', 'value', parameters('authClientId')), createObject('name', 'AzureAd__TenantId', 'value', subscription().tenantId), createObject('name', 'Email__Smtp__Port', 'value', string(parameters('emailSmtpPort'))), createObject('name', 'Email__Smtp__UseSsl', 'value', string(parameters('emailSmtpUseSsl')))), if(empty(parameters('webBaseUrl')), createArray(), createArray(createObject('name', 'Web__BaseUrl', 'value', parameters('webBaseUrl')))), createArray(createObject('name', 'Email__Enabled', 'value', string(parameters('emailEnabled')))), if(empty(parameters('acsKeyVaultSecretName')), createArray(), createArray(createObject('name', 'Email__Acs__ConnectionString', 'secretRef', 'acs-connection-string'))), if(empty(parameters('emailFrom')), createArray(), createArray(createObject('name', 'Email__From', 'value', parameters('emailFrom')))), if(empty(parameters('emailSmtpHost')), createArray(), createArray(createObject('name', 'Email__Smtp__Host', 'value', parameters('emailSmtpHost')))), if(empty(parameters('emailSmtpUser')), createArray(), createArray(createObject('name', 'Email__Smtp__User', 'value', parameters('emailSmtpUser')))), if(empty(parameters('emailSmtpPass')), createArray(), createArray(createObject('name', 'Email__Smtp__Pass', 'secretRef', 'email-smtp-password'))))]",
-                      "resources": {
-                        "cpu": "[json('0.5')]",
-                        "memory": "1Gi"
-                      }
-                    }
-                  ],
-                  "scale": {
-                    "minReplicas": 0,
-                    "maxReplicas": 3
-                  }
-                }
-              },
-              "identity": {
-                "type": "SystemAssigned"
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppsEnvName'))]"
-              ]
-            },
-            {
-              "type": "Microsoft.KeyVault/vaults/accessPolicies",
-              "apiVersion": "2022-07-01",
-              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'add')]",
-              "properties": {
-                "accessPolicies": [
-                  {
-                    "tenantId": "[subscription().tenantId]",
-                    "objectId": "[reference(resourceId('Microsoft.App/containerApps', format('api-{0}', parameters('resourceToken'))), '2023-05-01', 'full').identity.principalId]",
-                    "permissions": {
-                      "secrets": [
-                        "get",
-                        "list"
-                      ]
-                    }
-                  }
-                ]
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.App/containerApps', format('api-{0}', parameters('resourceToken')))]"
-              ]
-            }
-          ],
-          "outputs": {
-            "apiUri": {
-              "type": "string",
-              "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', format('api-{0}', parameters('resourceToken'))), '2023-05-01').configuration.ingress.fqdn)]"
-            },
-            "apiName": {
-              "type": "string",
-              "value": "[format('api-{0}', parameters('resourceToken'))]"
-            }
-          }
-        }
-      },
-      "dependsOn": [
-        "[resourceId('Microsoft.Resources/deployments', format('{0}-auth', variables('deploymentName')))]",
-        "[resourceId('Microsoft.Resources/deployments', format('{0}-keyvault', variables('deploymentName')))]",
-        "[resourceId('Microsoft.Resources/deployments', format('{0}-monitoring', variables('deploymentName')))]",
-        "[resourceId('Microsoft.Resources/deployments', format('{0}-registry', variables('deploymentName')))]"
       ]
     },
     {
@@ -1993,7 +2056,7 @@
     },
     "AUTH_CLIENT_ID": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-auth', variables('deploymentName'))), '2025-04-01').outputs.clientId.value]"
+      "value": "[parameters('authClientId')]"
     },
     "API_BASE_URL": {
       "type": "string",
@@ -2001,7 +2064,7 @@
     },
     "WEB_BASE_URL": {
       "type": "string",
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-containerapps', variables('deploymentName'))), '2025-04-01').outputs.apiUri.value]"
+      "value": "[format('{0}/webapp', reference(resourceId('Microsoft.Resources/deployments', format('{0}-containerapps', variables('deploymentName'))), '2025-04-01').outputs.apiUri.value)]"
     },
     "METRICS_FUNCTION_APP_NAME": {
       "type": "string",
@@ -2013,11 +2076,11 @@
     },
     "EVALUATOR_FUNCTION_APP_NAME": {
       "type": "string",
-      "value": "[if(parameters('enableEvaluatorAddon'), reference(resourceId('Microsoft.Resources/deployments', format('{0}-evaluator-addon', variables('deploymentName'))), '2025-04-01').outputs.evaluatorAppName.value, '')]"
+      "value": ""
     },
     "EVALUATOR_FUNCTION_APP_URL": {
       "type": "string",
-      "value": "[if(parameters('enableEvaluatorAddon'), format('https://{0}', reference(resourceId('Microsoft.Resources/deployments', format('{0}-evaluator-addon', variables('deploymentName'))), '2025-04-01').outputs.evaluatorAppDefaultHostName.value), '')]"
+      "value": ""
     },
     "AZURE_OPENAI_ENDPOINT": {
       "type": "string",

@@ -46,6 +46,11 @@ export const experimentService = {
     getTrials: async (experimentId: string): Promise<ITrial[]> => {
         const response = await axiosInstance.get(`/api/trials/experiment/${experimentId}`);
         return response.data;
+    },
+
+    exportExperiment: async (id: string): Promise<any> => {
+        const response = await axiosInstance.get(`/api/experiments/${id}/export`);
+        return response.data;
     }
 };
 

@@ -124,6 +124,15 @@ param emailSmtpPass string = ''
 @description('SMTP SSL/TLS usage')
 param emailSmtpUseSsl bool = true
 
+@description('Enable IP filtering for the web application (when true, only allowedWebIp can access the Container App API)')
+param enableWebIpFiltering bool = true
+
+@description('IP addresses allowed to access the Container App web API (comma-delimited CIDR format, e.g., "203.0.113.1/32,198.51.100.0/24"). Storage and Cosmos use managed identity only.')
+param allowedWebIp string = ''
+
+@description('Azure AD App Registration Client ID (will be set by postprovision script)')
+param authClientId string = '00000000-0000-0000-0000-000000000000'
+
 @description('Tags for all AI resources created. JSON object')
 param tagParam object = {}
 
@@ -200,7 +209,11 @@ module openAI './modules/openai.bicep' = {
   }
 }
 
-// Data services (depends on key vault)
+// Auth placeholder (simple, minimal dependencies)
+// Auth configuration is handled entirely by postprovision script
+// No Bicep module needed since it was overwriting existing values
+
+// Deploy data services first to create secrets that Container Apps will reference
 module cosmos './modules/cosmos.bicep' = {
   name: '${deploymentName}-cosmos'
   params: {
@@ -209,9 +222,12 @@ module cosmos './modules/cosmos.bicep' = {
     accountName: names.cosmos
     databaseName: 'HAIMEDB'
     keyVaultName: keyVault.outputs.name
+    principalId: '' // Empty initially, role assignment will be done in postprovision
+    principalType: 'ServicePrincipal'
   }
 }
 
+// Storage deployed before Container Apps to create secrets
 module storage './modules/storage.bicep' = {
   name: '${deploymentName}-storage'
   params: {
@@ -219,18 +235,47 @@ module storage './modules/storage.bicep' = {
     tags: tags
     name: names.storage
     keyVaultName: keyVault.outputs.name
+    principalId: '' // Empty initially, role assignment will be done in postprovision
+    principalType: 'ServicePrincipal'
   }
 }
 
-// Auth placeholder (simple, minimal dependencies)
-module auth './modules/auth.bicep' = {
-  name: '${deploymentName}-auth'
+// Container Apps deployed after data services so secrets exist
+module containerApps './modules/containerapps.bicep' = {
+  name: '${deploymentName}-containerapps'
   params: {
     location: location
     tags: tags
-    name: 'auth-${uniqueSuffix}'
+    containerAppsEnvName: names.containerAppsEnv
+    containerRegistryName: registry.outputs.name
+    logAnalyticsWorkspaceName: monitoring.outputs.logAnalyticsWorkspaceName
+    applicationInsightsName: monitoring.outputs.applicationInsightsName
     keyVaultName: keyVault.outputs.name
+    authClientId: authClientId
+    apiImageName: apiImageName
+    resourceToken: uniqueSuffix
+    // new params for web/email config
+    webBaseUrl: webBaseUrl
+    emailFrom: emailFrom
+    emailSmtpHost: emailSmtpHost
+    emailSmtpPort: emailSmtpPort
+    emailSmtpUser: emailSmtpUser
+    emailSmtpPass: emailSmtpPass
+    emailSmtpUseSsl: emailSmtpUseSsl
+    // Azure Communication Services
+    acsKeyVaultSecretName: enableAcs ? 'acs-connection-string' : ''
+    emailEnabled: emailEnabled
+    // IP filtering
+    enableWebIpFiltering: enableWebIpFiltering
+    allowedWebIp: allowedWebIp
+    // Account names for direct connection string generation
+    cosmosAccountName: cosmos.outputs.accountName
+    storageAccountName: storage.outputs.name
   }
+  dependsOn: [
+    cosmos
+    storage
+  ]
 }
 
 // Azure Functions for metrics processing
@@ -248,7 +293,12 @@ module functions './modules/functions.bicep' = {
     openAIApiVersion: openAI.outputs.apiVersion
     dockerImageTag: dockerImageTag
   }
+  dependsOn: [
+    containerApps
+  ]
 }
+
+// Data retention cleanup is now handled as a background service in the API
 
 // Azure Communication Services (optional)
 module acs './modules/communication.bicep' = if (enableAcs) {
@@ -264,34 +314,6 @@ module acs './modules/communication.bicep' = if (enableAcs) {
 
 
 // Resolve ACS connection string (empty when disabled). Note: access output only when module is instantiated via ternary inline at usage sites.
-
-// Application services (depends on all infrastructure)
-module containerApps './modules/containerapps.bicep' = {
-  name: '${deploymentName}-containerapps'
-  params: {
-    location: location
-    tags: tags
-    containerAppsEnvName: names.containerAppsEnv
-    containerRegistryName: registry.outputs.name
-    logAnalyticsWorkspaceName: monitoring.outputs.logAnalyticsWorkspaceName
-    applicationInsightsName: monitoring.outputs.applicationInsightsName
-    keyVaultName: keyVault.outputs.name
-    authClientId: auth.outputs.clientId
-    apiImageName: apiImageName
-    resourceToken: uniqueSuffix
-  // new params for web/email config
-  webBaseUrl: webBaseUrl
-  emailFrom: emailFrom
-  emailSmtpHost: emailSmtpHost
-  emailSmtpPort: emailSmtpPort
-  emailSmtpUser: emailSmtpUser
-  emailSmtpPass: emailSmtpPass
-  emailSmtpUseSsl: emailSmtpUseSsl
-  // Azure Communication Services
-  acsKeyVaultSecretName: enableAcs ? 'acs-connection-string' : ''
-  emailEnabled: emailEnabled
-  }
-}
 
 // Conditional evaluator addon deployment
 module evaluatorAddon './modules/addons/evaluator.bicep' = if (enableEvaluatorAddon) {
@@ -319,15 +341,18 @@ output AZURE_CONTAINER_REGISTRY_NAME string = registry.outputs.name
 output AZURE_KEY_VAULT_NAME string = keyVault.outputs.name
 output COSMOS_ACCOUNT_NAME string = cosmos.outputs.accountName
 output STORAGE_ACCOUNT_NAME string = storage.outputs.name
-output AUTH_CLIENT_ID string = auth.outputs.clientId
+output AUTH_CLIENT_ID string = authClientId
 output API_BASE_URL string = containerApps.outputs.apiUri
 output WEB_BASE_URL string = '${containerApps.outputs.apiUri}/webapp'
 
 // Function app outputs
 output METRICS_FUNCTION_APP_NAME string = functions.outputs.metricsAppName
 output METRICS_FUNCTION_APP_URL string = 'https://${functions.outputs.metricsAppDefaultHostName}'
-output EVALUATOR_FUNCTION_APP_NAME string = enableEvaluatorAddon ? evaluatorAddon.outputs.evaluatorAppName : ''
-output EVALUATOR_FUNCTION_APP_URL string = enableEvaluatorAddon ? 'https://${evaluatorAddon.outputs.evaluatorAppDefaultHostName}' : ''
+// Data retention cleanup is now handled as a background service in the API
+
+// Evaluator addon outputs (conditional)
+output EVALUATOR_FUNCTION_APP_NAME string = ''
+output EVALUATOR_FUNCTION_APP_URL string = ''
 
 // Azure OpenAI outputs
 output AZURE_OPENAI_ENDPOINT string = openAI.outputs.endpoint

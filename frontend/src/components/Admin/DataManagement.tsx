@@ -438,7 +438,10 @@ export const DataManagement: React.FC = () => {
                 dataObjectCount: jsonlContent.length,
                 modelOutputCount: jsonlMappings?.outputDataMappings.length || 0,
                 isLoading: true,
-                generatedDataList: []
+                generatedDataList: [],
+                daysToAutoDelete: currentDataSet.daysToAutoDelete || 180,
+                createdAt: currentDataSet.createdAt || new Date().toISOString(),
+                deletedAt: currentDataSet.deletedAt
             };
             // Update UI immediately
             if (currentDataSet.id) {
@@ -463,7 +466,8 @@ export const DataManagement: React.FC = () => {
                     description: currentDataSet.description || '',
                     aiModelType: currentDataSet.aiModelType as AIModelType,
                     tags: currentDataSet.tags || [],
-                    modelOutputCount: jsonlMappings?.outputDataMappings.length || 0
+                    modelOutputCount: jsonlMappings?.outputDataMappings.length || 0,
+                    daysToAutoDelete: currentDataSet.daysToAutoDelete || 180
                 };
                 await dispatch(editDataSet(updateRequest));
 
@@ -493,7 +497,8 @@ export const DataManagement: React.FC = () => {
                     tags: currentDataSet.tags || [],
                     modelOutputCount: jsonlMappings?.outputDataMappings.length || 0,
                     file: currentFile,
-                    mapping: mapping
+                    mapping: mapping,
+                    daysToAutoDelete: currentDataSet.daysToAutoDelete || 180
                 };
                 await dispatch(createDataSet(createRequest));
                 
@@ -614,6 +619,30 @@ export const DataManagement: React.FC = () => {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}><Spinner size={SpinnerSize.small} />uploading...</div> : 
                     item.dataObjectCount
             ),
+        },
+        { 
+            key: 'retention', 
+            name: 'Retention', 
+            minWidth: 120,
+            isResizable: true,
+            onRender: (item: DataSet) => {
+                const createdDate = new Date(item.createdAt);
+                const now = new Date();
+                const daysSinceCreation = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
+                const daysRemaining = Math.max(0, item.daysToAutoDelete - daysSinceCreation);
+                
+                const isExpiringSoon = daysRemaining <= 30;
+                const isExpired = daysRemaining === 0;
+                
+                return (
+                    <div style={{ 
+                        color: isExpired ? 'red' : isExpiringSoon ? 'orange' : 'inherit',
+                        fontWeight: isExpiringSoon ? 'bold' : 'normal'
+                    }}>
+                        {isExpired ? 'Expired' : `${daysRemaining} days left`}
+                    </div>
+                );
+            }
         }
     ];
 
@@ -904,6 +933,19 @@ export const DataManagement: React.FC = () => {
                             noResultsFoundText: 'Type any tag and press Enter or comma to add',
                             suggestionsHeaderText: 'Suggested Tags'
                         }}
+                    />
+                    <TextField
+                        label="Days to Auto Delete"
+                        type="number"
+                        value={currentDataSet.daysToAutoDelete?.toString() || '180'}
+                        onChange={(_, value) => 
+                            setCurrentDataSet(prev => ({ 
+                                ...prev, 
+                                daysToAutoDelete: parseInt(value || '180') 
+                            }))}
+                        description="Number of days after creation when this dataset will be automatically deleted. Default is 180 days."
+                        min={1}
+                        max={3650} // ~10 years max
                     />
                     {!currentDataSet.id && (
                     <>

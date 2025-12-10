@@ -24,6 +24,8 @@ public class ExperimentsController : ControllerBase
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IUserRepository _userRepository;
     private readonly IModelRepository _modelRepository;
+    private readonly IDataObjectRepository _dataObjectRepository;
+    private readonly IImageRepository _imageRepository;
 
     public ExperimentsController(
         IExperimentRepository experimentRepository,
@@ -35,7 +37,9 @@ public class ExperimentsController : ControllerBase
         IExperimentProcessingService experimentProcessingService,
         IServiceScopeFactory scopeFactory,
         IUserRepository userRepository,
-        IModelRepository modelRepository)
+        IModelRepository modelRepository,
+        IDataObjectRepository dataObjectRepository,
+        IImageRepository imageRepository)
     {
         _experimentRepository = experimentRepository;
         _trialRepository = trialRepository;
@@ -47,6 +51,8 @@ public class ExperimentsController : ControllerBase
         _scopeFactory = scopeFactory;
         _userRepository = userRepository;
         _modelRepository = modelRepository;
+        _dataObjectRepository = dataObjectRepository;
+        _imageRepository = imageRepository;
     }
 
     [HttpGet]
@@ -315,6 +321,249 @@ public class ExperimentsController : ControllerBase
             _logger.LogError(ex, "Error updating experiment status");
             return StatusCode(500, "Internal server error");
         }
+    }
+
+    [HttpGet("{id}/export")]
+    [Authorize(Policy = "RequireAuthenticatedUser")]
+    public async Task<ActionResult> ExportExperiment(string id)
+    {
+        try
+        {
+            var experiment = await _experimentRepository.GetByIdAsync(id);
+            if (experiment == null)
+                return NotFound();
+
+            // Get trials for this experiment
+            var trials = await _trialRepository.GetByExperimentIdAsync(id);
+            
+            // Enrich trials with image blob URLs
+            var enrichedTrials = new List<object>();
+            foreach (var trial in trials)
+            {
+                DataObject? dataObject = null;
+                if (!string.IsNullOrEmpty(trial.DataObjectId))
+                {
+                    dataObject = await _dataObjectRepository.GetByIdWithIndexAsync(trial.DataObjectId);
+                }
+                var enrichedTrial = new
+                {
+                    id = trial.Id,
+                    userId = trial.UserId,
+                    experimentId = trial.ExperimentId,
+                    experimentType = trial.ExperimentType,
+                    status = trial.Status,
+                    experimentStatus = trial.ExperimentStatus,
+                    prompt = trial.Prompt,
+                    modelInputs = await EnrichDataContentWithImages(trial.ModelInputs),
+                    originalDataObject = dataObject,
+                    flags = trial.Flags,
+                    dataSetId = trial.DataSetId,
+                    modelOutputs = await EnrichModelOutputsWithImages(trial.ModelOutputs),
+                    response = trial.Response,
+                    trialResponse = trial.TrialResponse,
+                    reviewerInstructions = trial.ReviewerInstructions,
+                    createdAt = trial.CreatedAt,
+                    updatedAt = trial.UpdatedAt,
+                    questions = trial.Questions
+                };
+                enrichedTrials.Add(enrichedTrial);
+            }
+            
+            // Get unique data object IDs and dataset IDs from trials
+            var dataObjectIds = new HashSet<string>();
+            var dataSetIds = new HashSet<string>();
+            
+            foreach (var trial in trials)
+            {
+                if (!string.IsNullOrEmpty(trial.DataObjectId))
+                {
+                    dataObjectIds.Add(trial.DataObjectId);
+                }
+                if (!string.IsNullOrEmpty(trial.DataSetId))
+                {
+                    dataSetIds.Add(trial.DataSetId);
+                }
+            }
+            
+            // Fetch all data objects with enriched image data
+            var enrichedDataObjects = new List<object>();
+            foreach (var dataSetId in dataSetIds)
+            {
+                try
+                {
+                    var dataObjects = await _dataObjectRepository.GetByDataSetIdAsync(dataSetId);
+                    var filteredObjects = dataObjects.Where(obj => dataObjectIds.Contains(obj.Id));
+                    
+                    foreach (var dataObject in filteredObjects)
+                    {
+                        var enrichedObject = await EnrichDataObjectWithImageBlobs(dataObject);
+                        enrichedDataObjects.Add(enrichedObject);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning($"Failed to fetch data objects for dataset {dataSetId}: {ex.Message}");
+                }
+            }
+            
+            var exportData = new
+            {
+                experiment = new
+                {
+                    id = experiment.Id,
+                    name = experiment.Name,
+                    description = experiment.Description,
+                    status = experiment.Status,
+                    processingStatus = experiment.ProcessingStatus,
+                    testScenarioId = experiment.TestScenarioId,
+                    experimentType = experiment.ExperimentType,
+                    tags = experiment.Tags,
+                    reviewerIds = experiment.ReviewerIds,
+                    createdAt = experiment.CreatedAt,
+                    updatedAt = experiment.UpdatedAt,
+                    pendingTrials = experiment.PendingTrials,
+                    totalTrials = experiment.TotalTrials,
+                    totalCost = experiment.TotalCost,
+                    reviewerInstructions = experiment.ReviewerInstructions
+                },
+                trials = enrichedTrials,
+                dataObjects = enrichedDataObjects,
+                exportedAt = DateTime.UtcNow,
+                exportType = "experiment"
+            };
+
+            return Ok(exportData);
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error exporting experiment {Id}", id);
+            return StatusCode(500, "An error occurred while exporting the experiment");
+        }
+    }
+
+    private async Task<object> EnrichDataObjectWithImageBlobs(DataObject dataObject)
+    {
+        var enrichedInputData = await EnrichDataContentWithImages(dataObject.InputData);
+        var enrichedOutputData = await EnrichDataContentWithImages(dataObject.OutputData);
+        var enrichedGeneratedOutputData = await EnrichDataContentWithImages(dataObject.GeneratedOutputData);
+
+        return new
+        {
+            id = dataObject.Id,
+            dataSetId = dataObject.DataSetId,
+            name = dataObject.Name,
+            description = dataObject.Description,
+            inputData = enrichedInputData,
+            outputData = enrichedOutputData,
+            generatedOutputData = enrichedGeneratedOutputData,
+            createdAt = dataObject.CreatedAt,
+            updatedAt = dataObject.UpdatedAt,
+            totalTokens = dataObject.TotalTokens,
+            totalInputTokens = dataObject.TotalInputTokens,
+            totalOutputTokens = dataObject.TotalOutputTokens,
+            totalOutputTokensPerIndex = dataObject.TotalOutputTokensPerIndex
+        };
+    }
+
+    private async Task<List<object>> EnrichDataContentWithImages(List<DataContent> dataContentList)
+    {
+        var enrichedList = new List<object>();
+
+        foreach (var content in dataContentList)
+        {
+            var imageBlobUrl = await GetImageBlobUrl(content);
+            
+            // If this is an image and we have the content as an image ID, construct the API URL
+            var contentUrl = content.ContentUrl;
+            if ((content.Type?.ToLower() == "image" || content.Type?.ToLower() == "imageurl") 
+                && string.IsNullOrEmpty(contentUrl) 
+                && !string.IsNullOrEmpty(content.Content))
+            {
+                contentUrl = $"/api/images/{content.Content}";
+            }
+            
+            var enrichedContent = new
+            {
+                type = content.Type,
+                content = content.Content,
+                generatedForClinicalTask = content.GeneratedForClinicalTask,
+                totalTokens = content.TotalTokens,
+                contentUrl = contentUrl,
+                imageBlobUrl = imageBlobUrl
+            };
+            enrichedList.Add(enrichedContent);
+        }
+
+        return enrichedList;
+    }
+
+    private async Task<List<object>> EnrichModelOutputsWithImages(List<ModelOutput> modelOutputs)
+    {
+        var enrichedOutputs = new List<object>();
+
+        foreach (var output in modelOutputs)
+        {
+            var enrichedOutput = new
+            {
+                modelId = output.ModelId,
+                output = await EnrichDataContentWithImages(output.Output)
+            };
+            enrichedOutputs.Add(enrichedOutput);
+        }
+
+        return enrichedOutputs;
+    }
+
+    private async Task<string?> GetImageBlobUrl(DataContent content)
+    {
+        // Check if this content is an image
+        if (content.Type?.ToLower() == "image" || content.Type?.ToLower() == "imageurl")
+        {
+            try
+            {
+                string? imageId = null;
+                
+                // Try to get image ID from ContentUrl first
+                if (!string.IsNullOrEmpty(content.ContentUrl))
+                {
+                    var urlParts = content.ContentUrl.Split('/');
+                    imageId = urlParts.LastOrDefault();
+                }
+                
+                // If ContentUrl is empty, try to use the Content field as the image ID
+                if (string.IsNullOrEmpty(imageId) && !string.IsNullOrEmpty(content.Content))
+                {
+                    imageId = content.Content;
+                }
+                
+                if (!string.IsNullOrEmpty(imageId))
+                {
+                    var image = await _imageRepository.GetByIdAsync(imageId);
+                    
+                    // Return the full blob URL instead of just the blob path
+                    // Format: https://{storageAccount}.blob.core.windows.net/{container}/{blobPath}
+                    if (!string.IsNullOrEmpty(image.StorageAccount) && !string.IsNullOrEmpty(image.Container))
+                    {
+                        return $"https://{image.StorageAccount}.blob.core.windows.net/{image.Container}/{image.BlobPath}";
+                    }
+                    else
+                    {
+                        // Fallback to just the blob path if storage account info is not available
+                        return image.BlobPath;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning($"Failed to get blob key for image: {ex.Message}");
+            }
+        }
+
+        return null;
     }
 
     private bool IsValidStatusTransition(ExperimentStatus currentStatus, ExperimentStatus newStatus, ProcessingStatus processingStatus)

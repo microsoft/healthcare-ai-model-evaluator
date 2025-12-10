@@ -30,4 +30,7 @@ public class DataObject
     public int TotalInputTokens { get; set; } = 0;
     public int TotalOutputTokens { get; set; } = 0;
     public Dictionary<string, int> TotalOutputTokensPerIndex { get; set; } = new Dictionary<string, int>();
+
+    public int OriginalIndex { get; set; } = -1;
+    public string OriginalDataFile { get; set; } = string.Empty;
 } 

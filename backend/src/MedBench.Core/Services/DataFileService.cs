@@ -147,6 +147,7 @@ public class DataFileService : IDataFileService
             var totalOutputTokens = 0;
             var totalOutputTokensPerIndex = new Dictionary<string, int>();
             var lineCount = 0;
+            var processedObjectIndex = 0; // Track index for OriginalIndex
             if( dataset.TotalOutputTokensPerIndex != null)
             {
                 totalOutputTokensPerIndex = dataset.TotalOutputTokensPerIndex;
@@ -173,11 +174,12 @@ public class DataFileService : IDataFileService
                             );
                         }
                         var jsonObject = JsonSerializer.Deserialize<JsonElement>(line);
-                        var dataObject = await CreateDataObjectFromJson(jsonObject, dataFile.Mapping, dataset.Id);
+                        var dataObject = await CreateDataObjectFromJson(jsonObject, dataFile.Mapping, dataset.Id, dataFile.FileName, processedObjectIndex);
                         if( dataObject == null)
                         {
                             continue;
                         }
+                        processedObjectIndex++; // Increment for next object
                         dataObjects.Add(dataObject);
                         totalTokens += dataObject.TotalTokens;
                         totalInputTokens += dataObject.TotalInputTokens;
@@ -302,7 +304,7 @@ public class DataFileService : IDataFileService
         }
     }
     
-    public async Task<DataObject?> CreateDataObjectFromJson(JsonElement jsonObject, DataFileMapping mapping, string datasetId)
+    public async Task<DataObject?> CreateDataObjectFromJson(JsonElement jsonObject, DataFileMapping mapping, string datasetId, string originalDataFile = "", int originalIndex = -1)
     {
 
         var dataObject = new DataObject
@@ -314,7 +316,9 @@ public class DataFileService : IDataFileService
             UpdatedAt = DateTime.UtcNow,
             InputData = new List<DataContent>(),
             OutputData = new List<DataContent>(),
-            GeneratedOutputData = new List<DataContent>()
+            GeneratedOutputData = new List<DataContent>(),
+            OriginalDataFile = originalDataFile,
+            OriginalIndex = originalIndex
         };
 
         int objectTotalTokens = 0;
