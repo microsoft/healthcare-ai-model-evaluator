@@ -1,3 +1,32 @@
+<!--
+---
+page_type: sample
+languages:
+- csharp
+- python
+- typescript
+- bicep
+- bash
+- powershell
+- dockerfile
+products:
+- aspnet-core
+- ai-services
+- azure-ai-foundry
+- azure-ai-foundry-sdk
+- azure-app-service
+- azure-blob-storage
+- azure-clis
+- azure-container-registry
+- azure-cosmos-db
+- azure-functions
+- azure-machine-learning
+- azure-openai
+- azure-storage-accounts
+- msal-react
+---
+-->
+
 # Healthcare AI Model Evaluator
 
 Healthcare AI Model Evaluator is a medical AI model benchmarking platform with integrated evaluation engine to assist multi-disciplinary healthcare teams build and validate AI systems.
