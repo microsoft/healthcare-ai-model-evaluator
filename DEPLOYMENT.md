@@ -257,7 +257,7 @@ az functionapp list --output table
 
 # Get your application URL (frontend and API served from same endpoint)
 echo "Application URL: $(azd env get-value API_BASE_URL)"
-echo "Frontend: $(azd env get-value API_BASE_URL)/webapp"
+echo "Frontend: $(azd env get-value API_BASE_URL)
 echo "API: $(azd env get-value API_BASE_URL)/api"
 ```
 
@@ -291,7 +291,7 @@ Once created, you can:
 
 ### Components
 
-**Frontend**: React-based web application served from the .NET API at `/webapp`
+**Frontend**: React-based web application served from the .NET API at `/`
 - User interface for model evaluation management
 - Authentication via Entra ID
 

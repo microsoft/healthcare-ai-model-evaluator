@@ -120,10 +120,9 @@ $redirectUris = @(
     "https://localhost:3000"
 )
 
-# Add the Container App URLs - API at root and webapp at /webapp
+# Add the Container App URLs - API at root and webapp at /
 if ($apiUrl) {
     $redirectUris += $apiUrl
-    $redirectUris += "$apiUrl/webapp"
 }
 
 # Create permissions.json for Microsoft Graph User.Read
@@ -288,7 +287,7 @@ Write-Host ""
 Write-Host "Your Healthcare AI Model Evaluator is ready!"
 Write-Host ""
 Write-Host "API URL: $apiUrl"
-Write-Host "Frontend URL: $apiUrl/webapp"
+Write-Host "Frontend URL: $apiUrl"
 Write-Host "Client ID: $clientId"
 Write-Host ""
 if ($clientId -eq "00000000-0000-0000-0000-000000000000") {

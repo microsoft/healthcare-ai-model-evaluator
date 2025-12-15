@@ -1,11 +1,11 @@
 // Global application configuration
 export const appConfig = {
     // Base path for the application - can be overridden via environment variable
-    basePath: import.meta.env.VITE_BASE_PATH || '/webapp',
+    basePath: import.meta.env.VITE_BASE_PATH || '',
     
     // Helper function to get full path with base path
     getPath: (path: string): string => {
-        const basePath = import.meta.env.VITE_BASE_PATH || '/webapp';
+        const basePath = import.meta.env.VITE_BASE_PATH || '';
         // Ensure path starts with /
         const cleanPath = path.startsWith('/') ? path : `/${path}`;
         // Combine base path with the route, avoiding double slashes

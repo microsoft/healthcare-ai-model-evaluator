@@ -139,7 +139,7 @@ EOF
             # Build redirect URIs JSON robustly with jq to avoid quoting issues
             SPA_REDIRECTS=("http://localhost:3000" "https://localhost:3000")
             if [ -n "${API_URL:-}" ]; then
-                SPA_REDIRECTS+=("${API_URL}/webapp")
+                SPA_REDIRECTS+=("${API_URL}")
             fi
             SPA_REDIRECT_URIS_JSON=$(printf '%s\n' "${SPA_REDIRECTS[@]}" | jq -R . | jq -s .)
             BODY=$(jq -n --argjson uris "$SPA_REDIRECT_URIS_JSON" '{spa: {redirectUris: $uris}}')
@@ -226,7 +226,7 @@ if [ "$CLIENT_ID" = "00000000-0000-0000-0000-000000000000" ]; then
     echo "2. Create a new registration with these settings:"
     echo "   - Name: HealthcareAIModelEvaluator-App-${AZURE_ENV_NAME}"
     echo "   - Supported account types: Single tenant"
-    echo "   - Redirect URI: SPA, ${API_URL}/webapp"
+    echo "   - Redirect URI: SPA, ${API_URL}"
     echo "3. Copy the Application (client) ID"
     echo "4. Run: azd env set AUTH_CLIENT_ID <your-client-id>"
     echo "5. Run: azd deploy to update the configuration"
@@ -235,6 +235,6 @@ else
 fi
 echo ""
 echo "Your application URLs:"
-echo "  Application: ${API_URL}/webapp"
+echo "  Application: ${API_URL}"
 echo "  API: $API_URL"
 echo "  Client ID: $CLIENT_ID"
