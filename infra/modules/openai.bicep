@@ -14,8 +14,8 @@ param openAIModelVersion string
 param modelCapacity int = 10
 param modelSku string
 
-// Create Azure OpenAI service if requested
-resource openAIService 'Microsoft.CognitiveServices/accounts@2023-05-01' = if (createOpenAI) {
+// When createOpenAI=true, create a new Azure OpenAI account.
+resource openAIServiceNew 'Microsoft.CognitiveServices/accounts@2023-05-01' = if (createOpenAI) {
   name: name
   location: location
   tags: tags
@@ -32,9 +32,12 @@ resource openAIService 'Microsoft.CognitiveServices/accounts@2023-05-01' = if (c
   }
 }
 
+
+// Avoid dereferencing conditional resources by creating secrets conditionally.
+
 // Create deployment for the model if creating new service
 resource openAIDeployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = if (createOpenAI) {
-  parent: openAIService
+  parent: openAIServiceNew
   name: openAIModelName
   properties: {
     model: {
@@ -56,20 +59,36 @@ resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = {
 }
 
 // Store Azure OpenAI endpoint in Key Vault
-resource openAIEndpointSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
+resource openAIEndpointSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = if (createOpenAI) {
   parent: keyVault
   name: 'azure-openai-endpoint'
   properties: {
-    value: createOpenAI ? openAIService.properties.endpoint : existingOpenAIEndpoint
+    value: openAIServiceNew.properties.endpoint
+  }
+}
+
+resource existingOpenAIEndpointSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = if (!createOpenAI) {
+  parent: keyVault
+  name: 'azure-openai-endpoint'
+  properties: {
+    value: existingOpenAIEndpoint
   }
 }
 
 // Store Azure OpenAI key in Key Vault
-resource openAIKeySecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
+resource openAIKeySecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = if (createOpenAI) {
   parent: keyVault
   name: 'azure-openai-key'
   properties: {
-    value: createOpenAI ? openAIService.listKeys().key1 : existingOpenAIKey
+    value: openAIServiceNew.listKeys().key1
+  }
+}
+
+resource existingOpenAIKeySecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = if (!createOpenAI) {
+  parent: keyVault
+  name: 'azure-openai-key'
+  properties: {
+    value: existingOpenAIKey
   }
 }
 
@@ -92,7 +111,7 @@ resource openAIVersionSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
 }
 
 // Outputs
-output endpoint string = createOpenAI ? openAIService.properties.endpoint : existingOpenAIEndpoint
+output endpoint string = createOpenAI ? openAIServiceNew.properties.endpoint : existingOpenAIEndpoint
 output deploymentName string = openAIModelName
 output apiVersion string = openAIApiVersion
-output serviceName string = createOpenAI ? openAIService.name : '' 
+output serviceName string = createOpenAI ? openAIServiceNew.name : '' 

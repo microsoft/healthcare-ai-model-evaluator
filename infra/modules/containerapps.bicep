@@ -203,6 +203,14 @@ resource apiContainerApp 'Microsoft.App/containerApps@2023-05-01' = {
               secretRef: 'storage-endpoint'
             }
             {
+              name: 'AZURE_KEY_VAULT_NAME'
+              value: keyVaultName
+            }
+            {
+              name: 'KeyVault__Name'
+              value: keyVaultName
+            }
+            {
               name: 'AzureStorage__ImageContainer'
               value: 'images'
             }

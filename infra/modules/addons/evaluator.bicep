@@ -1,9 +1,6 @@
 @description('Location for all resources')
 param location string = resourceGroup().location
 
-@description('Base name for resources')
-param environmentName string = 'haime'
-
 @description('Resource token for unique naming')
 param resourceToken string = ''
 
@@ -18,10 +15,6 @@ param storageAccountName string
 
 @description('Azure OpenAI endpoint for summary evaluator')
 param azureOpenAIEndpoint string = ''
-
-@description('Azure OpenAI API key for summary evaluator')
-@secure()
-param azureOpenAIKey string = ''
 
 @description('Azure OpenAI deployment name for summary evaluator')
 param azureOpenAIDeployment string = 'gpt-4'

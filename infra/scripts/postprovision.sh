@@ -184,7 +184,20 @@ fi
 
 # Configure managed identity role assignments for data services
 echo "Configuring managed identity access to data services..."
-CONTAINER_APP_NAME="api-${AZURE_ENV_NAME}"
+
+# The Container App name is based on the resourceToken used in Bicep (not AZURE_ENV_NAME).
+# Discover it by azd tag first, then fall back to a best-effort name guess.
+CONTAINER_APP_NAME=$(az containerapp list \
+    --resource-group "$RESOURCE_GROUP_NAME" \
+    --query "[?tags['azd-service-name']=='api'].name | [0]" \
+    -o tsv 2>/dev/null || echo "")
+
+if [ -z "$CONTAINER_APP_NAME" ] || [ "$CONTAINER_APP_NAME" = "null" ]; then
+    CONTAINER_APP_NAME="api-${AZURE_ENV_NAME}"
+fi
+
+echo "Detected API Container App name: $CONTAINER_APP_NAME"
+
 PRINCIPAL_ID=$(az containerapp show --name "$CONTAINER_APP_NAME" --resource-group "$RESOURCE_GROUP_NAME" --query "identity.principalId" -o tsv 2>/dev/null || echo "")
 
 if [ -n "$PRINCIPAL_ID" ] && [ "$PRINCIPAL_ID" != "null" ]; then

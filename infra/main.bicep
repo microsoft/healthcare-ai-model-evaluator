@@ -235,9 +235,13 @@ module storage './modules/storage.bicep' = {
     tags: tags
     name: names.storage
     keyVaultName: keyVault.outputs.name
-    principalId: '' // Empty initially, role assignment will be done in postprovision
+    principalId: '' // Role assignment is created after Container App identity exists
     principalType: 'ServicePrincipal'
   }
+}
+
+resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' existing = {
+  name: names.storage
 }
 
 // Container Apps deployed after data services so secrets exist
@@ -272,10 +276,18 @@ module containerApps './modules/containerapps.bicep' = {
     cosmosAccountName: cosmos.outputs.accountName
     storageAccountName: storage.outputs.name
   }
-  dependsOn: [
-    cosmos
-    storage
-  ]
+}
+
+// Grant API Container App managed identity access to Blob Storage.
+// This must happen after the Container App is created so the identity principalId exists.
+resource apiStorageBlobContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storageAccount.id, 'ApiStorageBlobDataContributor')
+  scope: storageAccount
+  properties: {
+    principalId: containerApps.outputs.apiPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe') // Storage Blob Data Contributor
+  }
 }
 
 // Azure Functions for metrics processing
@@ -293,9 +305,6 @@ module functions './modules/functions.bicep' = {
     openAIApiVersion: openAI.outputs.apiVersion
     dockerImageTag: dockerImageTag
   }
-  dependsOn: [
-    containerApps
-  ]
 }
 
 // Data retention cleanup is now handled as a background service in the API
