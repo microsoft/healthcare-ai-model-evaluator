@@ -13,6 +13,7 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
   kind: 'MongoDB'
   properties: {
     databaseAccountOfferType: 'Standard'
+    disableLocalAuth: true
     consistencyPolicy: {
       defaultConsistencyLevel: 'Session'
     }
