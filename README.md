@@ -1,3 +1,32 @@
+<!--
+---
+page_type: sample
+languages:
+- csharp
+- python
+- typescript
+- bicep
+- bash
+- powershell
+- dockerfile
+products:
+- aspnet-core
+- ai-services
+- azure-ai-foundry
+- azure-ai-foundry-sdk
+- azure-app-service
+- azure-blob-storage
+- azure-clis
+- azure-container-registry
+- azure-cosmos-db
+- azure-functions
+- azure-machine-learning
+- azure-openai
+- azure-storage-accounts
+- msal-react
+---
+-->
+
 # Healthcare AI Model Evaluator
 
 Healthcare AI Model Evaluator is a medical AI model benchmarking platform with integrated evaluation engine to assist multi-disciplinary healthcare teams build and validate AI systems.
@@ -30,9 +59,13 @@ For a complete overview of the Healthcare AI Model Evaluator platform, refer to 
 
 ### Quick start
 
-Deploy the complete Healthcare AI Model Evaluator platform with a single command using Azure Developer CLI (azd).
+Initialize and deploy the complete Healthcare AI Model Evaluator platform using Azure Developer CLI (azd).
 
 ```bash
+# Initialize the project from the template
+azd init -t microsoft/healthcare-ai-model-evaluator
+
+# Deploy all resources
 azd up
 ```
 
@@ -57,8 +90,13 @@ npm run dev
 
 ### Backend Setup
 ```bash
-export AZURE_STORAGE_CONNECTION_STRING=[Your Storage Account connection string]
-export COSMOSDB_CONNECTION_STRING=[Your mongodb connection string]
+# For Linux/macOS
+export AZURE_STORAGE_CONNECTION_STRING="Your Storage Account connection string"
+export COSMOSDB_CONNECTION_STRING="Your mongodb connection string"
+
+# For PowerShell
+$env:AZURE_STORAGE_CONNECTION_STRING="Your Storage Account connection string"
+$env:COSMOSDB_CONNECTION_STRING="Your mongodb connection string"
 
 cd backend
 dotnet restore
@@ -68,10 +106,14 @@ dotnet run --project src/MedBench.API/MedBench.API.csproj
 ### Functions Setup
 ```bash
 # From project's root
-docker-compose up azurite
+docker compose up azurite
 
 cd functions
-docker-compose up
+# Create .env file from template
+cp .env.example .env
+# Edit .env with your Azure OpenAI credentials if needed
+
+docker compose up
 ```
 
 ## Architecture

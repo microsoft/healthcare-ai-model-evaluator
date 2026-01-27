@@ -584,7 +584,11 @@ For local development of functions:
 
 ```bash
 cd functions
-docker-compose up
+# Create .env file from template (required for docker compose)
+cp .env.example .env
+# Edit .env with your Azure OpenAI credentials if needed
+
+docker compose up
 ```
 
 This starts:
