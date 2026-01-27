@@ -59,9 +59,13 @@ For a complete overview of the Healthcare AI Model Evaluator platform, refer to 
 
 ### Quick start
 
-Deploy the complete Healthcare AI Model Evaluator platform with a single command using Azure Developer CLI (azd).
+Initialize and deploy the complete Healthcare AI Model Evaluator platform using Azure Developer CLI (azd).
 
-```
+```bash
+# Initialize the project from the template
+azd init -t microsoft/healthcare-ai-model-evaluator
+
+# Deploy all resources
 azd up
 ```
 
