@@ -77,8 +77,8 @@ npm run dev
 ### Backend Setup
 ```bash
 # For Linux/macOS
-export AZURE_STORAGE_CONNECTION_STRING=[Your Storage Account connection string]
-export COSMOSDB_CONNECTION_STRING=[Your mongodb connection string]
+export AZURE_STORAGE_CONNECTION_STRING="Your Storage Account connection string"
+export COSMOSDB_CONNECTION_STRING="Your mongodb connection string"
 
 # For PowerShell
 $env:AZURE_STORAGE_CONNECTION_STRING="Your Storage Account connection string"
