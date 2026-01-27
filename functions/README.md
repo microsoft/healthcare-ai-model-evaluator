@@ -101,7 +101,8 @@ We are currently using a simple `requirements.txt` set up that still allow us to
 ### Step 2. Configure environment:
 
 > [!IMPORTANT]
-> You **must** create a `.env` file before running `docker-compose up`. The `docker-compose.yml` configuration requires this file.
+> You **must** create a `.env` file before running `docker compose up`. The `docker-compose.yml` configuration requires this file.
+
 
 ```bash
 cp .env.example .env
