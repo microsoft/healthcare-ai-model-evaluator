@@ -87,14 +87,14 @@ dotnet run --project src/MedBench.API/MedBench.API.csproj
 ### Functions Setup
 ```bash
 # From project's root
-docker-compose up azurite
+docker compose up azurite
 
 cd functions
 # Create .env file from template
 cp .env.example .env
 # Edit .env with your Azure OpenAI credentials if needed
 
-docker-compose up
+docker compose up
 ```
 
 ## Architecture
