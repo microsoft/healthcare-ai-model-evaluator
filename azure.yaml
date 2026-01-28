@@ -52,8 +52,14 @@ services:
 
 hooks:
   preprovision:
-    - shell: sh
-      run: ./infra/hooks/preprovision.sh
+    - posix:
+        shell: sh
+        run: ./infra/hooks/preprovision.sh
+        interactive: true
+      windows:
+        shell: pwsh
+        run: ./infra/hooks/preprovision.ps1
+        interactive: true
       continueOnError: false
   postprovision:
     - run: ./infra/scripts/postprovision.sh
@@ -64,6 +70,14 @@ infra:
   path: infra
   module: main
   parameters:
+    deploymentNetworking: "${DEPLOYMENT_NETWORKING=private}"
+    createVnet: "${CREATE_VNET=true}"
+    existingVnetResourceId: "${EXISTING_VNET_RESOURCE_ID=}"
+    existingAcaInfrastructureSubnetId: "${EXISTING_ACA_INFRASTRUCTURE_SUBNET_ID=}"
+    existingFunctionsIntegrationSubnetId: "${EXISTING_FUNCTIONS_INTEGRATION_SUBNET_ID=}"
+    vnetAddressSpace: "${VNET_ADDRESS_SPACE=10.30.0.0/16}"
+    acaInfrastructureSubnetPrefix: "${ACA_INFRASTRUCTURE_SUBNET_PREFIX=10.30.0.0/23}"
+    functionsIntegrationSubnetPrefix: "${FUNCTIONS_INTEGRATION_SUBNET_PREFIX=10.30.2.0/24}"
     enableWebIpFiltering: "${ENABLE_WEB_IP_FILTERING}"
     allowedWebIp: "${ALLOWED_WEB_IP}"
     authClientId: "${AUTH_CLIENT_ID}"

@@ -8,6 +8,7 @@ namespace MedBench.Core.Models
         public const string ClinicalTaskId = "ClinicalTaskId";
         public const string FunctionAppType = "FunctionAppType";
         public const string TimeoutSeconds = "TimeoutSeconds";
-        public const string StorageConnectionString = "StorageConnectionString";
+        public const string StorageConnectionString = "StorageConnectionString"; // legacy
+        public const string StorageEndpoint = "StorageEndpoint";
     }
 }

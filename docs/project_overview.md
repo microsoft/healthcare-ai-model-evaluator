@@ -15,7 +15,7 @@ The Arena is the user-facing interface and orchestration layer that enables medi
 **Technology Stack**:
 - **Backend**: .NET 8 Web API
 - **Frontend**: React 18 with TypeScript
-- **Database**: Azure Cosmos DB (MongoDB API, serverless)
+- **Database**: Azure Cosmos DB (SQL API)
 - **Storage**: Azure Blob Storage
 - **Authentication**: Azure AD integration via MSAL
 

@@ -24,9 +24,18 @@ public class ClinicalTasksController : ControllerBase
     private readonly ITrialRepository _trialRepository;
     private readonly IExperimentRepository _experimentRepository;
     private readonly ITestScenarioRepository _testScenarioRepository;
-    private readonly IConfiguration _configuration;
+    private readonly BlobServiceClient _blobServiceClient;
 
-    public ClinicalTasksController(IClinicalTaskRepository clinicalTaskRepository, IServiceScopeFactory serviceScopeFactory, ILogger<ClinicalTasksController> logger, IDataSetRepository dataSetRepository, IModelRepository modelRepository, ITrialRepository trialRepository, IExperimentRepository experimentRepository, ITestScenarioRepository testScenarioRepository, IConfiguration configuration)
+    public ClinicalTasksController(
+        IClinicalTaskRepository clinicalTaskRepository,
+        IServiceScopeFactory serviceScopeFactory,
+        ILogger<ClinicalTasksController> logger,
+        IDataSetRepository dataSetRepository,
+        IModelRepository modelRepository,
+        ITrialRepository trialRepository,
+        IExperimentRepository experimentRepository,
+        ITestScenarioRepository testScenarioRepository,
+        BlobServiceClient blobServiceClient)
     {
         _clinicalTaskRepository = clinicalTaskRepository;
         _serviceScopeFactory = serviceScopeFactory;
@@ -36,7 +45,7 @@ public class ClinicalTasksController : ControllerBase
         _trialRepository = trialRepository;
         _experimentRepository = experimentRepository;
         _testScenarioRepository = testScenarioRepository;
-        _configuration = configuration;
+        _blobServiceClient = blobServiceClient;
     }
 
     [HttpGet]
@@ -374,15 +383,8 @@ public class ClinicalTasksController : ControllerBase
         
         try
         {
-            // Get the blob service client
-            var blobServiceClient = new BlobServiceClient(
-                Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING") 
-                    ?? _configuration["AzureStorage:ConnectionString"]
-            );
-            
             // Get the metrics results container
-            var resultsContainerClient = blobServiceClient.GetBlobContainerClient("metricresults");
-            await resultsContainerClient.CreateIfNotExistsAsync();
+            var resultsContainerClient = _blobServiceClient.GetBlobContainerClient("metricresults");
             
             // This is not enough for large datasets.
             // Maximum time to wait for results (30 minutes)

@@ -1,57 +1,76 @@
-using MongoDB.Driver;
-using MongoDB.Bson;
+using MedBench.Core.Cosmos;
 using MedBench.Core.Models;
 using MedBench.Core.Interfaces;
+using Microsoft.Azure.Cosmos;
 
 namespace MedBench.Core.Repositories;
 
 public class DataSetRepository : IDataSetRepository
 {
-    private readonly IMongoCollection<DataSet> _collection;
+    private readonly Container _container;
     private readonly IDataObjectRepository _dataObjectRepository;
 
-    public DataSetRepository(IMongoDatabase database, IDataObjectRepository dataObjectRepository)
+    public DataSetRepository(CosmosContainerProvider containerProvider, IDataObjectRepository dataObjectRepository)
     {
-        _collection = database.GetCollection<DataSet>("DataSets");
+        _container = containerProvider.GetContainer("DataSets");
         _dataObjectRepository = dataObjectRepository;
     }
 
     public async Task<IEnumerable<DataSet>> GetAllAsync()
     {
-        return await _collection.Find(_ => true).ToListAsync();
+        return await CosmosQueryHelpers.QueryAsync<DataSet>(
+            _container,
+            new QueryDefinition("SELECT * FROM c"));
     }
 
     public async Task<DataSet> GetByIdAsync(string id)
     {
-        var dataset = await _collection.Find(x => x.Id == id).FirstOrDefaultAsync();
-        if (dataset == null)
+        try
+        {
+            var response = await _container.ReadItemAsync<DataSet>(id, new PartitionKey(id));
+            return response.Resource;
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
             throw new KeyNotFoundException($"DataSet with ID {id} not found");
-        return dataset;
+        }
     }
 
     public async Task<DataSet> CreateAsync(DataSet dataset)
     {
-        if (string.IsNullOrEmpty(dataset.Id))
+        if (string.IsNullOrWhiteSpace(dataset.Id))
         {
-            dataset.Id = ObjectId.GenerateNewId().ToString();
+            dataset.Id = Guid.NewGuid().ToString();
         }
-        await _collection.InsertOneAsync(dataset);
+
+        await _container.CreateItemAsync(dataset, new PartitionKey(dataset.Id));
         return dataset;
     }
 
     public async Task<DataSet> UpdateAsync(DataSet dataset)
     {
-        var result = await _collection.ReplaceOneAsync(x => x.Id == dataset.Id, dataset);
-        if (result.ModifiedCount == 0)
+        try
+        {
+            await _container.ReplaceItemAsync(dataset, dataset.Id, new PartitionKey(dataset.Id));
+            return dataset;
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
             throw new KeyNotFoundException($"DataSet with ID {dataset.Id} not found");
-        return dataset;
+        }
     }
 
     public async Task DeleteAsync(string id)
     {
         await _dataObjectRepository.DeleteByDataSetIdAsync(id);
-        var result = await _collection.DeleteOneAsync(x => x.Id == id);
-        if (result.DeletedCount == 0)
+
+        try
+        {
+            await _container.DeleteItemAsync<DataSet>(id, new PartitionKey(id));
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
             throw new KeyNotFoundException($"DataSet with ID {id} not found");
+        }
     }
 } 

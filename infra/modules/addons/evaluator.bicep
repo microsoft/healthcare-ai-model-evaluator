@@ -22,6 +22,12 @@ param azureOpenAIDeployment string = 'gpt-4'
 @description('Azure OpenAI API version for summary evaluator')
 param azureOpenAIVersion string = '2024-02-01'
 
+@description('Enable regional VNet integration for the evaluator Function App (outbound).')
+param enableVnetIntegration bool = false
+
+@description('When enableVnetIntegration is true: subnet resource ID for Function App VNet integration.')
+param integrationSubnetId string = ''
+
 // Reference existing Key Vault
 resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = {
   name: keyVaultName
@@ -64,8 +70,21 @@ resource evaluatorApp 'Microsoft.Web/sites@2022-09-01' = {
       linuxFxVersion: 'Python|3.11'
       appSettings: [
         {
-          name: 'AzureWebJobsStorage'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=core.windows.net'
+          // Identity-based storage connection for triggers/bindings (no shared key / no connection string)
+          name: 'AzureWebJobsStorage__accountName'
+          value: storageAccount.name
+        }
+        {
+          name: 'AzureWebJobsStorage__credential'
+          value: 'managedidentity'
+        }
+        {
+          name: 'AzureWebJobsStorage__blobServiceUri'
+          value: 'https://${storageAccount.name}.blob.${environment().suffixes.storage}'
+        }
+        {
+          name: 'AzureWebJobsStorage__queueServiceUri'
+          value: 'https://${storageAccount.name}.queue.${environment().suffixes.storage}'
         }
         {
           name: 'FUNCTIONS_WORKER_RUNTIME'
@@ -104,6 +123,36 @@ resource evaluatorApp 'Microsoft.Web/sites@2022-09-01' = {
       ftpsState: 'Disabled'
     }
     httpsOnly: true
+  }
+}
+
+// Grant the evaluator function app identity access to Storage data plane.
+resource evaluatorStorageBlobContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storageAccount.id, evaluatorApp.identity.principalId, 'EvaluatorStorageBlobDataContributor')
+  scope: storageAccount
+  properties: {
+    principalId: evaluatorApp.identity.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe') // Storage Blob Data Contributor
+  }
+}
+
+resource evaluatorStorageQueueContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storageAccount.id, evaluatorApp.identity.principalId, 'EvaluatorStorageQueueDataContributor')
+  scope: storageAccount
+  properties: {
+    principalId: evaluatorApp.identity.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '974c5e8b-45b9-4653-ba55-5f855dd0fb88') // Storage Queue Data Contributor
+  }
+}
+
+// Regional VNet integration (outbound) for the evaluator function app
+resource evaluatorAppVnetConfig 'Microsoft.Web/sites/networkConfig@2022-09-01' = if (enableVnetIntegration) {
+  parent: evaluatorApp
+  name: 'virtualNetwork'
+  properties: {
+    subnetResourceId: integrationSubnetId
   }
 }
 

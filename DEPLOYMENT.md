@@ -132,15 +132,59 @@ Now that your environment is configured, you can deploy all necessary resources 
 
 #### IP Filtering & Security Configuration
 
-**By default, the deployment is secure-by-default** and will prompt you to configure IP filtering to protect the web application:
+This project supports two deployment networking modes:
 
-- **During first deployment**, you'll be prompted to enter an IP address that can access the web application
-- **Your current public IP** is automatically detected and suggested as the default (using preprovision hooks)
-- **Only specified IPs** can access the web application - all other access is blocked at the Container App ingress level
-- **Backend data services** (Cosmos DB, Storage) use public endpoints but are secured via managed identity authentication and connection strings
-- **IP filtering applies only to the Container App** - Azure Functions, Storage, and Cosmos DB are secured through Azure's service-to-service authentication and managed identities
+- `DEPLOYMENT_NETWORKING=open` (default): public ingress
+- `DEPLOYMENT_NETWORKING=private`: internal-only networking (VNet)
 
-**Managing IP Access:**
+When you run `azd up`, the preprovision hook will prompt you to choose `open` vs `private`.
+
+**Private mode (VNet, internal-only)**
+
+In `private` mode:
+
+- The Container Apps Environment is deployed as internal-only and the API ingress is not publicly exposed.
+- Azure Functions are configured for regional VNet integration (outbound).
+- You must access the API from within the VNet (for example via VPN, jumpbox, or peered network).
+
+**Accessing private mode (VPN / institutional network)**
+
+For step-by-step instructions to reach the internal-only endpoint (Point-to-Site VPN Gateway for individual access, or peering/S2S for institutional networks), see:
+
+- [docs/private_network_access_vpn.md](docs/private_network_access_vpn.md)
+
+For a quick setup of a Point-to-Site VPN Gateway (OpenVPN + Microsoft Entra ID), you can also run:
+
+```sh
+./infra/scripts/create-p2s-vpn-gateway.sh
+```
+
+To force private mode up-front:
+
+```sh
+azd env set DEPLOYMENT_NETWORKING private
+```
+
+You can either create a new VNet (recommended) or use an existing one:
+
+```sh
+# Create a new VNet + required subnets
+azd env set CREATE_VNET true
+
+# OR: use existing subnets (resource IDs)
+azd env set CREATE_VNET false
+azd env set EXISTING_ACA_INFRASTRUCTURE_SUBNET_ID "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/virtualNetworks/<vnet>/subnets/<aca-subnet>"
+azd env set EXISTING_FUNCTIONS_INTEGRATION_SUBNET_ID "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/virtualNetworks/<vnet>/subnets/<functions-subnet>"
+```
+
+> [!NOTE]
+> The included frontend deployment won’t be able to reach an internal-only API from the public internet. In private mode, plan to access the UI/API from inside the VNet.
+
+**Optional IP filtering (open mode)**
+
+In `open` mode, no IP filtering is auto-configured.
+
+If you want to restrict API ingress by IP, you can enable it explicitly:
 
 ```sh
 # View current IP filtering settings
@@ -150,10 +194,11 @@ azd env get-value ENABLE_WEB_IP_FILTERING
 # Add or update allowed IPs (comma-delimited CIDR format)
 azd env set ALLOWED_WEB_IP "89.144.197.27/32,203.0.113.1/32"
 
-# Disable IP filtering entirely (not recommended for production)
-azd env set ENABLE_WEB_IP_FILTERING false
+# Enable IP filtering (comma-delimited CIDR format)
+azd env set ENABLE_WEB_IP_FILTERING true
+azd env set ALLOWED_WEB_IP "203.0.113.1/32,198.51.100.0/24"
 
-# Open to the entire internet 
+# Disable IP filtering
 azd env set ENABLE_WEB_IP_FILTERING false
 azd env set ALLOWED_WEB_IP ""
 
@@ -162,16 +207,18 @@ azd up
 ```
 
 > [!WARNING]
-> **Opening to Internet**: Setting `ENABLE_WEB_IP_FILTERING=false` removes all IP restrictions and allows public internet access to your application. 
+> Setting `DEPLOYMENT_NETWORKING=open` exposes the API publicly unless you add your own ingress controls (IP filtering, gateway, etc.).
 
-**Quick Commands for Common Scenarios:**
+**Quick commands**
 
 ```sh
-# Development: Open to internet (use only for testing)
+# Development: Open mode, no IP filtering
+azd env set DEPLOYMENT_NETWORKING open
 azd env set ENABLE_WEB_IP_FILTERING false
 azd up
 
-# Production: Lock down to your office IP
+# Production-ish: Open mode + lock down to office IP
+azd env set DEPLOYMENT_NETWORKING open
 azd env set ENABLE_WEB_IP_FILTERING true
 azd env set ALLOWED_WEB_IP "your.office.ip.address/32"
 azd up
@@ -183,6 +230,69 @@ azd up
 
 > [!WARNING]
 > **Portal Changes**: Any IP filtering changes made directly in the Azure portal will be overwritten by `azd up`. Always use the azd environment variables to manage IP access.
+
+> [!NOTE]
+> **Cosmos DB auth**: This deployment uses **Azure Cosmos DB SQL API** with **local auth disabled** (no keys / no connection strings). The app authenticates using **Microsoft Entra ID / Managed Identity** via `DefaultAzureCredential`.
+
+> [!WARNING]
+> **Breaking change (Mongo → SQL API)**: Older deployments used **Cosmos DB API for MongoDB**. This repository now provisions **Cosmos DB SQL API** instead, which means **existing Mongo data is not automatically migrated**. Plan for a one-time migration or accept data loss when moving environments.
+
+> **Export (old Mongo API)**
+> - Use `mongoexport` against your old Cosmos Mongo API account (or any Mongo-compatible endpoint):
+>   ```sh
+>   mongoexport --uri "$MONGO_URI" --db HAIMEDB --collection Users --jsonArray --out Users.json
+>   mongoexport --uri "$MONGO_URI" --db HAIMEDB --collection Experiments --jsonArray --out Experiments.json
+>   # Repeat for other collections: TestScenarios, ClinicalTasks, Images, DataSets, DataObjects, Trials, Models
+>   ```
+>
+> **Import (new SQL API)**
+> - Ensure your current identity has Cosmos **data-plane** permissions on the new account (for example, the built-in “Cosmos DB Built-in Data Contributor” role). You can grant this in the Azure Portal, or use Azure CLI to discover role definition IDs and assign them.
+>
+> **Azure CLI (recommended) – grant yourself Cosmos SQL data access**
+> ```sh
+> # Resolve resource group + Cosmos account name from your azd environment
+> RG="$(azd env get-value AZURE_RESOURCE_GROUP_NAME)"
+> COSMOS_ACCOUNT="$(azd env get-value AZURE_COSMOS_ACCOUNT_NAME)"
+>
+> # Your Entra ID object id (requires directory read permissions in your tenant)
+> PRINCIPAL_ID="$(az ad signed-in-user show --query id -o tsv)"
+>
+> # Discover the built-in Data Contributor role definition id for this Cosmos account
+> ROLE_DEF_ID="$(az cosmosdb sql role definition list \
+>   --resource-group "$RG" \
+>   --account-name "$COSMOS_ACCOUNT" \
+>   --query "[?roleName=='Cosmos DB Built-in Data Contributor'].id | [0]" \
+>   -o tsv)"
+>
+> # Assign the role at account scope (data-plane)
+> az cosmosdb sql role assignment create \
+>   --resource-group "$RG" \
+>   --account-name "$COSMOS_ACCOUNT" \
+>   --principal-id "$PRINCIPAL_ID" \
+>   --role-definition-id "$ROLE_DEF_ID" \
+>   --scope "/"
+> ```
+>
+> **Notes**
+> - For local dev + migration scripts, you typically assign the role to your **signed-in user** (command above).
+> - For runtime access, this template assigns Cosmos SQL data-plane RBAC to the deployed workload identity (managed identity/service principal) during provisioning.
+> - Import each exported file using the helper script in `tools/cosmos-migration/`:
+>   ```sh
+>   python3 -m pip install -r tools/cosmos-migration/requirements.txt
+>
+>   python3 tools/cosmos-migration/import_mongo_export.py \
+>     --endpoint "$(azd env get-value COSMOSDB_ENDPOINT)" \
+>     --database "$(azd env get-value COSMOSDB_DATABASE)" \
+>     --container Users \
+>     --input Users.json
+>   ```
+>
+> **Mapping details**
+> - The import script maps Mongo `_id` → Cosmos `id` (string) and removes `_id`.
+> - Containers are partitioned by `/id` in this deployment, so `id` must be present and a string.
+> - Import per container: `Users`, `Models`, `Experiments`, `ClinicalTasks`, `TestScenarios`, `DataObjects`, `DataSets`, `Images`, `Trials`.
+> - The import script also normalizes common **Mongo Extended JSON** wrappers (for example `$oid`, `$date`, `$numberLong`) into plain values so the .NET app can read them back cleanly.
+> - Cosmos SQL queries are **case-sensitive** for property names. Keep existing document field casing (for example `Email`, `UserId`, `ExperimentId`, `TestScenarioId`, `TaskId`, `Status`).
 
 > [!TIP]
 > **Multiple Locations**: Use comma-delimited CIDR notation to allow access from multiple locations: `"home.ip.address/32,office.ip.address/32,vpn.range.address/24"`

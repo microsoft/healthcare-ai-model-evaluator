@@ -1,69 +1,60 @@
 using System.Threading.Tasks;
-using MongoDB.Driver;
-using MongoDB.Bson;
+using System.Text.Json;
+using MedBench.Core.Cosmos;
 using MedBench.Core.Models;
 using MedBench.Core.Interfaces;
 using Microsoft.Extensions.Logging;
+using Microsoft.Azure.Cosmos;
 
 namespace MedBench.Core.Repositories;
 
 public class TrialRepository : ITrialRepository
 {
-    private readonly IMongoCollection<Trial> _collection;
+    private readonly Container _container;
     private readonly ILogger<TrialRepository> _logger;
 
-    public TrialRepository(IMongoDatabase database, ILogger<TrialRepository> logger)
+    public TrialRepository(CosmosContainerProvider containerProvider, ILogger<TrialRepository> logger)
     {
-        _collection = database.GetCollection<Trial>("Trials");
-
-        // Create indexes
-        var indexKeysDefinition = Builders<Trial>.IndexKeys.Ascending(x => x.ExperimentId);
-        _collection.Indexes.CreateOne(new CreateIndexModel<Trial>(indexKeysDefinition));
-
-        // Add compound index for pending trials query (supports filtering and sorting)
-        var pendingTrialsIndex = Builders<Trial>.IndexKeys
-            .Ascending(x => x.UserId)
-            .Ascending(x => x.ExperimentStatus)
-            .Ascending(x => x.Status);
-        _collection.Indexes.CreateOne(new CreateIndexModel<Trial>(pendingTrialsIndex));
-
-        // Add simple UserId index for other user-based queries
-        var userIdIndex = Builders<Trial>.IndexKeys.Ascending(x => x.UserId);
-        _collection.Indexes.CreateOne(new CreateIndexModel<Trial>(userIdIndex));
-
-        // Add compound index for experiment and data object queries
-        var experimentDataObjectIndex = Builders<Trial>.IndexKeys
-            .Ascending(x => x.ExperimentId)
-            .Ascending(x => x.DataObjectId);
-        _collection.Indexes.CreateOne(new CreateIndexModel<Trial>(experimentDataObjectIndex));
-
+        _container = containerProvider.GetContainer("Trials");
         _logger = logger;
     }
 
     public async Task<IEnumerable<Trial>> GetAllAsync()
     {
-        return await _collection.Find(_ => true).ToListAsync();
+        return await CosmosQueryHelpers.QueryAsync<Trial>(
+            _container,
+            new QueryDefinition("SELECT * FROM c"));
     }
 
     public async Task<Trial> GetByIdAsync(string id)
     {
-        var trial = await _collection.Find(x => x.Id == id).FirstOrDefaultAsync();
-        if (trial == null)
+        try
+        {
+            var response = await _container.ReadItemAsync<Trial>(id, new PartitionKey(id));
+            var trial = response.Resource;
+            _logger.LogInformation("Retrieved trial from DB: {Trial}", JsonSerializer.Serialize(trial));
+            return trial;
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
             throw new KeyNotFoundException($"Trial with ID {id} not found");
-        
-        _logger.LogInformation($"Retrieved trial from DB: {trial.ToJson()}");
-        return trial;
+        }
     }
 
     public async Task<IEnumerable<Trial>> GetByUserIdAsync(string userId)
     {
-        return await _collection.Find(x => x.UserId == userId).ToListAsync();
+        return await CosmosQueryHelpers.QueryAsync<Trial>(
+            _container,
+            new QueryDefinition("SELECT * FROM c WHERE c.UserId = @userId")
+                .WithParameter("@userId", userId));
     }
 
     public async Task<IEnumerable<Trial>> GetByExperimentIdAsync(string experimentId)
     {
-        return await _collection.Find(t => t.ExperimentId == experimentId)
-                          .ToListAsync();
+        return await CosmosQueryHelpers.QueryAsync<Trial>(
+            _container,
+            new QueryDefinition("SELECT * FROM c WHERE c.ExperimentId = @experimentId")
+                .WithParameter("@experimentId", experimentId));
     }
 
     public async Task<Trial> CreateAsync(Trial trial)
@@ -71,112 +62,104 @@ public class TrialRepository : ITrialRepository
         trial.StartedOn = DateTime.UtcNow;
         trial.CreatedAt = DateTime.UtcNow;
         trial.UpdatedAt = DateTime.UtcNow;
-        await _collection.InsertOneAsync(trial);
+        if (string.IsNullOrWhiteSpace(trial.Id))
+        {
+            trial.Id = Guid.NewGuid().ToString();
+        }
+        await _container.CreateItemAsync(trial, new PartitionKey(trial.Id));
         return trial;
     }
 
     public async Task<Trial> UpdateAsync(Trial trial)
     {
+        trial.UpdatedAt = DateTime.UtcNow;
 
         try
         {
-            var result = await _collection.ReplaceOneAsync(
-                x => x.Id == trial.Id,
-                trial
-            );
-
-            if (result.ModifiedCount == 0)
-                throw new KeyNotFoundException($"Trial with ID {trial.Id} not found");
-
+            await _container.ReplaceItemAsync(trial, trial.Id, new PartitionKey(trial.Id));
             return trial;
         }
-        catch(Exception ex)
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
-            Console.WriteLine(ex.Message);
-            throw;
+            throw new KeyNotFoundException($"Trial with ID {trial.Id} not found");
         }
     }
 
     public async Task DeleteAsync(string id)
     {
-        var result = await _collection.DeleteOneAsync(x => x.Id == id);
-        if (result.DeletedCount == 0)
+        try
+        {
+            await _container.DeleteItemAsync<Trial>(id, new PartitionKey(id));
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
             throw new KeyNotFoundException($"Trial with ID {id} not found");
+        }
     }
 
     public async Task DeleteByExperimentIdAsync(string experimentId)
     {
-        const int batchSize = 50;
-        List<string> idsToDelete;
-        
-        do
+        var idsToDelete = await CosmosQueryHelpers.QueryAsync<string>(
+            _container,
+            new QueryDefinition("SELECT VALUE c.id FROM c WHERE c.ExperimentId = @experimentId")
+                .WithParameter("@experimentId", experimentId));
+
+        foreach (var id in idsToDelete)
         {
-            // Find documents to delete in batches
-            idsToDelete = await _collection
-                .Find(x => x.ExperimentId == experimentId)
-                .Limit(batchSize)
-                .Project(x => x.Id)
-                .ToListAsync();
-            
-            if (idsToDelete.Count > 0)
-            {
-                // Delete the batch by IDs
-                var result = await _collection.DeleteManyAsync(x => idsToDelete.Contains(x.Id));
-                _logger.LogInformation($"Deleted {result.DeletedCount} trials for experiment {experimentId}");
-            }
-            
-        } while (idsToDelete.Count > 0);
+            await _container.DeleteItemAsync<Trial>(id, new PartitionKey(id));
+        }
+
+        if (idsToDelete.Count > 0)
+        {
+            _logger.LogInformation("Deleted {Count} trials for experiment {ExperimentId}", idsToDelete.Count, experimentId);
+        }
     }
 
     public async Task UpdateExperimentStatusAsync(string experimentId, string status)
     {
-        const int batchSize = 50;
-        List<string> idsToUpdate;
-        
-        do
+        var idsToUpdate = await CosmosQueryHelpers.QueryAsync<string>(
+            _container,
+            new QueryDefinition("SELECT VALUE c.id FROM c WHERE c.ExperimentId = @experimentId AND c.ExperimentStatus != @status")
+                .WithParameter("@experimentId", experimentId)
+                .WithParameter("@status", status));
+
+        foreach (var id in idsToUpdate)
         {
-            // Find documents to update in batches (only those that don't already have the target status)
-            idsToUpdate = await _collection
-                .Find(x => x.ExperimentId == experimentId && x.ExperimentStatus != status)
-                .Limit(batchSize)
-                .Project(x => x.Id)
-                .ToListAsync();
-            
-            if (idsToUpdate.Count > 0)
-            {
-                // Update the batch by IDs
-                var update = Builders<Trial>.Update.Set(x => x.ExperimentStatus, status);
-                var result = await _collection.UpdateManyAsync(x => idsToUpdate.Contains(x.Id), update);
-                _logger.LogInformation($"Updated {result.ModifiedCount} trials for experiment {experimentId} to status {status}");
-            }
-            
-        } while (idsToUpdate.Count > 0);
+            await _container.PatchItemAsync<Trial>(
+                id,
+                new PartitionKey(id),
+                new[] { PatchOperation.Set("/ExperimentStatus", status), PatchOperation.Set("/UpdatedAt", DateTime.UtcNow) });
+        }
+
+        if (idsToUpdate.Count > 0)
+        {
+            _logger.LogInformation("Updated {Count} trials for experiment {ExperimentId} to status {Status}", idsToUpdate.Count, experimentId, status);
+        }
     }
 
     public async Task<IEnumerable<Trial>> GetPendingTrialsAsync(string userId)
     {
-       var pendingFilter = Builders<Trial>.Filter.And(
-            Builders<Trial>.Filter.Eq(x => x.UserId, userId),
-            Builders<Trial>.Filter.Eq(x => x.Status, "pending"),
-            Builders<Trial>.Filter.Eq(x => x.ExperimentStatus, "InProgress")
-        );
-        var trials = await _collection
-            .Find(pendingFilter)
-            .ToListAsync();
+        var trials = await CosmosQueryHelpers.QueryAsync<Trial>(
+            _container,
+            new QueryDefinition(
+                    "SELECT * FROM c " +
+                    "WHERE c.UserId = @userId " +
+                    "AND c.Status = 'pending' " +
+                    "AND c.ExperimentStatus = 'InProgress'")
+                .WithParameter("@userId", userId));
         if (trials.Count > 0)
         {
             return trials;
         }
 
-       
-        var skippedFilter = Builders<Trial>.Filter.And(
-            Builders<Trial>.Filter.Eq(x => x.UserId, userId),
-            Builders<Trial>.Filter.Eq(x => x.Status, "skipped"),
-            Builders<Trial>.Filter.Eq(x => x.ExperimentStatus, "InProgress")
-        );
-        var skippedTrials = await _collection
-            .Find(skippedFilter)
-            .ToListAsync();
+        var skippedTrials = await CosmosQueryHelpers.QueryAsync<Trial>(
+            _container,
+            new QueryDefinition(
+                    "SELECT * FROM c " +
+                    "WHERE c.UserId = @userId " +
+                    "AND c.Status = 'skipped' " +
+                    "AND c.ExperimentStatus = 'InProgress'")
+                .WithParameter("@userId", userId));
         if (skippedTrials.Count > 0)
         {
             return skippedTrials;
@@ -186,52 +169,62 @@ public class TrialRepository : ITrialRepository
     }
     public async Task<IEnumerable<string>> GetDoneTrialIdsAsync(string userId, string[] experimentIds)
     {
-        var filter = Builders<Trial>.Filter.And(
-            Builders<Trial>.Filter.Eq(t => t.UserId, userId),
-            Builders<Trial>.Filter.In(t => t.ExperimentId, experimentIds),
-            Builders<Trial>.Filter.Eq(t => t.Status, "done"),
-            Builders<Trial>.Filter.Eq(t => t.ExperimentStatus, "InProgress")
-        );
+        var ids = experimentIds?.Where(x => !string.IsNullOrWhiteSpace(x)).ToArray() ?? Array.Empty<string>();
+        if (ids.Length == 0) return Array.Empty<string>();
 
-        var trialids = await _collection.Find(filter)
-            .Project(t => t.Id)
-            .ToListAsync();
-        return trialids;         
+        return await CosmosQueryHelpers.QueryAsync<string>(
+            _container,
+            new QueryDefinition(
+                    "SELECT VALUE c.id FROM c " +
+                    "WHERE c.UserId = @userId " +
+                    "AND ARRAY_CONTAINS(@experimentIds, c.ExperimentId) " +
+                    "AND c.Status = 'done' " +
+                    "AND c.ExperimentStatus = 'InProgress'")
+                .WithParameter("@userId", userId)
+                .WithParameter("@experimentIds", ids));
     }
     
     public async Task<IEnumerable<string>> UnskipTrialsAsync(string userId, string testScenarioId)
     {
-        var filter = Builders<Trial>.Filter.And(
-            Builders<Trial>.Filter.Eq(t => t.UserId, userId),
-            Builders<Trial>.Filter.Eq(t => t.TestScenarioId, testScenarioId),
-            Builders<Trial>.Filter.Eq(t => t.Status, "skipped"),
-            Builders<Trial>.Filter.Eq(t => t.ExperimentStatus, "InProgress")
-        );
+        var trialIds = await CosmosQueryHelpers.QueryAsync<string>(
+            _container,
+            new QueryDefinition(
+                    "SELECT VALUE c.id FROM c " +
+                    "WHERE c.UserId = @userId " +
+                    "AND c.TestScenarioId = @testScenarioId " +
+                    "AND c.Status = 'skipped' " +
+                    "AND c.ExperimentStatus = 'InProgress'")
+                .WithParameter("@userId", userId)
+                .WithParameter("@testScenarioId", testScenarioId));
 
-        var trialids = await _collection.Find(filter)
-            .Project(t => t.Id)
-            .ToListAsync();
-
-        if (trialids.Count > 0)
+        foreach (var id in trialIds)
         {
-            var update = Builders<Trial>.Update.Set(t => t.Status, "pending");
-            var result = await _collection.UpdateManyAsync(filter, update);
-            _logger.LogInformation($"Unskipped {result.ModifiedCount} trials for user {userId} in test scenario {testScenarioId}");
+            await _container.PatchItemAsync<Trial>(
+                id,
+                new PartitionKey(id),
+                new[] { PatchOperation.Set("/Status", "pending"), PatchOperation.Set("/UpdatedAt", DateTime.UtcNow) });
         }
 
-        return trialids;         
+        if (trialIds.Count > 0)
+        {
+            _logger.LogInformation("Unskipped {Count} trials for user {UserId} in test scenario {TestScenarioId}", trialIds.Count, userId, testScenarioId);
+        }
+
+        return trialIds;
     }
 
     public async Task<int> GetPendingTrialCountForTestScenarioAsync(string userId, string testScenarioId)
     {
-        var filter = Builders<Trial>.Filter.And(
-            Builders<Trial>.Filter.Eq(t => t.UserId, userId),
-            Builders<Trial>.Filter.Eq(t => t.TestScenarioId, testScenarioId),
-            Builders<Trial>.Filter.Eq(t => t.Status, "pending"),
-            Builders<Trial>.Filter.Eq(t => t.ExperimentStatus, "InProgress")
-        );  
-
-        return (int)await _collection.CountDocumentsAsync(filter);
+        return await CosmosQueryHelpers.QueryScalarAsync<int>(
+            _container,
+            new QueryDefinition(
+                    "SELECT VALUE COUNT(1) FROM c " +
+                    "WHERE c.UserId = @userId " +
+                    "AND c.TestScenarioId = @testScenarioId " +
+                    "AND c.Status = 'pending' " +
+                    "AND c.ExperimentStatus = 'InProgress'")
+                .WithParameter("@userId", userId)
+                .WithParameter("@testScenarioId", testScenarioId));
     }
     public async Task<IEnumerable<string>> GetPendingTrialIdsAsync(string userId, string[]? experimentIds, string? testScenarioId)
     {
@@ -245,69 +238,72 @@ public class TrialRepository : ITrialRepository
         }
         if (testScenarioId != null)
         {
-            var filterByTestScenario = Builders<Trial>.Filter.And(
-                Builders<Trial>.Filter.Eq(t => t.UserId, userId),
-                Builders<Trial>.Filter.Eq(t => t.TestScenarioId, testScenarioId),
-                Builders<Trial>.Filter.Eq(t => t.Status, "pending"),
-                Builders<Trial>.Filter.Eq(t => t.ExperimentStatus, "InProgress")
-            );
-            var trialidsByTestScenario = await _collection.Find(filterByTestScenario)
-                .Project(t => t.Id)
-                .ToListAsync();
-            if (trialidsByTestScenario.Count > 0)
+            var trialIdsByTestScenario = await CosmosQueryHelpers.QueryAsync<string>(
+                _container,
+                new QueryDefinition(
+                        "SELECT VALUE c.id FROM c " +
+                        "WHERE c.UserId = @userId " +
+                        "AND c.TestScenarioId = @testScenarioId " +
+                        "AND c.Status = 'pending' " +
+                        "AND c.ExperimentStatus = 'InProgress'")
+                    .WithParameter("@userId", userId)
+                    .WithParameter("@testScenarioId", testScenarioId));
+            if (trialIdsByTestScenario.Count > 0)
             {
-                return trialidsByTestScenario;
+                return trialIdsByTestScenario;
             }
-            var skippedFilterByTestScenario = Builders<Trial>.Filter.And(
-                Builders<Trial>.Filter.Eq(t => t.UserId, userId),
-                Builders<Trial>.Filter.Eq(t => t.TestScenarioId, testScenarioId),
-                Builders<Trial>.Filter.Eq(t => t.Status, "skipped"),
-                Builders<Trial>.Filter.Eq(t => t.ExperimentStatus, "InProgress")
-            );
-            var skippedTrialIdsByTestScenario = await _collection.Find(skippedFilterByTestScenario)
-                .Project(t => t.Id)
-                .ToListAsync();
-            return skippedTrialIdsByTestScenario;
+            return await CosmosQueryHelpers.QueryAsync<string>(
+                _container,
+                new QueryDefinition(
+                        "SELECT VALUE c.id FROM c " +
+                        "WHERE c.UserId = @userId " +
+                        "AND c.TestScenarioId = @testScenarioId " +
+                        "AND c.Status = 'skipped' " +
+                        "AND c.ExperimentStatus = 'InProgress'")
+                    .WithParameter("@userId", userId)
+                    .WithParameter("@testScenarioId", testScenarioId));
         }
-        var filter = Builders<Trial>.Filter.And(
-            Builders<Trial>.Filter.Eq(t => t.UserId, userId),
-            Builders<Trial>.Filter.In(t => t.ExperimentId, experimentIds),
-            Builders<Trial>.Filter.Eq(t => t.Status, "pending"),
-            Builders<Trial>.Filter.Eq(t => t.ExperimentStatus, "InProgress")
-        );
+        var expIds = experimentIds.Where(x => !string.IsNullOrWhiteSpace(x)).ToArray();
+        if (expIds.Length == 0) return Array.Empty<string>();
 
-        var trialids = await _collection.Find(filter)
-            .Project(t => t.Id)
-            .ToListAsync();
-        if (trialids.Count > 0)
+        var trialIds = await CosmosQueryHelpers.QueryAsync<string>(
+            _container,
+            new QueryDefinition(
+                    "SELECT VALUE c.id FROM c " +
+                    "WHERE c.UserId = @userId " +
+                    "AND ARRAY_CONTAINS(@experimentIds, c.ExperimentId) " +
+                    "AND c.Status = 'pending' " +
+                    "AND c.ExperimentStatus = 'InProgress'")
+                .WithParameter("@userId", userId)
+                .WithParameter("@experimentIds", expIds));
+        if (trialIds.Count > 0)
         {
-            return trialids;
+            return trialIds;
         }
-        var skippedFilter = Builders<Trial>.Filter.And(
-            Builders<Trial>.Filter.Eq(t => t.UserId, userId),
-            Builders<Trial>.Filter.In(t => t.ExperimentId, experimentIds),
-            Builders<Trial>.Filter.Eq(t => t.Status, "skipped"),
-            Builders<Trial>.Filter.Eq(t => t.ExperimentStatus, "InProgress")
-        );
-        var skippedTrialIds = await _collection.Find(skippedFilter)
-            .Project(t => t.Id)
-            .ToListAsync();
-        return skippedTrialIds;
+        return await CosmosQueryHelpers.QueryAsync<string>(
+            _container,
+            new QueryDefinition(
+                    "SELECT VALUE c.id FROM c " +
+                    "WHERE c.UserId = @userId " +
+                    "AND ARRAY_CONTAINS(@experimentIds, c.ExperimentId) " +
+                    "AND c.Status = 'skipped' " +
+                    "AND c.ExperimentStatus = 'InProgress'")
+                .WithParameter("@userId", userId)
+                .WithParameter("@experimentIds", expIds));
     }
 
     public async Task<Dictionary<string, int>> GetPendingTrialCountsByType(string userId, string[] validStatuses, string[] validExperimentStatuses)
     {
-        Console.WriteLine("GetPendingTrialCountsByType called");
-        Console.WriteLine("userId: " + userId);
-        Console.WriteLine("validStatuses: " + string.Join(", ", validStatuses));
-        Console.WriteLine("validExperimentStatuses: " + string.Join(", ", validExperimentStatuses));
-        var filter = Builders<Trial>.Filter.And(
-            Builders<Trial>.Filter.Eq(t => t.UserId, userId),
-            Builders<Trial>.Filter.In(t => t.Status, validStatuses),
-            Builders<Trial>.Filter.In(t => t.ExperimentStatus, validExperimentStatuses)
-        );
-
-        var trials = await _collection.Find(filter).ToListAsync();
+        var trials = await CosmosQueryHelpers.QueryAsync<TrialExperimentTypeOnly>(
+            _container,
+            new QueryDefinition(
+                    "SELECT c.ExperimentType FROM c " +
+                    "WHERE c.UserId = @userId " +
+                    "AND ARRAY_CONTAINS(@validStatuses, c.Status) " +
+                    "AND ARRAY_CONTAINS(@validExperimentStatuses, c.ExperimentStatus)")
+                .WithParameter("@userId", userId)
+                .WithParameter("@validStatuses", validStatuses)
+                .WithParameter("@validExperimentStatuses", validExperimentStatuses));
 
         var counts = new Dictionary<string, int>
         {
@@ -328,40 +324,31 @@ public class TrialRepository : ITrialRepository
         return counts;
     }
 
-    public async Task<Trial> GetNextPendingTrialAsync(string userId)
-    {
-        var trial = await _collection.Find(x => 
-            x.UserId == userId && 
-            (x.Status == "pending" || x.Status == "skipped") && 
-            x.ExperimentStatus == "InProgress")
-            .FirstOrDefaultAsync();
-
-        if (trial != null)
-        {
-            trial.StartedOn = DateTime.UtcNow;
-            await UpdateAsync(trial);
-        }
-        else
-        {
-            Console.WriteLine("No pending trial found");
-            throw new Exception("No pending trial found");
-        }
-
-        return trial;
-    }
-
     public async Task<IEnumerable<Trial>> GetTrialsByExperimentAndDataObject(string experimentId, string dataObjectId)
     {
-        return await _collection.Find(x => 
-            x.ExperimentId == experimentId && 
-            x.DataObjectId == dataObjectId)
-            .ToListAsync();
+        return await CosmosQueryHelpers.QueryAsync<Trial>(
+            _container,
+            new QueryDefinition(
+                    "SELECT * FROM c " +
+                    "WHERE c.ExperimentId = @experimentId " +
+                    "AND c.DataObjectId = @dataObjectId")
+                .WithParameter("@experimentId", experimentId)
+                .WithParameter("@dataObjectId", dataObjectId));
     }
 
     public async Task<int> GetPendingTrialCountForExperiment(string experimentId)
     {
-        return (int)await _collection.CountDocumentsAsync(
-            x => x.ExperimentId == experimentId && x.Status == "pending"
-        );
+        return await CosmosQueryHelpers.QueryScalarAsync<int>(
+            _container,
+            new QueryDefinition(
+                    "SELECT VALUE COUNT(1) FROM c " +
+                    "WHERE c.ExperimentId = @experimentId " +
+                    "AND c.Status = 'pending'")
+                .WithParameter("@experimentId", experimentId));
+    }
+
+    private sealed class TrialExperimentTypeOnly
+    {
+        public string ExperimentType { get; set; } = string.Empty;
     }
 } 

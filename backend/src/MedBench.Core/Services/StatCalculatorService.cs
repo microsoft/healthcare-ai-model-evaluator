@@ -2,7 +2,7 @@ using MedBench.Core.Interfaces;
 using MedBench.Core.Models;
 using Microsoft.Extensions.Logging;
 using MedBench.Core.Extensions;
-using MongoDB.Bson;
+using System.Text.Json;
 namespace MedBench.Core.Services;
 
 public class StatCalculatorService
@@ -131,7 +131,7 @@ public class StatCalculatorService
             var experimentIds = (await _experimentRepository.GetByTestScenarioIdsAsync([testScenario.Id]))
                 .Select(e => e.Id)
                 .ToList();
-            _logger.LogInformation("Experiment IDs: " + experimentIds.ToJson());
+            _logger.LogInformation("Experiment IDs: {ExperimentIds}", JsonSerializer.Serialize(experimentIds));
             var completedTrials = trials.Where(t => experimentIds.Contains(t.ExperimentId) && t.Status == "done" && t.ModelOutputs.Any(m => m.ModelId == modelId)).ToList();
             _logger.LogInformation("Completed trials: " + completedTrials.Count);
             if (!completedTrials.Any()) return;
@@ -180,9 +180,9 @@ public class StatCalculatorService
             // Update 'All' metric
             //This only collects results from the current clinical task, not all experiments
             model.ExperimentResultsByMetric["All"] = CalculateAggregateResults(model.ExperimentResultsByMetric);
-            _logger.LogInformation("Model results: " + model.ToBsonDocument().ToJson());
+            _logger.LogInformation("Model results: {Model}", JsonSerializer.Serialize(model));
             clinicalTask.ModelResults[modelId] = results;
-            _logger.LogInformation("Clinical task results: " + clinicalTask.ModelResults.ToJson());
+            _logger.LogInformation("Clinical task results: {Results}", JsonSerializer.Serialize(clinicalTask.ModelResults));
             await _clinicalTaskRepository.UpdateAsync(clinicalTask);
             await _modelRepository.UpdateAsync(model);
         }
@@ -259,7 +259,7 @@ public class StatCalculatorService
         {
             scores[key] /= counts[key];
         }
-        _logger.LogInformation("Single evaluation scores: " + scores.ToJson());
+        _logger.LogInformation("Single evaluation scores: {Scores}", JsonSerializer.Serialize(scores));
 
         return scores;
     }

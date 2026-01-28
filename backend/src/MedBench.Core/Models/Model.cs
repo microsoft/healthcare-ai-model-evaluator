@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json.Serialization;
 
 namespace MedBench.Core.Models;
 
@@ -14,6 +15,7 @@ public class ModelExperimentResults
 
 public class Model
 {
+    [JsonPropertyName("id")]
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string ModelType { get; set; } = string.Empty;

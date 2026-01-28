@@ -1,80 +1,98 @@
-using MongoDB.Driver;
-using MongoDB.Bson;
 using MedBench.Core.Models;
 using MedBench.Core.Interfaces;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using MedBench.Core.Cosmos;
+using Microsoft.Azure.Cosmos;
 
 namespace MedBench.Core.Repositories;
 
 public class TestScenarioRepository : ITestScenarioRepository
 {
-    private readonly IMongoCollection<TestScenario> _testScenarios;
+    private readonly Container _container;
 
-    public TestScenarioRepository(IMongoDatabase database)
+    public TestScenarioRepository(CosmosContainerProvider containerProvider)
     {
-        _testScenarios = database.GetCollection<TestScenario>("TestScenarios");
-
-        // Create indexes for common queries
-        
-        // Index for clinical task lookup
-        var taskIdIndex = Builders<TestScenario>.IndexKeys.Ascending(ts => ts.TaskId);
-        _testScenarios.Indexes.CreateOne(new CreateIndexModel<TestScenario>(taskIdIndex));
+        _container = containerProvider.GetContainer("TestScenarios");
     }
 
     public async Task<IEnumerable<TestScenario>> GetAllAsync()
     {
-        return await _testScenarios.Find(_ => true).ToListAsync();
+        return await CosmosQueryHelpers.QueryAsync<TestScenario>(
+            _container,
+            new QueryDefinition("SELECT * FROM c"));
     }
 
     public async Task<TestScenario> GetByIdAsync(string id)
     {
-        var testScenario = await _testScenarios.Find(t => t.Id == id).FirstOrDefaultAsync();
-        if (testScenario == null)
+        try
+        {
+            var response = await _container.ReadItemAsync<TestScenario>(id, new PartitionKey(id));
+            return response.Resource;
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
             throw new KeyNotFoundException($"TestScenario with ID {id} not found");
-        return testScenario;
+        }
     }
     public async Task<IEnumerable<TestScenario>> GetByIdsAsync(IEnumerable<string> ids)
     {
-        var filter = Builders<TestScenario>.Filter.In(ts => ts.Id, ids);
-        return await _testScenarios.Find(filter).ToListAsync();
+        var idArray = ids?.Where(x => !string.IsNullOrWhiteSpace(x)).ToArray() ?? Array.Empty<string>();
+        if (idArray.Length == 0) return Array.Empty<TestScenario>();
+
+        return await CosmosQueryHelpers.QueryAsync<TestScenario>(
+            _container,
+            new QueryDefinition("SELECT * FROM c WHERE ARRAY_CONTAINS(@ids, c.id)")
+                .WithParameter("@ids", idArray));
     }
 
     public async Task<TestScenario> CreateAsync(TestScenario testScenario)
     {
-        // Ensure the object has an ID
-        if (string.IsNullOrEmpty(testScenario.Id))
+        if (string.IsNullOrWhiteSpace(testScenario.Id))
         {
-            testScenario.Id = MongoDB.Bson.ObjectId.GenerateNewId().ToString();
+            testScenario.Id = Guid.NewGuid().ToString();
         }
 
-        // Set creation/update timestamps
         testScenario.CreatedAt = DateTime.UtcNow;
         testScenario.UpdatedAt = DateTime.UtcNow;
 
-        await _testScenarios.InsertOneAsync(testScenario);
+        await _container.CreateItemAsync(testScenario, new PartitionKey(testScenario.Id));
         return testScenario;
     }
 
     public async Task<TestScenario> UpdateAsync(TestScenario testScenario)
     {
-        var result = await _testScenarios.ReplaceOneAsync(t => t.Id == testScenario.Id, testScenario);
-        if (result.MatchedCount == 0)
+        testScenario.UpdatedAt = DateTime.UtcNow;
+
+        try
+        {
+            await _container.ReplaceItemAsync(testScenario, testScenario.Id, new PartitionKey(testScenario.Id));
+            return testScenario;
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
             throw new KeyNotFoundException($"TestScenario with ID {testScenario.Id} not found");
-        return testScenario;
+        }
     }
 
     public async Task DeleteAsync(string id)
     {
-        var result = await _testScenarios.DeleteOneAsync(t => t.Id == id);
-        if (result.DeletedCount == 0)
+        try
+        {
+            await _container.DeleteItemAsync<TestScenario>(id, new PartitionKey(id));
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
             throw new KeyNotFoundException($"TestScenario with ID {id} not found");
+        }
     }
 
     public async Task<IEnumerable<TestScenario>> GetByClinicalTaskIdsAsync(List<string> taskIds)
     {
-        // Find all test scenarios where the TaskId is in the provided list
-        var filter = Builders<TestScenario>.Filter.In(ts => ts.TaskId, taskIds);
-        return await _testScenarios.Find(filter).ToListAsync();
+        var ids = taskIds?.Where(x => !string.IsNullOrWhiteSpace(x)).ToArray() ?? Array.Empty<string>();
+        if (ids.Length == 0) return Array.Empty<TestScenario>();
+
+        return await CosmosQueryHelpers.QueryAsync<TestScenario>(
+            _container,
+            new QueryDefinition("SELECT * FROM c WHERE ARRAY_CONTAINS(@taskIds, c.TaskId)")
+                .WithParameter("@taskIds", ids));
     }
 } 

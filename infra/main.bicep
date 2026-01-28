@@ -125,13 +125,41 @@ param emailSmtpPass string = ''
 param emailSmtpUseSsl bool = true
 
 @description('Enable IP filtering for the web application (when true, only allowedWebIp can access the Container App API)')
-param enableWebIpFiltering bool = true
+param enableWebIpFiltering bool = false
 
 @description('IP addresses allowed to access the Container App web API (comma-delimited CIDR format, e.g., "203.0.113.1/32,198.51.100.0/24"). Storage and Cosmos use managed identity only.')
 param allowedWebIp string = ''
 
 @description('Azure AD App Registration Client ID (will be set by postprovision script)')
 param authClientId string = '00000000-0000-0000-0000-000000000000'
+
+@description('Deployment networking mode. "open" deploys public ingress; "private" deploys into a VNet with internal-only ingress.')
+@allowed([
+  'open'
+  'private'
+])
+param deploymentNetworking string = 'private'
+
+@description('When deploymentNetworking is private: create a new VNet when true; otherwise use existingVnetResourceId.')
+param createVnet bool = true
+
+@description('Resource ID of an existing VNet to use when createVnet is false (e.g. /subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/yourVnet)')
+param existingVnetResourceId string = ''
+
+@description('Resource ID of an existing subnet for Container Apps Environment infrastructure (optional; if empty, the deployment creates one in the selected VNet).')
+param existingAcaInfrastructureSubnetId string = ''
+
+@description('Resource ID of an existing subnet for Azure Functions VNet Integration (optional; if empty, the deployment creates one in the selected VNet).')
+param existingFunctionsIntegrationSubnetId string = ''
+
+@description('Address space for a new VNet when createVnet is true (CIDR).')
+param vnetAddressSpace string = '10.30.0.0/16'
+
+@description('Subnet prefix for Container Apps Environment infrastructure subnet (CIDR).')
+param acaInfrastructureSubnetPrefix string = '10.30.0.0/23'
+
+@description('Subnet prefix for Azure Functions VNet Integration subnet (CIDR).')
+param functionsIntegrationSubnetPrefix string = '10.30.2.0/24'
 
 @description('Tags for all AI resources created. JSON object')
 param tagParam object = {}
@@ -158,6 +186,23 @@ var names = {
   containerAppsEnv: !empty(containerAppsEnvName) ? containerAppsEnvName : 'cae-${uniqueSuffix}'
   logAnalytics: !empty(logAnalyticsName) ? logAnalyticsName : 'log-${uniqueSuffix}'
   appInsights: !empty(applicationInsightsName) ? applicationInsightsName : 'appi-${uniqueSuffix}'
+}
+
+// Optional VNet integration for private/internal deployment
+module network './modules/network.bicep' = if (deploymentNetworking == 'private') {
+  name: '${deploymentName}-network'
+  params: {
+    location: location
+    tags: tags
+    resourceToken: uniqueSuffix
+    createVnet: createVnet
+    existingVnetResourceId: existingVnetResourceId
+    existingAcaInfrastructureSubnetId: existingAcaInfrastructureSubnetId
+    existingFunctionsIntegrationSubnetId: existingFunctionsIntegrationSubnetId
+    vnetAddressSpace: vnetAddressSpace
+    acaInfrastructureSubnetPrefix: acaInfrastructureSubnetPrefix
+    functionsIntegrationSubnetPrefix: functionsIntegrationSubnetPrefix
+  }
 }
 
 // Core infrastructure first
@@ -252,7 +297,6 @@ module containerApps './modules/containerapps.bicep' = {
     tags: tags
     containerAppsEnvName: names.containerAppsEnv
     containerRegistryName: registry.outputs.name
-    logAnalyticsWorkspaceName: monitoring.outputs.logAnalyticsWorkspaceName
     applicationInsightsName: monitoring.outputs.applicationInsightsName
     keyVaultName: keyVault.outputs.name
     authClientId: authClientId
@@ -272,6 +316,9 @@ module containerApps './modules/containerapps.bicep' = {
     // IP filtering
     enableWebIpFiltering: enableWebIpFiltering
     allowedWebIp: allowedWebIp
+    // Networking
+    containerAppsInternal: deploymentNetworking == 'private'
+    containerAppsInfrastructureSubnetId: deploymentNetworking == 'private' ? network.outputs.acaInfrastructureSubnetId : ''
     // Account names for direct connection string generation
     cosmosAccountName: cosmos.outputs.accountName
     storageAccountName: storage.outputs.name
@@ -304,6 +351,8 @@ module functions './modules/functions.bicep' = {
     openAIDeploymentName: openAI.outputs.deploymentName
     openAIApiVersion: openAI.outputs.apiVersion
     dockerImageTag: dockerImageTag
+    enableVnetIntegration: deploymentNetworking == 'private'
+    integrationSubnetId: deploymentNetworking == 'private' ? network.outputs.functionsIntegrationSubnetId : ''
   }
 }
 
@@ -335,6 +384,8 @@ module evaluatorAddon './modules/addons/evaluator.bicep' = if (enableEvaluatorAd
     azureOpenAIEndpoint: openAI.outputs.endpoint
     azureOpenAIDeployment: openAI.outputs.deploymentName
     azureOpenAIVersion: openAI.outputs.apiVersion
+    enableVnetIntegration: deploymentNetworking == 'private'
+    integrationSubnetId: deploymentNetworking == 'private' ? network.outputs.functionsIntegrationSubnetId : ''
   }
   dependsOn: [
     functions

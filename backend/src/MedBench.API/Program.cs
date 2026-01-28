@@ -1,7 +1,6 @@
 using Microsoft.Identity.Web;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using MongoDB.Driver;
 using MedBench.Core.Models;
 using MedBench.Core.Interfaces;
 using MedBench.Core.Repositories;
@@ -14,16 +13,12 @@ using Microsoft.AspNetCore.Http.Features;
 using MedBench.API.Middleware;
 using Azure.Storage.Blobs;
 using Azure.Identity;
+using Microsoft.Azure.Cosmos;
+using System.Text.Json;
 using System.Text.Json.Serialization;
-using MongoDB.Bson.Serialization.Conventions;
-using MongoDB.Bson.Serialization;
 using Microsoft.Extensions.FileProviders;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// Configure MongoDB conventions to ignore extra elements
-var conventionPack = new ConventionPack { new IgnoreExtraElementsConvention(true) };
-ConventionRegistry.Register("IgnoreExtraElements", conventionPack, type => true);
 
 builder.Logging.AddFilter("Microsoft.IdentityModel", LogLevel.Warning);
 
@@ -162,6 +157,33 @@ builder.Services.AddControllers()
         options.JsonSerializerOptions.PropertyNameCaseInsensitive = true;
     });
 
+// Cosmos SDK uses its own serializer; keep it aligned with MVC's defaults.
+static CosmosClient CreateCosmosClient(IConfiguration config)
+{
+    var cosmosEndpoint = Environment.GetEnvironmentVariable("COSMOSDB_ENDPOINT")
+        ?? config["CosmosDb:Endpoint"];
+
+    if (string.IsNullOrWhiteSpace(cosmosEndpoint))
+    {
+        throw new InvalidOperationException("Cosmos DB endpoint not found. Set COSMOSDB_ENDPOINT or CosmosDb:Endpoint.");
+    }
+
+    var serializerOptions = new JsonSerializerOptions
+    {
+        PropertyNameCaseInsensitive = true,
+    };
+    serializerOptions.Converters.Add(new JsonStringEnumConverter());
+
+    return new CosmosClient(
+        accountEndpoint: cosmosEndpoint,
+        tokenCredential: new DefaultAzureCredential(),
+        clientOptions: new CosmosClientOptions
+        {
+            Serializer = new MedBench.Core.Cosmos.SystemTextJsonCosmosSerializer(serializerOptions)
+        }
+    );
+}
+
 // Configure request size limits
 builder.Services.Configure<IISServerOptions>(options =>
 {
@@ -214,88 +236,21 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Add logging to debug connection issues
+builder.Services.AddSingleton(sp => CreateCosmosClient(builder.Configuration));
+
 builder.Services.AddSingleton(sp =>
 {
-    var cosmosEndpoint = Environment.GetEnvironmentVariable("COSMOSDB_ENDPOINT") 
-        ?? builder.Configuration["CosmosDb:Endpoint"];
-        
-    if (string.IsNullOrEmpty(cosmosEndpoint))
-    {
-        throw new InvalidOperationException("Cosmos DB endpoint not found. Set COSMOSDB_ENDPOINT environment variable.");
-    }
-    
-    try {
-        // Use managed identity to connect to Cosmos DB
-        var credential = new DefaultAzureCredential();
-        
-        // For Cosmos DB MongoDB API, we need to construct the connection string with managed identity
-        // This requires the MongoDB connection string format but uses AAD authentication
-        var mongoConnectionString = $"mongodb://{cosmosEndpoint.Replace("https://", "").Replace("/", "")}:10255/?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@{cosmosEndpoint.Replace("https://", "").Split('.')[0]}@";
-        
-        // For now, fall back to connection string if endpoint is not available
-        // TODO: Implement proper managed identity for MongoDB API
-        var connectionString = Environment.GetEnvironmentVariable("COSMOSDB_CONNECTION_STRING") 
-            ?? builder.Configuration["CosmosDb:ConnectionString"];
-            
-        if (string.IsNullOrEmpty(connectionString))
-        {
-            throw new InvalidOperationException("MongoDB connection string not found. Please configure managed identity or connection string.");
-        }
-        
-        var client = new MongoClient(connectionString);
-        var database = client.GetDatabase(builder.Configuration["CosmosDb:DatabaseName"]);
-        // Test the connection
-        database.RunCommandAsync((Command<BsonDocument>)"{ping:1}").Wait();
+    var dbName = Environment.GetEnvironmentVariable("COSMOSDB_DATABASE")
+        ?? builder.Configuration["CosmosDb:DatabaseName"];
 
-        // After getting the database instance
-        var collections = new[] { "Users", "Models", "Experiments", "ClinicalTasks", "TestScenarios", "DataObjects" };
-        foreach (var collectionName in collections)
-        {
-            if (!database.ListCollectionNames().ToList().Contains(collectionName))
-            {
-                database.CreateCollection(collectionName);
-            }
-        }
-
-        return database;
-    }
-    catch (Exception ex)
+    if (string.IsNullOrWhiteSpace(dbName))
     {
-        // Log the exception details
-        Console.WriteLine($"Failed to connect to MongoDB: {ex}");
-        throw;
+        throw new InvalidOperationException("Cosmos DB database name not found. Set COSMOSDB_DATABASE or CosmosDb:DatabaseName.");
     }
-});
 
-// Remove the CosmosDbContext registration and replace with MongoDB collections
-builder.Services.AddSingleton(sp =>
-{
-    var database = sp.GetRequiredService<IMongoDatabase>();
-    return database.GetCollection<MedBench.Core.Models.User>(builder.Configuration["CosmosDb:ContainerName"]);
-});
-
-// Update the MongoDB Client registration to use managed identity
-builder.Services.AddSingleton<IMongoClient>(sp => 
-{
-    var cosmosEndpoint = Environment.GetEnvironmentVariable("COSMOSDB_ENDPOINT") 
-        ?? builder.Configuration["CosmosDb:Endpoint"];
-        
-    if (!string.IsNullOrEmpty(cosmosEndpoint))
-    {
-        // TODO: Implement proper managed identity for MongoDB API
-        // For now, fall back to connection string
-    }
-    
-    var connectionString = Environment.GetEnvironmentVariable("COSMOSDB_CONNECTION_STRING") 
-        ?? builder.Configuration["CosmosDb:ConnectionString"];
-        
-    if (string.IsNullOrEmpty(connectionString))
-    {
-        throw new InvalidOperationException("MongoDB connection string not found. Please configure managed identity or connection string.");
-    }
-    
-    return new MongoClient(connectionString);
+    return new MedBench.Core.Cosmos.CosmosContainerProvider(
+        sp.GetRequiredService<CosmosClient>(),
+        dbName);
 });
 
 // Register repositories
@@ -316,23 +271,16 @@ builder.Services.AddSingleton<BlobServiceClient>(sp =>
     var storageEndpoint = Environment.GetEnvironmentVariable("AZURE_STORAGE_ENDPOINT")
         ?? builder.Configuration["AzureStorage:Endpoint"];
     
-    if (!string.IsNullOrEmpty(storageEndpoint))
+    if (string.IsNullOrWhiteSpace(storageEndpoint))
     {
-        // Use managed identity for storage authentication
-        var credential = new DefaultAzureCredential();
-        return new BlobServiceClient(new Uri(storageEndpoint), credential);
+        throw new InvalidOperationException(
+            "Storage endpoint not found. Configure AZURE_STORAGE_ENDPOINT (or AzureStorage:Endpoint). " +
+            "This service requires Managed Identity / Entra ID auth; connection strings are not supported."
+        );
     }
-    
-    // Fall back to connection string if endpoint not configured
-    var connectionString = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING")
-        ?? builder.Configuration["AzureStorage:ConnectionString"];
-        
-    if (string.IsNullOrEmpty(connectionString))
-    {
-        throw new InvalidOperationException("Storage endpoint or connection string not found. Configure AZURE_STORAGE_ENDPOINT for managed identity.");
-    }
-    
-    return new BlobServiceClient(connectionString);
+
+    var credential = new DefaultAzureCredential();
+    return new BlobServiceClient(new Uri(storageEndpoint), credential);
 });
 
 // Register Key Vault Service
@@ -355,12 +303,6 @@ builder.Services.AddScoped<IModelRunnerFactory, ModelRunnerFactory>();
 
 // Add these with your other service registrations
 builder.Services.AddScoped<StatCalculatorService>();
-
-// Model runners are created by the factory, not directly injected
-BsonClassMap.RegisterClassMap<TestScenario>(cm => {
-    cm.AutoMap();
-    cm.SetIgnoreExtraElements(true);
-});
 
 // Add this to the service registration section:
 builder.Services.AddScoped<IDataFileService, DataFileService>();

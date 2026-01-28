@@ -1,5 +1,4 @@
-using MongoDB.Bson;
-using MongoDB.Bson.Serialization.Attributes;
+using System.Text.Json.Serialization;
 
 namespace MedBench.Core.Models;
 
@@ -12,11 +11,9 @@ public class DataContent {
 }
 public class DataObject
 {
-    [BsonId]
-    [BsonRepresentation(BsonType.ObjectId)]
+    [JsonPropertyName("id")]
     public string Id { get; set; } = string.Empty;
-    
-    [BsonRepresentation(BsonType.ObjectId)]
+
     public string DataSetId { get; set; } = string.Empty;
     
     public string Name { get; set; } = string.Empty;

@@ -98,7 +98,7 @@ public class ExperimentsController : ControllerBase
             // Ensure we have an ID before saving
             if (string.IsNullOrEmpty(experiment.Id))
             {
-                experiment.Id = MongoDB.Bson.ObjectId.GenerateNewId().ToString();
+                experiment.Id = Guid.NewGuid().ToString("N");
             }
 
             var userId = User.GetUserId();

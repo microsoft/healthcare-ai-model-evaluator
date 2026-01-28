@@ -1,31 +1,33 @@
-using MongoDB.Driver;
-using MongoDB.Bson;
+using MedBench.Core.Cosmos;
 using MedBench.Core.Models;
 using MedBench.Core.Interfaces;
 using MedBench.Core.Helpers;
 using Microsoft.Extensions.Logging;
+using Microsoft.Azure.Cosmos;
 
 namespace MedBench.Core.Repositories;
 
 public class ModelRepository : IModelRepository
 {
-    private readonly IMongoCollection<Model> _collection;
+    private readonly Container _container;
     private readonly IKeyVaultService _keyVaultService;
     private readonly ILogger<ModelRepository> _logger;
 
     public ModelRepository(
-        IMongoDatabase database,
+        CosmosContainerProvider containerProvider,
         IKeyVaultService keyVaultService,
         ILogger<ModelRepository> logger)
     {
-        _collection = database.GetCollection<Model>("Models");
+        _container = containerProvider.GetContainer("Models");
         _keyVaultService = keyVaultService;
         _logger = logger;
     }
 
     public async Task<IEnumerable<Model>> GetAllAsync()
     {
-        var models = await _collection.Find(_ => true).ToListAsync();
+        var models = await CosmosQueryHelpers.QueryAsync<Model>(
+            _container,
+            new QueryDefinition("SELECT * FROM c"));
         
         // Return models with display-safe settings for listing
         foreach (var model in models)
@@ -43,9 +45,7 @@ public class ModelRepository : IModelRepository
 
     public async Task<Model> GetByIdAsync(string id)
     {
-        var model = await _collection.Find(x => x.Id == id).FirstOrDefaultAsync();
-        if (model == null)
-            throw new KeyNotFoundException($"Model with ID {id} not found");
+        var model = await GetRawByIdAsync(id);
         
         // Return with display-safe settings by default
         if (model.HasSecureSettings)
@@ -60,9 +60,7 @@ public class ModelRepository : IModelRepository
 
     public async Task<Model> GetByIdWithSecretsAsync(string id)
     {
-        var model = await _collection.Find(x => x.Id == id).FirstOrDefaultAsync();
-        if (model == null)
-            throw new KeyNotFoundException($"Model with ID {id} not found");
+        var model = await GetRawByIdAsync(id);
 
         // Load secrets from Key Vault if any exist
         if (model.HasSecureSettings && model.SecretReferences.Any())
@@ -97,14 +95,17 @@ public class ModelRepository : IModelRepository
 
     public async Task<Model> CreateAsync(Model model)
     {
-        model.Id = ObjectId.GenerateNewId().ToString();
+        if (string.IsNullOrWhiteSpace(model.Id))
+        {
+            model.Id = Guid.NewGuid().ToString();
+        }
         model.CreatedAt = DateTime.UtcNow;
         model.UpdatedAt = DateTime.UtcNow;
         
         // Handle secret storage
         await StoreSecretsAsync(model);
         
-        await _collection.InsertOneAsync(model);
+        await _container.CreateItemAsync(model, new PartitionKey(model.Id));
         return model;
     }
 
@@ -113,28 +114,29 @@ public class ModelRepository : IModelRepository
         model.UpdatedAt = DateTime.UtcNow;
         
         // Get the existing model to handle secret cleanup
-        var existingModel = await _collection.Find(x => x.Id == model.Id).FirstOrDefaultAsync();
-        if (existingModel == null)
-            throw new KeyNotFoundException($"Model with ID {model.Id} not found");
+        var existingModel = await GetRawByIdAsync(model.Id);
         
         // Clean up old secrets that are no longer needed
         await CleanupOldSecretsAsync(existingModel, model);
         
         // Store new/updated secrets
         await StoreSecretsAsync(model);
-        
-        var result = await _collection.ReplaceOneAsync(x => x.Id == model.Id, model);
-        if (result.ModifiedCount == 0)
+
+        try
+        {
+            await _container.ReplaceItemAsync(model, model.Id, new PartitionKey(model.Id));
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
             throw new KeyNotFoundException($"Model with ID {model.Id} not found");
+        }
         return model;
     }
 
     public async Task DeleteAsync(string id)
     {
         // Get the model first to clean up secrets
-        var model = await _collection.Find(x => x.Id == id).FirstOrDefaultAsync();
-        if (model == null)
-            throw new KeyNotFoundException($"Model with ID {id} not found");
+        var model = await GetRawByIdAsync(id);
         
         // Clean up secrets from Key Vault
         if (model.HasSecureSettings && model.SecretReferences.Any())
@@ -142,9 +144,27 @@ public class ModelRepository : IModelRepository
             await DeleteSecretsAsync(model.SecretReferences.Values);
         }
         
-        var result = await _collection.DeleteOneAsync(x => x.Id == id);
-        if (result.DeletedCount == 0)
+        try
+        {
+            await _container.DeleteItemAsync<Model>(id, new PartitionKey(id));
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
             throw new KeyNotFoundException($"Model with ID {id} not found");
+        }
+    }
+
+    private async Task<Model> GetRawByIdAsync(string id)
+    {
+        try
+        {
+            var response = await _container.ReadItemAsync<Model>(id, new PartitionKey(id));
+            return response.Resource;
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            throw new KeyNotFoundException($"Model with ID {id} not found");
+        }
     }
 
     /// <summary>

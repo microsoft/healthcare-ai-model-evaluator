@@ -2,7 +2,6 @@ param location string
 param tags object = {}
 param containerAppsEnvName string
 param containerRegistryName string
-param logAnalyticsWorkspaceName string
 param applicationInsightsName string
 param keyVaultName string
 param authClientId string
@@ -22,6 +21,12 @@ param acsKeyVaultSecretName string = ''
 // Feature flag: enable/disable email communications in app
 param emailEnabled bool = false
 
+@description('When true, deploy Container Apps Environment as internal-only and make app ingress internal.')
+param containerAppsInternal bool = false
+
+@description('When containerAppsInternal is true: subnet resource ID for the Container Apps Environment infrastructure subnet.')
+param containerAppsInfrastructureSubnetId string = ''
+
 // IP filtering parameters
 @description('Enable IP filtering for the web application (when true, only allowedWebIp can access the API)')
 param enableWebIpFiltering bool = true
@@ -35,10 +40,6 @@ param cosmosAccountName string
 
 @description('Storage account name for connection string generation')  
 param storageAccountName string
-
-resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2021-12-01-preview' existing = {
-  name: logAnalyticsWorkspaceName
-}
 
 resource applicationInsights 'Microsoft.Insights/components@2020-02-02' existing = {
   name: applicationInsightsName
@@ -61,19 +62,22 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' existing 
   name: storageAccountName
 }
 
-resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2023-05-01' = {
+resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2025-01-01' = {
   name: containerAppsEnvName
   location: location
   tags: tags
-  properties: {
-    appLogsConfiguration: {
-      destination: 'log-analytics'
-      logAnalyticsConfiguration: {
-        customerId: logAnalyticsWorkspace.properties.customerId
-        sharedKey: logAnalyticsWorkspace.listKeys().primarySharedKey
-      }
+  properties: containerAppsInternal ? {
+    vnetConfiguration: {
+      infrastructureSubnetId: containerAppsInfrastructureSubnetId
+      internal: true
     }
-  }
+    workloadProfiles: [
+      {
+        name: 'Consumption'
+        workloadProfileType: 'Consumption'
+      }
+    ]
+  } : {}
 }
 
 resource apiContainerApp 'Microsoft.App/containerApps@2023-05-01' = {
@@ -87,7 +91,7 @@ resource apiContainerApp 'Microsoft.App/containerApps@2023-05-01' = {
     configuration: {
       activeRevisionsMode: 'Single'
       ingress: {
-        external: true
+        external: !containerAppsInternal
         targetPort: 8080
         corsPolicy: {
           allowedOrigins: ['*']
@@ -120,16 +124,8 @@ resource apiContainerApp 'Microsoft.App/containerApps@2023-05-01' = {
           value: containerRegistry.listCredentials().passwords[0].value
         }
         {
-          name: 'cosmos-connection-string'
-          value: cosmosAccount.listConnectionStrings().connectionStrings[0].connectionString
-        }
-        {
           name: 'cosmos-endpoint'
           value: cosmosAccount.properties.documentEndpoint
-        }
-        {
-          name: 'storage-connection-string'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
         }
         {
           name: 'storage-endpoint'
@@ -171,35 +167,19 @@ resource apiContainerApp 'Microsoft.App/containerApps@2023-05-01' = {
               value: applicationInsights.properties.ConnectionString
             }
             {
-              name: 'CosmosDb__ConnectionString'
-              secretRef: 'cosmos-connection-string'
-            }
-            {
               name: 'CosmosDb__DatabaseName'
               value: 'HAIMEDB'
-            }
-            {
-              name: 'CosmosDb__ContainerName'
-              value: 'Users'
-            }
-            {
-              name: 'COSMOSDB_CONNECTION_STRING'
-              secretRef: 'cosmos-connection-string'
             }
             {
               name: 'COSMOSDB_ENDPOINT'
               secretRef: 'cosmos-endpoint'
             }
             {
-              name: 'Storage__ConnectionString'
-              secretRef: 'storage-connection-string'
-            }
-            {
-              name: 'AZURE_STORAGE_CONNECTION_STRING'
-              secretRef: 'storage-connection-string'
-            }
-            {
               name: 'AZURE_STORAGE_ENDPOINT'
+              secretRef: 'storage-endpoint'
+            }
+            {
+              name: 'AzureStorage__Endpoint'
               secretRef: 'storage-endpoint'
             }
             {

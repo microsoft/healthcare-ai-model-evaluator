@@ -1,60 +1,85 @@
-using MongoDB.Driver;
-using MongoDB.Bson;
+using MedBench.Core.Cosmos;
 using MedBench.Core.Models;
 using MedBench.Core.Interfaces;
+using Microsoft.Azure.Cosmos;
 
 namespace MedBench.Core.Repositories;
 
 public class ClinicalTaskRepository : IClinicalTaskRepository
 {
-    private readonly IMongoCollection<ClinicalTask> _collection;
+    private readonly Container _container;
 
-    public ClinicalTaskRepository(IMongoDatabase database)
+    public ClinicalTaskRepository(CosmosContainerProvider containerProvider)
     {
-        _collection = database.GetCollection<ClinicalTask>("ClinicalTasks");
+        _container = containerProvider.GetContainer("ClinicalTasks");
     }
 
     public async Task<IEnumerable<ClinicalTask>> GetAllAsync()
     {
-        return await _collection.Find(_ => true).ToListAsync();
+        return await CosmosQueryHelpers.QueryAsync<ClinicalTask>(
+            _container,
+            new QueryDefinition("SELECT * FROM c"));
     }
 
     public async Task<ClinicalTask> GetByIdAsync(string id)
     {
-        var task = await _collection.Find(x => x.Id == id).FirstOrDefaultAsync();
-        if (task == null)
+        try
+        {
+            var response = await _container.ReadItemAsync<ClinicalTask>(id, new PartitionKey(id));
+            return response.Resource;
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
             throw new KeyNotFoundException($"ClinicalTask with ID {id} not found");
-        return task;
+        }
     }
 
     public async Task<IEnumerable<ClinicalTask>> GetByIdsAsync(IEnumerable<string> ids)
     {
-        var filter = Builders<ClinicalTask>.Filter.In(x => x.Id, ids);
-        return await _collection.Find(filter).ToListAsync();
+        var idArray = ids?.Where(x => !string.IsNullOrWhiteSpace(x)).ToArray() ?? Array.Empty<string>();
+        if (idArray.Length == 0) return Array.Empty<ClinicalTask>();
+
+        return await CosmosQueryHelpers.QueryAsync<ClinicalTask>(
+            _container,
+            new QueryDefinition("SELECT * FROM c WHERE ARRAY_CONTAINS(@ids, c.id)")
+                .WithParameter("@ids", idArray));
     }
 
     public async Task<ClinicalTask> CreateAsync(ClinicalTask clinicalTask)
     {
-        clinicalTask.Id = ObjectId.GenerateNewId().ToString();
+        if (string.IsNullOrWhiteSpace(clinicalTask.Id))
+        {
+            clinicalTask.Id = Guid.NewGuid().ToString();
+        }
         clinicalTask.CreatedAt = DateTime.UtcNow;
         clinicalTask.UpdatedAt = DateTime.UtcNow;
-        await _collection.InsertOneAsync(clinicalTask);
+        await _container.CreateItemAsync(clinicalTask, new PartitionKey(clinicalTask.Id));
         return clinicalTask;
     }
 
     public async Task<ClinicalTask> UpdateAsync(ClinicalTask clinicalTask)
     {
         clinicalTask.UpdatedAt = DateTime.UtcNow;
-        var result = await _collection.ReplaceOneAsync(x => x.Id == clinicalTask.Id, clinicalTask);
-        if (result.ModifiedCount == 0)
+        try
+        {
+            await _container.ReplaceItemAsync(clinicalTask, clinicalTask.Id, new PartitionKey(clinicalTask.Id));
+            return clinicalTask;
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
             throw new KeyNotFoundException($"ClinicalTask with ID {clinicalTask.Id} not found");
-        return clinicalTask;
+        }
     }
 
     public async Task DeleteAsync(string id)
     {
-        var result = await _collection.DeleteOneAsync(x => x.Id == id);
-        if (result.DeletedCount == 0)
+        try
+        {
+            await _container.DeleteItemAsync<ClinicalTask>(id, new PartitionKey(id));
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
             throw new KeyNotFoundException($"ClinicalTask with ID {id} not found");
+        }
     }
 } 

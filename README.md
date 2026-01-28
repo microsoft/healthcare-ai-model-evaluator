@@ -58,11 +58,34 @@ npm run dev
 ### Backend Setup
 ```bash
 export AZURE_STORAGE_CONNECTION_STRING=[Your Storage Account connection string]
-export COSMOSDB_CONNECTION_STRING=[Your mongodb connection string]
+export COSMOSDB_ENDPOINT=[Your Cosmos DB account endpoint]
+export COSMOSDB_DATABASE=[Your Cosmos DB database name]
 
 cd backend
 dotnet restore
 dotnet run --project src/MedBench.API/MedBench.API.csproj
+```
+
+> [!NOTE]
+> Cosmos DB **local auth is disabled** in this deployment. For local development, run `az login` and ensure your current identity has Cosmos **data-plane** permissions on the target account.
+
+```bash
+# Example (data-plane RBAC): grant your signed-in user access
+RG="$(azd env get-value AZURE_RESOURCE_GROUP_NAME)"
+COSMOS_ACCOUNT="$(azd env get-value AZURE_COSMOS_ACCOUNT_NAME)"
+PRINCIPAL_ID="$(az ad signed-in-user show --query id -o tsv)"
+ROLE_DEF_ID="$(az cosmosdb sql role definition list \
+	--resource-group "$RG" \
+	--account-name "$COSMOS_ACCOUNT" \
+	--query "[?roleName=='Cosmos DB Built-in Data Contributor'].id | [0]" \
+	-o tsv)"
+
+az cosmosdb sql role assignment create \
+	--resource-group "$RG" \
+	--account-name "$COSMOS_ACCOUNT" \
+	--principal-id "$PRINCIPAL_ID" \
+	--role-definition-id "$ROLE_DEF_ID" \
+	--scope "/"
 ```
 
 ### Functions Setup
@@ -84,7 +107,7 @@ docker-compose up
 
 ### Backend (.NET)
 - **Framework**: .NET 8 Web API
-- **Database**: MongoDB (via Cosmos DB MongoDB API)
+- **Database**: Azure Cosmos DB (SQL API)
 - **Authentication**: Azure AD integration
 - **Storage**: Azure Blob Storage integration
 
@@ -96,7 +119,7 @@ docker-compose up
 
 ### Infrastructure
 - **Hosting**: Container Apps + Azure Functions
-- **Database**: Azure Cosmos DB (MongoDB API, serverless)
+- **Database**: Azure Cosmos DB (SQL API)
 - **Storage**: Shared Azure Blob Storage with function triggers
 - **AI Services**: Azure OpenAI for LLM-based evaluation
 - **Security**: Key Vault + Managed Identity throughout

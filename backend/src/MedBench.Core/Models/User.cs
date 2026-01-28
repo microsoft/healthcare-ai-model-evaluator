@@ -2,6 +2,7 @@ namespace MedBench.Core.Models;
 
 public class User
 {
+    [System.Text.Json.Serialization.JsonPropertyName("id")]
     public string Id { get; set; } = Guid.NewGuid().ToString();
     public string Name { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;

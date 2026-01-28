@@ -116,6 +116,39 @@
     "emailEnabled": {
       "value": "${EMAIL_ENABLED=false}"
     },
+    "authClientId": {
+      "value": "${AUTH_CLIENT_ID=}"
+    },
+    "enableWebIpFiltering": {
+      "value": "${ENABLE_WEB_IP_FILTERING=false}"
+    },
+    "allowedWebIp": {
+      "value": "${ALLOWED_WEB_IP=}"
+    },
+    "deploymentNetworking": {
+      "value": "${DEPLOYMENT_NETWORKING=private}"
+    },
+    "createVnet": {
+      "value": "${CREATE_VNET=true}"
+    },
+    "existingVnetResourceId": {
+      "value": "${EXISTING_VNET_RESOURCE_ID=}"
+    },
+    "existingAcaInfrastructureSubnetId": {
+      "value": "${EXISTING_ACA_INFRASTRUCTURE_SUBNET_ID=}"
+    },
+    "existingFunctionsIntegrationSubnetId": {
+      "value": "${EXISTING_FUNCTIONS_INTEGRATION_SUBNET_ID=}"
+    },
+    "vnetAddressSpace": {
+      "value": "${VNET_ADDRESS_SPACE=10.30.0.0/16}"
+    },
+    "acaInfrastructureSubnetPrefix": {
+      "value": "${ACA_INFRASTRUCTURE_SUBNET_PREFIX=10.30.0.0/23}"
+    },
+    "functionsIntegrationSubnetPrefix": {
+      "value": "${FUNCTIONS_INTEGRATION_SUBNET_PREFIX=10.30.2.0/24}"
+    },
     "tags": {
       "value": {
         "Owner": "AI Team",

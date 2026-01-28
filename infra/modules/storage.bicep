@@ -15,7 +15,10 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   kind: 'StorageV2'
   properties: {
     supportsHttpsTrafficOnly: true
-    allowBlobPublicAccess: true
+    // Enforce Azure AD auth only (no account keys / connection strings)
+    allowSharedKeyAccess: false
+    defaultToOAuthAuthentication: true
+    allowBlobPublicAccess: false
     minimumTlsVersion: 'TLS1_2'
     accessTier: 'Hot'
     networkAcls: {
@@ -92,14 +95,6 @@ resource evaluatorResultsContainer 'Microsoft.Storage/storageAccounts/blobServic
 
 resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = {
   name: keyVaultName
-}
-
-resource storageConnectionStringSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
-  parent: keyVault
-  name: 'storage-connection-string'
-  properties: {
-    value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=core.windows.net'
-  }
 }
 
 // Store Storage endpoint for managed identity authentication
