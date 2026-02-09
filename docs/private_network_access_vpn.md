@@ -53,7 +53,32 @@ az network vnet list -g "$RG" -o table
 
 P2S is the simplest way to give a small number of admins/developers access from their laptops.
 
-### 1.0 Fast path: run the automation script
+### 1.0 Fast path: automatic when using a new VNet
+
+If you deploy with:
+
+- `DEPLOYMENT_NETWORKING=private`
+- `CREATE_VNET=true`
+
+the infrastructure now provisions:
+
+- **GatewaySubnet**
+- **VPN Gateway (OpenVPN + Entra ID)**
+- **DNS Private Resolver** (inbound endpoint)
+- **Private Endpoint** for the Container Apps Environment
+- **Private DNS Zones**:
+  - `privatelink.<region>.azurecontainerapps.io` (environment → private endpoint IP)
+  - `<defaultDomain>` (app FQDNs → private endpoint IP)
+
+This makes private access work immediately once you download the VPN profile and connect.
+
+You can override or disable with:
+
+```sh
+azd env set CREATE_VPN_GATEWAY false
+```
+
+### 1.1 Alternative: run the automation script
 
 This repo includes an idempotent script that:
 
@@ -171,7 +196,25 @@ In the Azure portal:
 
 Install Azure VPN Client (macOS), import the profile XML, then connect.
 
-#### If the internal `*.internal.*.azurecontainerapps.io` name does not resolve
+#### If the app FQDN does not resolve (Private Endpoint model)
+
+When a **private endpoint** is enabled for the Container Apps Environment, the expected DNS is:
+
+- Environment: `privatelink.<region>.azurecontainerapps.io` → private endpoint IP
+- App FQDNs: `<app>.<defaultDomain>` → private endpoint IP
+
+In this model, use the **non-internal** app FQDN (from the app’s Ingress blade) and ensure you have a Private DNS zone for `<defaultDomain>` with a wildcard `A` record (`*`) that points at the **private endpoint IP**.
+
+Your VPN client must use a DNS resolver **inside** the VNet (DNS Private Resolver inbound endpoint or VM DNS). Update the OpenVPN profile with:
+
+```
+dhcp-option DNS <resolver-ip-in-vnet>
+dhcp-option DOMAIN-SEARCH <defaultDomain>
+```
+
+Reconnect VPN after changes.
+
+#### If the internal `*.internal.*.azurecontainerapps.io` name does not resolve (internal env model)
 
 This is the most common "VPN connected but webapp/API still unreachable" issue.
 
@@ -184,12 +227,12 @@ Fix options (recommended first):
 
 If you already have DNS server IPs to use (example: your Private Resolver inbound endpoint IP `10.30.3.4`), there are two practical ways to apply them:
 
-1) **Portal (if your tenant/portal blade exposes it)**
-   - Go to **Virtual network gateways** (not Virtual WAN) → select your gateway → **Point-to-site configuration**.
-   - Look for a field named **DNS servers** (sometimes under an "Advanced" / "Additional settings" section).
-   - Save, then **Download VPN client** again and reconnect.
+1) **Gateway DNS servers (may not be available in the portal)**
+  - Some tenants/SKUs/portal blades do **not** expose a DNS servers field for P2S (especially OpenVPN + Entra ID). If you don’t see it, use option 2 below.
+  - If it *is* available: **Virtual network gateways** → select your gateway → **Point-to-site configuration** → **DNS servers**.
+  - Save, then **Download VPN client** again and reconnect.
 
-2) **Client-side split-DNS (works reliably even when the gateway cannot push DNS)**
+2) **Client-side split-DNS (reliable in all cases)**
 
 On macOS, configure a resolver rule so only the Container Apps *internal* suffix uses your in-VNet resolver.
 

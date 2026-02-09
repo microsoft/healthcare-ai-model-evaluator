@@ -130,7 +130,7 @@ resource metricsApp 'Microsoft.Web/sites@2022-09-01' = {
 // Grant the metrics function app identity access to Storage data plane.
 // Blob triggers use both Blob and Queue behind the scenes.
 resource metricsStorageBlobContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storageAccount.id, metricsApp.identity.principalId, 'MetricsStorageBlobDataContributor')
+  name: guid(storageAccount.id, metricsApp.name, 'MetricsStorageBlobDataContributor')
   scope: storageAccount
   properties: {
     principalId: metricsApp.identity.principalId
@@ -140,7 +140,7 @@ resource metricsStorageBlobContributor 'Microsoft.Authorization/roleAssignments@
 }
 
 resource metricsStorageQueueContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storageAccount.id, metricsApp.identity.principalId, 'MetricsStorageQueueDataContributor')
+  name: guid(storageAccount.id, metricsApp.name, 'MetricsStorageQueueDataContributor')
   scope: storageAccount
   properties: {
     principalId: metricsApp.identity.principalId

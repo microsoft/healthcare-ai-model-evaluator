@@ -160,12 +160,32 @@ builder.Services.AddControllers()
 // Cosmos SDK uses its own serializer; keep it aligned with MVC's defaults.
 static CosmosClient CreateCosmosClient(IConfiguration config)
 {
+    var cosmosConnectionString = Environment.GetEnvironmentVariable("COSMOSDB_CONNECTION_STRING")
+        ?? config["CosmosDb:ConnectionString"];
+
+    if (!string.IsNullOrWhiteSpace(cosmosConnectionString))
+    {
+        var serializerOptions = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+        };
+        serializerOptions.Converters.Add(new JsonStringEnumConverter());
+
+        return new CosmosClient(
+            cosmosConnectionString,
+            new CosmosClientOptions
+            {
+                Serializer = new MedBench.Core.Cosmos.SystemTextJsonCosmosSerializer(serializerOptions)
+            }
+        );
+    }
+
     var cosmosEndpoint = Environment.GetEnvironmentVariable("COSMOSDB_ENDPOINT")
         ?? config["CosmosDb:Endpoint"];
 
     if (string.IsNullOrWhiteSpace(cosmosEndpoint))
     {
-        throw new InvalidOperationException("Cosmos DB endpoint not found. Set COSMOSDB_ENDPOINT or CosmosDb:Endpoint.");
+        throw new InvalidOperationException("Cosmos DB endpoint not found. Set COSMOSDB_CONNECTION_STRING or COSMOSDB_ENDPOINT.");
     }
 
     var serializerOptions = new JsonSerializerOptions
@@ -310,6 +330,9 @@ builder.Services.AddScoped<IDataFileService, DataFileService>();
 // Local auth and email services (from Core)
 builder.Services.AddScoped<ILocalAuthService, MedBench.Core.Services.LocalAuthService>();
 builder.Services.AddScoped<IEmailService, MedBench.Core.Services.EmailService>();
+
+// Root admin bootstrap (optional via env vars)
+builder.Services.AddHostedService<MedBench.API.Services.RootAdminSeeder>();
 
 var app = builder.Build();
 

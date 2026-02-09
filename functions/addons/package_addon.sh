@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 # Generic Add-on Deployment Script
 # This script packages any addon with the MedBench package for Azure Functions deployment
@@ -10,7 +10,7 @@ set -e
 if [ $# -lt 1 ]; then
     echo "Usage: $0 <addon_name>"
     echo "Available addons:"
-    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
     for addon_dir in "$SCRIPT_DIR"/*/; do
         if [ -f "${addon_dir}function_app.py" ]; then
             addon_name=$(basename "$addon_dir")
@@ -21,7 +21,7 @@ if [ $# -lt 1 ]; then
 fi
 
 ADDON_NAME="$1"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 ADDON_DIR="$SCRIPT_DIR/$ADDON_NAME"
 MEDBENCH_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 BUILD_DIR="$ADDON_DIR/build"

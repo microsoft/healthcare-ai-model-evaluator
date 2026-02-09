@@ -19,12 +19,20 @@ public sealed class SystemTextJsonCosmosSerializer : CosmosSerializer
             throw new ArgumentNullException(nameof(stream));
         }
 
-        if (stream.CanSeek && stream.Length == 0)
+        if (typeof(Stream).IsAssignableFrom(typeof(T)))
         {
-            return default!;
+            return (T)(object)stream;
         }
 
-        return JsonSerializer.Deserialize<T>(stream, _options)!;
+        using (stream)
+        {
+            if (stream.CanSeek && stream.Length == 0)
+            {
+                return default!;
+            }
+
+            return JsonSerializer.Deserialize<T>(stream, _options)!;
+        }
     }
 
     public override Stream ToStream<T>(T input)

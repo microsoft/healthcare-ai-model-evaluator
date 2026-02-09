@@ -38,13 +38,16 @@ azd up
 
 ### First-time Setup
 
-After deployment, create your first admin user by running:
+After deployment, bootstrap your first admin user by setting these azd environment values and re-running deployment:
 
 ```bash
-./infra/scripts/create-admin-user.sh
+azd env set ROOT_ADMIN_EMAIL "admin@example.com"
+azd env set ROOT_ADMIN_NAME "Admin User"
+azd env set ROOT_ADMIN_PASSWORD "<strong-password>"
+azd up
 ```
 
-This script will prompt you for admin credentials and create the user in the database. The admin user can then log in and manage other users through the web interface.
+Once created, the admin user can log in and manage other users through the web interface.
 
 ## Local Development
 
@@ -57,7 +60,7 @@ npm run dev
 
 ### Backend Setup
 ```bash
-export AZURE_STORAGE_CONNECTION_STRING=[Your Storage Account connection string]
+export AZURE_STORAGE_ENDPOINT=[Your Storage Account blob endpoint]
 export COSMOSDB_ENDPOINT=[Your Cosmos DB account endpoint]
 export COSMOSDB_DATABASE=[Your Cosmos DB database name]
 
@@ -68,6 +71,11 @@ dotnet run --project src/MedBench.API/MedBench.API.csproj
 
 > [!NOTE]
 > Cosmos DB **local auth is disabled** in this deployment. For local development, run `az login` and ensure your current identity has Cosmos **data-plane** permissions on the target account.
+> The API also uses **managed identity / Entra ID** for Storage, so your signed-in identity needs Storage Blob **data-plane** permissions on the target account.
+
+> [!TIP]
+> For local Cosmos DB emulation, you can use the Azure Cosmos DB Emulator (Linux) in Docker.
+> Set `COSMOSDB_CONNECTION_STRING` to the emulator connection string and `COSMOSDB_DATABASE=HAIMEDB` (leave `COSMOSDB_ENDPOINT` unset for emulator use).
 
 ```bash
 # Example (data-plane RBAC): grant your signed-in user access

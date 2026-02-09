@@ -144,6 +144,11 @@ When you run `azd up`, the preprovision hook will prompt you to choose `open` vs
 In `private` mode:
 
 - The Container Apps Environment is deployed as internal-only and the API ingress is not publicly exposed.
+- A **Private Endpoint** is created for the Container Apps Environment.
+- A **DNS Private Resolver** inbound endpoint is created for VPN clients.
+- Private DNS zones are created for:
+  - `privatelink.<region>.azurecontainerapps.io`
+  - `<defaultDomain>` (app FQDNs)
 - Azure Functions are configured for regional VNet integration (outbound).
 - You must access the API from within the VNet (for example via VPN, jumpbox, or peered network).
 
@@ -234,10 +239,13 @@ azd up
 > [!NOTE]
 > **Cosmos DB auth**: This deployment uses **Azure Cosmos DB SQL API** with **local auth disabled** (no keys / no connection strings). The app authenticates using **Microsoft Entra ID / Managed Identity** via `DefaultAzureCredential`.
 
-> [!WARNING]
-> **Breaking change (Mongo → SQL API)**: Older deployments used **Cosmos DB API for MongoDB**. This repository now provisions **Cosmos DB SQL API** instead, which means **existing Mongo data is not automatically migrated**. Plan for a one-time migration or accept data loss when moving environments.
+> [!TIP]
+> **Local Cosmos emulation**: For local development, you can run the Azure Cosmos DB Emulator (Linux) in Docker and set `COSMOSDB_CONNECTION_STRING` with the emulator connection string plus `COSMOSDB_DATABASE=HAIMEDB`.
 
-> **Export (old Mongo API)**
+> [!WARNING]
+> **Legacy migration (Mongo → SQL API)**: Older deployments used **Cosmos DB API for MongoDB**. This repository now provisions **Cosmos DB SQL API** instead, which means **existing Mongo data is not automatically migrated**. Plan for a one-time migration or accept data loss when moving environments.
+
+> **Export (old Mongo API only — not for local dev)**
 > - Use `mongoexport` against your old Cosmos Mongo API account (or any Mongo-compatible endpoint):
 >   ```sh
 >   mongoexport --uri "$MONGO_URI" --db HAIMEDB --collection Users --jsonArray --out Users.json
@@ -375,17 +383,14 @@ echo "API: $(azd env get-value API_BASE_URL)/api"
 
 ### Create First Admin User
 
-After successful deployment, create your first admin user to access the application:
+You can bootstrap the first admin user automatically during deployment by setting these azd environment values:
 
 ```bash
-# Run the admin user creation script
-./infra/scripts/create-admin-user.sh
+azd env set ROOT_ADMIN_EMAIL "admin@example.com"
+azd env set ROOT_ADMIN_NAME "Admin User"
+azd env set ROOT_ADMIN_PASSWORD "<strong-password>"
+azd up
 ```
-
-The script will prompt you for:
-- **Admin email address**: Used for login
-- **Admin password**: Must meet complexity requirements (8+ characters, 3 of 4 character types)  
-- **Admin full name**: Display name in the application
 
 Once created, you can:
 1. Navigate to your application URL: `$(azd env get-value API_BASE_URL)/webapp`
@@ -393,7 +398,7 @@ Once created, you can:
 3. Use the email/password you just created
 4. Access the admin panel to create additional users
 
-> **Note**: This script only needs to be run once. Additional users can be created through the web interface by admin users.
+> **Note**: This only needs to be set once. Additional users can be created through the web interface by admin users.
 
 ---
 

@@ -21,6 +21,16 @@ param acsKeyVaultSecretName string = ''
 // Feature flag: enable/disable email communications in app
 param emailEnabled bool = false
 
+@description('Root admin email for automatic bootstrap (optional)')
+param rootAdminEmail string = ''
+
+@description('Root admin display name for automatic bootstrap (optional)')
+param rootAdminName string = ''
+
+@secure()
+@description('Root admin password for automatic bootstrap (optional)')
+param rootAdminPassword string = ''
+
 @description('When true, deploy Container Apps Environment as internal-only and make app ingress internal.')
 param containerAppsInternal bool = false
 
@@ -35,10 +45,10 @@ param enableWebIpFiltering bool = true
 param allowedWebIp string = ''
 
 // Direct connection values to avoid Key Vault dependency during Container App creation
-@description('Cosmos DB account name for connection string generation')
+@description('Cosmos DB account name for endpoint resolution (managed identity auth)')
 param cosmosAccountName string
 
-@description('Storage account name for connection string generation')  
+@description('Storage account name for endpoint resolution (managed identity auth)')  
 param storageAccountName string
 
 resource applicationInsights 'Microsoft.Insights/components@2020-02-02' existing = {
@@ -53,7 +63,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = {
   name: keyVaultName
 }
 
-// Reference existing Cosmos and Storage accounts to get connection strings directly
+// Reference existing Cosmos and Storage accounts to resolve endpoints
 resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
   name: cosmosAccountName
 }
@@ -66,18 +76,19 @@ resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2025-01-01'
   name: containerAppsEnvName
   location: location
   tags: tags
-  properties: containerAppsInternal ? {
-    vnetConfiguration: {
-      infrastructureSubnetId: containerAppsInfrastructureSubnetId
-      internal: true
-    }
+  properties: union({
     workloadProfiles: [
       {
         name: 'Consumption'
         workloadProfileType: 'Consumption'
       }
     ]
-  } : {}
+  }, containerAppsInternal ? {
+    vnetConfiguration: {
+      infrastructureSubnetId: containerAppsInfrastructureSubnetId
+      internal: true
+    }
+  } : {})
 }
 
 resource apiContainerApp 'Microsoft.App/containerApps@2023-05-01' = {
@@ -134,6 +145,11 @@ resource apiContainerApp 'Microsoft.App/containerApps@2023-05-01' = {
         {
           name: 'auth-client-id'
           value: authClientId
+        }
+      ], empty(rootAdminPassword) ? [] : [
+        {
+          name: 'root-admin-password'
+          value: rootAdminPassword
         }
       ], empty(emailSmtpPass) ? [] : [
         {
@@ -228,6 +244,24 @@ resource apiContainerApp 'Microsoft.App/containerApps@2023-05-01' = {
               value: string(emailEnabled)
             }
           ],
+          empty(rootAdminEmail) ? [] : [
+            {
+              name: 'RootAdmin__Email'
+              value: rootAdminEmail
+            }
+          ],
+          empty(rootAdminName) ? [] : [
+            {
+              name: 'RootAdmin__Name'
+              value: rootAdminName
+            }
+          ],
+          empty(rootAdminPassword) ? [] : [
+            {
+              name: 'RootAdmin__Password'
+              secretRef: 'root-admin-password'
+            }
+          ],
       // Prefer ACS if provided; app code will detect this setting
       empty(acsKeyVaultSecretName) ? [] : [
             {
@@ -296,3 +330,6 @@ resource keyVaultAccessPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2022-07-
 output apiUri string = 'https://${apiContainerApp.properties.configuration.ingress.fqdn}'
 output apiName string = apiContainerApp.name
 output apiPrincipalId string = apiContainerApp.identity.principalId 
+output environmentDefaultDomain string = containerAppsEnvironment.properties.defaultDomain
+output environmentStaticIp string = containerAppsEnvironment.properties.staticIp
+output environmentId string = containerAppsEnvironment.id

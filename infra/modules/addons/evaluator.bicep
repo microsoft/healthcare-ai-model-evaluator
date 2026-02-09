@@ -128,7 +128,7 @@ resource evaluatorApp 'Microsoft.Web/sites@2022-09-01' = {
 
 // Grant the evaluator function app identity access to Storage data plane.
 resource evaluatorStorageBlobContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storageAccount.id, evaluatorApp.identity.principalId, 'EvaluatorStorageBlobDataContributor')
+  name: guid(storageAccount.id, evaluatorApp.name, 'EvaluatorStorageBlobDataContributor')
   scope: storageAccount
   properties: {
     principalId: evaluatorApp.identity.principalId
@@ -138,7 +138,7 @@ resource evaluatorStorageBlobContributor 'Microsoft.Authorization/roleAssignment
 }
 
 resource evaluatorStorageQueueContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storageAccount.id, evaluatorApp.identity.principalId, 'EvaluatorStorageQueueDataContributor')
+  name: guid(storageAccount.id, evaluatorApp.name, 'EvaluatorStorageQueueDataContributor')
   scope: storageAccount
   properties: {
     principalId: evaluatorApp.identity.principalId
