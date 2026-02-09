@@ -132,6 +132,7 @@ Now that your environment is configured, you can deploy all necessary resources 
 
 #### IP Filtering & Security Configuration
 
+<<<<<<< HEAD
 This project supports two deployment networking modes:
 
 - `DEPLOYMENT_NETWORKING=open` (default): public ingress
@@ -190,6 +191,17 @@ azd env set EXISTING_FUNCTIONS_INTEGRATION_SUBNET_ID "/subscriptions/<sub>/resou
 In `open` mode, no IP filtering is auto-configured.
 
 If you want to restrict API ingress by IP, you can enable it explicitly:
+=======
+**By default, the deployment is secure-by-default** and will prompt you to configure IP filtering to protect the web application:
+
+- **During first deployment**, you'll be prompted to enter an IP address that can access the web application
+- **Your current public IP** is automatically detected and suggested as the default (using preprovision hooks)
+- **Only specified IPs** can access the web application - all other access is blocked at the Container App ingress level
+- **Backend data services** (Cosmos DB, Storage) use public endpoints but are secured via managed identity authentication and connection strings
+- **IP filtering applies only to the Container App** - Azure Functions, Storage, and Cosmos DB are secured through Azure's service-to-service authentication and managed identities
+
+**Managing IP Access:**
+>>>>>>> origin/main
 
 ```sh
 # View current IP filtering settings
@@ -199,11 +211,18 @@ azd env get-value ENABLE_WEB_IP_FILTERING
 # Add or update allowed IPs (comma-delimited CIDR format)
 azd env set ALLOWED_WEB_IP "89.144.197.27/32,203.0.113.1/32"
 
+<<<<<<< HEAD
 # Enable IP filtering (comma-delimited CIDR format)
 azd env set ENABLE_WEB_IP_FILTERING true
 azd env set ALLOWED_WEB_IP "203.0.113.1/32,198.51.100.0/24"
 
 # Disable IP filtering
+=======
+# Disable IP filtering entirely (not recommended for production)
+azd env set ENABLE_WEB_IP_FILTERING false
+
+# Open to the entire internet 
+>>>>>>> origin/main
 azd env set ENABLE_WEB_IP_FILTERING false
 azd env set ALLOWED_WEB_IP ""
 
@@ -224,6 +243,7 @@ azd up
 
 # Production-ish: Open mode + lock down to office IP
 azd env set DEPLOYMENT_NETWORKING open
+
 azd env set ENABLE_WEB_IP_FILTERING true
 azd env set ALLOWED_WEB_IP "your.office.ip.address/32"
 azd up
@@ -301,6 +321,7 @@ azd up
 > - Import per container: `Users`, `Models`, `Experiments`, `ClinicalTasks`, `TestScenarios`, `DataObjects`, `DataSets`, `Images`, `Trials`.
 > - The import script also normalizes common **Mongo Extended JSON** wrappers (for example `$oid`, `$date`, `$numberLong`) into plain values so the .NET app can read them back cleanly.
 > - Cosmos SQL queries are **case-sensitive** for property names. Keep existing document field casing (for example `Email`, `UserId`, `ExperimentId`, `TestScenarioId`, `TaskId`, `Status`).
+
 
 > [!TIP]
 > **Multiple Locations**: Use comma-delimited CIDR notation to allow access from multiple locations: `"home.ip.address/32,office.ip.address/32,vpn.range.address/24"`
@@ -399,6 +420,7 @@ Once created, you can:
 4. Access the admin panel to create additional users
 
 > **Note**: This only needs to be set once. Additional users can be created through the web interface by admin users.
+
 
 ---
 
@@ -699,7 +721,11 @@ For local development of functions:
 
 ```bash
 cd functions
-docker-compose up
+# Create .env file from template (required for docker compose)
+cp .env.example .env
+# Edit .env with your Azure OpenAI credentials if needed
+
+docker compose up
 ```
 
 This starts:

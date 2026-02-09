@@ -22,6 +22,7 @@ services:
             mkdir -p ../backend/src/MedBench.API/wwwroot/webapp
             cp -r build/* ../backend/src/MedBench.API/wwwroot/webapp/
             echo "Frontend build completed"
+
           interactive: false
           continueOnError: false
 

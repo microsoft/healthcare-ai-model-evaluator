@@ -5,7 +5,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.38.33.27573",
-      "templateHash": "3963363190777727422"
+      "templateHash": "3963363190777727422",
     }
   },
   "parameters": {
@@ -1250,6 +1250,32 @@
               "dependsOn": [
                 "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('accountName'))]"
               ]
+            },
+            {
+              "type": "Microsoft.KeyVault/vaults/secrets",
+              "apiVersion": "2022-07-01",
+              "name": "[format('{0}/{1}', parameters('keyVaultName'), 'cosmos-endpoint')]",
+              "properties": {
+                "value": "[reference(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('accountName')), '2023-04-15').documentEndpoint]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('accountName'))]"
+              ]
+            },
+            {
+              "condition": "[not(empty(parameters('principalId')))]",
+              "type": "Microsoft.Authorization/roleAssignments",
+              "apiVersion": "2022-04-01",
+              "scope": "[format('Microsoft.DocumentDB/databaseAccounts/{0}', parameters('accountName'))]",
+              "name": "[guid(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('accountName')), parameters('principalId'), 'CosmosDBAccountContributor')]",
+              "properties": {
+                "principalId": "[parameters('principalId')]",
+                "principalType": "[parameters('principalType')]",
+                "roleDefinitionId": "[subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '5bd9cd88-fe45-4216-938b-f97437e15450')]"
+              },
+              "dependsOn": [
+                "[resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('accountName'))]"
+              ]
             }
           ],
           "outputs": {
@@ -1513,6 +1539,9 @@
           "containerRegistryName": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-registry', variables('deploymentName'))), '2025-04-01').outputs.name.value]"
           },
+          "logAnalyticsWorkspaceName": {
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-monitoring', variables('deploymentName'))), '2025-04-01').outputs.logAnalyticsWorkspaceName.value]"
+          },
           "applicationInsightsName": {
             "value": "[reference(resourceId('Microsoft.Resources/deployments', format('{0}-monitoring', variables('deploymentName'))), '2025-04-01').outputs.applicationInsightsName.value]"
           },
@@ -1592,6 +1621,9 @@
               "type": "string"
             },
             "containerRegistryName": {
+              "type": "string"
+            },
+            "logAnalyticsWorkspaceName": {
               "type": "string"
             },
             "applicationInsightsName": {
@@ -1677,6 +1709,7 @@
               "type": "string",
               "metadata": {
                 "description": "Cosmos DB account name for endpoint resolution (managed identity auth)"
+
               }
             },
             "storageAccountName": {
@@ -1733,6 +1766,7 @@
                     }
                   ],
                   "secrets": "[concat(createArray(createObject('name', 'container-registry-password', 'value', listCredentials(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2021-09-01').passwords[0].value), createObject('name', 'cosmos-endpoint', 'value', reference(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosAccountName')), '2023-04-15').documentEndpoint), createObject('name', 'storage-endpoint', 'value', reference(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').primaryEndpoints.blob), createObject('name', 'auth-client-id', 'value', parameters('authClientId'))), if(empty(parameters('emailSmtpPass')), createArray(), createArray(createObject('name', 'email-smtp-password', 'value', parameters('emailSmtpPass')))), if(empty(parameters('acsKeyVaultSecretName')), createArray(), createArray(createObject('name', 'acs-connection-string', 'keyVaultUrl', format('{0}secrets/{1}', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2022-07-01').vaultUri, parameters('acsKeyVaultSecretName')), 'identity', 'system'))))]"
+
                 },
                 "template": {
                   "containers": [
@@ -1740,6 +1774,7 @@
                       "image": "[if(not(empty(parameters('apiImageName'))), parameters('apiImageName'), 'mcr.microsoft.com/dotnet/aspnet:8.0')]",
                       "name": "api",
                       "env": "[concat(createArray(createObject('name', 'ASPNETCORE_ENVIRONMENT', 'value', 'Production'), createObject('name', 'ASPNETCORE_URLS', 'value', 'http://+:8080'), createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', reference(resourceId('Microsoft.Insights/components', parameters('applicationInsightsName')), '2020-02-02').ConnectionString), createObject('name', 'CosmosDb__DatabaseName', 'value', 'HAIMEDB'), createObject('name', 'COSMOSDB_ENDPOINT', 'secretRef', 'cosmos-endpoint'), createObject('name', 'AZURE_STORAGE_ENDPOINT', 'secretRef', 'storage-endpoint'), createObject('name', 'AZURE_KEY_VAULT_NAME', 'value', parameters('keyVaultName')), createObject('name', 'KeyVault__Name', 'value', parameters('keyVaultName')), createObject('name', 'AzureStorage__ImageContainer', 'value', 'images'), createObject('name', 'AzureAd__ClientId', 'secretRef', 'auth-client-id'), createObject('name', 'AzureAd__Audience', 'value', parameters('authClientId')), createObject('name', 'AzureAd__TenantId', 'value', subscription().tenantId), createObject('name', 'Email__Smtp__Port', 'value', string(parameters('emailSmtpPort'))), createObject('name', 'Email__Smtp__UseSsl', 'value', string(parameters('emailSmtpUseSsl')))), if(empty(parameters('webBaseUrl')), createArray(), createArray(createObject('name', 'Web__BaseUrl', 'value', parameters('webBaseUrl')))), createArray(createObject('name', 'Email__Enabled', 'value', string(parameters('emailEnabled')))), if(empty(parameters('acsKeyVaultSecretName')), createArray(), createArray(createObject('name', 'Email__Acs__ConnectionString', 'secretRef', 'acs-connection-string'))), if(empty(parameters('emailFrom')), createArray(), createArray(createObject('name', 'Email__From', 'value', parameters('emailFrom')))), if(empty(parameters('emailSmtpHost')), createArray(), createArray(createObject('name', 'Email__Smtp__Host', 'value', parameters('emailSmtpHost')))), if(empty(parameters('emailSmtpUser')), createArray(), createArray(createObject('name', 'Email__Smtp__User', 'value', parameters('emailSmtpUser')))), if(empty(parameters('emailSmtpPass')), createArray(), createArray(createObject('name', 'Email__Smtp__Pass', 'secretRef', 'email-smtp-password'))))]",
+
                       "resources": {
                         "cpu": "[json('0.5')]",
                         "memory": "1Gi"

@@ -99,10 +99,17 @@ We are currently using a simple `requirements.txt` set up that still allow us to
 ```
 
 ### Step 2. Configure environment:
+
+> [!IMPORTANT]
+> You **must** create a `.env` file before running `docker compose up`. The `docker compose.yml` configuration requires this file.
+
+
 ```bash
 cp .env.example .env
 # Edit .env with your Azure OpenAI credentials
 ```
+
+The `.env.example` file contains default values for local development with Azurite. Update the `AZURE_OPENAI_API_KEY` and `CXRREPORTGEN_API_KEY` values if you need to test with real Azure services.
 
 ### Step 3. Start local services:
 ```bash
