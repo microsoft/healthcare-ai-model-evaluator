@@ -5,7 +5,6 @@ param databaseName string
 param keyVaultName string
 param principalId string = ''
 param principalType string = 'ServicePrincipal'
-<<<<<<< HEAD
 
 @description('List of SQL API container names to provision')
 param containerNames array = [
@@ -22,8 +21,6 @@ param containerNames array = [
 
 @description('Partition key path used for all containers')
 param partitionKeyPath string = '/id'
-=======
->>>>>>> origin/main
 
 resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
   name: accountName
@@ -32,10 +29,7 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
   kind: 'GlobalDocumentDB'
   properties: {
     databaseAccountOfferType: 'Standard'
-<<<<<<< HEAD
     // Key-based auth MUST be disabled. The app uses Microsoft Entra ID / Managed Identity.
-=======
->>>>>>> origin/main
     disableLocalAuth: true
     consistencyPolicy: {
       defaultConsistencyLevel: 'Session'
@@ -54,22 +48,11 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
         name: 'EnableServerless'
       }
     ]
-<<<<<<< HEAD
     // Allow public access (network mode may further restrict this in private deployments)
     publicNetworkAccess: 'Enabled'  
     networkAclBypass: 'AzureServices' // Allow Azure services like Container Apps and Functions
     isVirtualNetworkFilterEnabled: false
     ipRules: []
-=======
-    apiProperties: {
-      serverVersion: '4.2'
-    }
-    // Allow public access but secure with managed identity authentication
-    publicNetworkAccess: 'Enabled'  
-    networkAclBypass: 'AzureServices' // Allow Azure services like Container Apps and Functions
-    isVirtualNetworkFilterEnabled: false
-    ipRules: []  // No specific IP restrictions - rely on managed identity authentication
->>>>>>> origin/main
   }
 }
 

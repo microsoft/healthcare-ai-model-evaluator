@@ -21,7 +21,6 @@ param acsKeyVaultSecretName string = ''
 // Feature flag: enable/disable email communications in app
 param emailEnabled bool = false
 
-<<<<<<< HEAD
 @description('Root admin email for automatic bootstrap (optional)')
 param rootAdminEmail string = ''
 
@@ -38,8 +37,6 @@ param containerAppsInternal bool = false
 @description('When containerAppsInternal is true: subnet resource ID for the Container Apps Environment infrastructure subnet.')
 param containerAppsInfrastructureSubnetId string = ''
 
-=======
->>>>>>> origin/main
 // IP filtering parameters
 @description('Enable IP filtering for the web application (when true, only allowedWebIp can access the API)')
 param enableWebIpFiltering bool = true
@@ -48,23 +45,11 @@ param enableWebIpFiltering bool = true
 param allowedWebIp string = ''
 
 // Direct connection values to avoid Key Vault dependency during Container App creation
-<<<<<<< HEAD
 @description('Cosmos DB account name for endpoint resolution (managed identity auth)')
 param cosmosAccountName string
 
 @description('Storage account name for endpoint resolution (managed identity auth)')  
 param storageAccountName string
-=======
-@description('Cosmos DB account name for connection string generation')
-param cosmosAccountName string
-
-@description('Storage account name for connection string generation')  
-param storageAccountName string
-
-resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2021-12-01-preview' existing = {
-  name: logAnalyticsWorkspaceName
-}
->>>>>>> origin/main
 
 resource applicationInsights 'Microsoft.Insights/components@2020-02-02' existing = {
   name: applicationInsightsName
@@ -78,11 +63,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = {
   name: keyVaultName
 }
 
-<<<<<<< HEAD
 // Reference existing Cosmos and Storage accounts to resolve endpoints
-=======
-// Reference existing Cosmos and Storage accounts to get connection strings directly
->>>>>>> origin/main
 resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' existing = {
   name: cosmosAccountName
 }
@@ -91,11 +72,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' existing 
   name: storageAccountName
 }
 
-<<<<<<< HEAD
 resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2025-01-01' = {
-=======
-resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2023-05-01' = {
->>>>>>> origin/main
   name: containerAppsEnvName
   location: location
   tags: tags
@@ -158,38 +135,22 @@ resource apiContainerApp 'Microsoft.App/containerApps@2023-05-01' = {
           value: containerRegistry.listCredentials().passwords[0].value
         }
         {
-<<<<<<< HEAD
-=======
-          name: 'cosmos-connection-string'
-          value: cosmosAccount.listConnectionStrings().connectionStrings[0].connectionString
-        }
-        {
->>>>>>> origin/main
+
           name: 'cosmos-endpoint'
           value: cosmosAccount.properties.documentEndpoint
         }
         {
-<<<<<<< HEAD
-=======
-          name: 'storage-connection-string'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
-        }
-        {
->>>>>>> origin/main
           name: 'storage-endpoint'
           value: storageAccount.properties.primaryEndpoints.blob
         }
         {
           name: 'auth-client-id'
           value: authClientId
-<<<<<<< HEAD
         }
       ], empty(rootAdminPassword) ? [] : [
         {
           name: 'root-admin-password'
           value: rootAdminPassword
-=======
->>>>>>> origin/main
         }
       ], empty(emailSmtpPass) ? [] : [
         {
@@ -382,9 +343,6 @@ resource keyVaultAccessPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2022-07-
 output apiUri string = 'https://${apiContainerApp.properties.configuration.ingress.fqdn}'
 output apiName string = apiContainerApp.name
 output apiPrincipalId string = apiContainerApp.identity.principalId 
-<<<<<<< HEAD
 output environmentDefaultDomain string = containerAppsEnvironment.properties.defaultDomain
 output environmentStaticIp string = containerAppsEnvironment.properties.staticIp
 output environmentId string = containerAppsEnvironment.id
-=======
->>>>>>> origin/main

@@ -125,11 +125,8 @@ param emailSmtpPass string = ''
 param emailSmtpUseSsl bool = true
 
 @description('Enable IP filtering for the web application (when true, only allowedWebIp can access the Container App API)')
-<<<<<<< HEAD
+
 param enableWebIpFiltering bool = false
-=======
-param enableWebIpFiltering bool = true
->>>>>>> origin/main
 
 @description('IP addresses allowed to access the Container App web API (comma-delimited CIDR format, e.g., "203.0.113.1/32,198.51.100.0/24"). Storage and Cosmos use managed identity only.')
 param allowedWebIp string = ''
@@ -137,7 +134,6 @@ param allowedWebIp string = ''
 @description('Azure AD App Registration Client ID (will be set by postprovision script)')
 param authClientId string = '00000000-0000-0000-0000-000000000000'
 
-<<<<<<< HEAD
 @description('Deployment networking mode. "open" deploys public ingress; "private" deploys into a VNet with internal-only ingress.')
 @allowed([
   'open'
@@ -203,8 +199,6 @@ param rootAdminName string = ''
 @description('Root admin password for automatic bootstrap (optional)')
 param rootAdminPassword string = ''
 
-=======
->>>>>>> origin/main
 @description('Tags for all AI resources created. JSON object')
 param tagParam object = {}
 
@@ -351,10 +345,6 @@ module containerApps './modules/containerapps.bicep' = {
     tags: tags
     containerAppsEnvName: names.containerAppsEnv
     containerRegistryName: registry.outputs.name
-<<<<<<< HEAD
-=======
-    logAnalyticsWorkspaceName: monitoring.outputs.logAnalyticsWorkspaceName
->>>>>>> origin/main
     applicationInsightsName: monitoring.outputs.applicationInsightsName
     keyVaultName: keyVault.outputs.name
     authClientId: authClientId
@@ -374,7 +364,6 @@ module containerApps './modules/containerapps.bicep' = {
     // IP filtering
     enableWebIpFiltering: enableWebIpFiltering
     allowedWebIp: allowedWebIp
-<<<<<<< HEAD
     // Networking
     containerAppsInternal: deploymentNetworking == 'private'
     containerAppsInfrastructureSubnetId: deploymentNetworking == 'private' ? network.outputs.acaInfrastructureSubnetId : ''
@@ -512,11 +501,6 @@ resource privateDnsWildcardRecord 'Microsoft.Network/privateDnsZones/A@2020-06-0
         ipv4Address: containerApps.outputs.environmentStaticIp
       }
     ]
-=======
-    // Account names for direct connection string generation
-    cosmosAccountName: cosmos.outputs.accountName
-    storageAccountName: storage.outputs.name
->>>>>>> origin/main
   }
 }
 
@@ -599,14 +583,12 @@ output STORAGE_ACCOUNT_NAME string = storage.outputs.name
 output AUTH_CLIENT_ID string = authClientId
 output API_BASE_URL string = containerApps.outputs.apiUri
 output WEB_BASE_URL string = containerApps.outputs.apiUri
-<<<<<<< HEAD
 output CONTAINERAPPS_ENV_DEFAULT_DOMAIN string = containerApps.outputs.environmentDefaultDomain
 output CONTAINERAPPS_ENV_STATIC_IP string = containerApps.outputs.environmentStaticIp
 output VPN_GATEWAY_NAME string = deploymentNetworking == 'private' && createVnet && createVpnGateway ? network.outputs.vpnGatewayName : ''
 output DNS_RESOLVER_INBOUND_IP string = deploymentNetworking == 'private' && createVnet && createDnsResolver ? network.outputs.dnsResolverInboundIp : ''
 output PRIVATE_ENDPOINT_IP string = deploymentNetworking == 'private' && createVnet && createPrivateEndpoint ? acaPrivateEndpointIp : ''
-=======
->>>>>>> origin/main
+
 
 // Function app outputs
 output METRICS_FUNCTION_APP_NAME string = functions.outputs.metricsAppName
