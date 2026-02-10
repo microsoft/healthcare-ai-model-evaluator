@@ -125,15 +125,6 @@ resource cosmosSqlRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleA
   }
 }
 
-// Store Cosmos DB endpoint for managed identity authentication
-resource cosmosEndpointSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
-  parent: keyVault
-  name: 'cosmos-endpoint'
-  properties: {
-    value: cosmosAccount.properties.documentEndpoint
-  }
-}
-
 // Cosmos DB Built-in Data Contributor role assignment for managed identity
 resource cosmosRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!empty(principalId)) {
   scope: cosmosAccount
