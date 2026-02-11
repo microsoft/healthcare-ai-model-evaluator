@@ -13,11 +13,8 @@ using Microsoft.AspNetCore.Http.Features;
 using MedBench.API.Middleware;
 using Azure.Storage.Blobs;
 using Azure.Identity;
-<<<<<<< HEAD
 using Microsoft.Azure.Cosmos;
 using System.Text.Json;
-=======
->>>>>>> origin/main
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.FileProviders;
 
@@ -191,18 +188,18 @@ static CosmosClient CreateCosmosClient(IConfiguration config)
         throw new InvalidOperationException("Cosmos DB endpoint not found. Set COSMOSDB_CONNECTION_STRING or COSMOSDB_ENDPOINT.");
     }
 
-    var serializerOptions = new JsonSerializerOptions
+    var endpointSerializerOptions = new JsonSerializerOptions
     {
         PropertyNameCaseInsensitive = true,
     };
-    serializerOptions.Converters.Add(new JsonStringEnumConverter());
+    endpointSerializerOptions.Converters.Add(new JsonStringEnumConverter());
 
     return new CosmosClient(
         accountEndpoint: cosmosEndpoint,
         tokenCredential: new DefaultAzureCredential(),
         clientOptions: new CosmosClientOptions
         {
-            Serializer = new MedBench.Core.Cosmos.SystemTextJsonCosmosSerializer(serializerOptions)
+            Serializer = new MedBench.Core.Cosmos.SystemTextJsonCosmosSerializer(endpointSerializerOptions)
         }
     );
 }
@@ -263,7 +260,6 @@ builder.Services.AddSingleton(sp => CreateCosmosClient(builder.Configuration));
 
 builder.Services.AddSingleton(sp =>
 {
-<<<<<<< HEAD
     var dbName = Environment.GetEnvironmentVariable("COSMOSDB_DATABASE")
         ?? builder.Configuration["CosmosDb:DatabaseName"];
 
@@ -275,87 +271,6 @@ builder.Services.AddSingleton(sp =>
     return new MedBench.Core.Cosmos.CosmosContainerProvider(
         sp.GetRequiredService<CosmosClient>(),
         dbName);
-=======
-    var cosmosEndpoint = Environment.GetEnvironmentVariable("COSMOSDB_ENDPOINT") 
-        ?? builder.Configuration["CosmosDb:Endpoint"];
-        
-    if (string.IsNullOrEmpty(cosmosEndpoint))
-    {
-        throw new InvalidOperationException("Cosmos DB endpoint not found. Set COSMOSDB_ENDPOINT environment variable.");
-    }
-    
-    try {
-        // Use managed identity to connect to Cosmos DB
-        var credential = new DefaultAzureCredential();
-        
-        // For Cosmos DB MongoDB API, we need to construct the connection string with managed identity
-        // This requires the MongoDB connection string format but uses AAD authentication
-        var mongoConnectionString = $"mongodb://{cosmosEndpoint.Replace("https://", "").Replace("/", "")}:10255/?ssl=true&replicaSet=globaldb&retrywrites=false&maxIdleTimeMS=120000&appName=@{cosmosEndpoint.Replace("https://", "").Split('.')[0]}@";
-        
-        // For now, fall back to connection string if endpoint is not available
-        // TODO: Implement proper managed identity for MongoDB API
-        var connectionString = Environment.GetEnvironmentVariable("COSMOSDB_CONNECTION_STRING") 
-            ?? builder.Configuration["CosmosDb:ConnectionString"];
-            
-        if (string.IsNullOrEmpty(connectionString))
-        {
-            throw new InvalidOperationException("MongoDB connection string not found. Please configure managed identity or connection string.");
-        }
-        
-        var client = new MongoClient(connectionString);
-        var database = client.GetDatabase(builder.Configuration["CosmosDb:DatabaseName"]);
-        // Test the connection
-        database.RunCommandAsync((Command<BsonDocument>)"{ping:1}").Wait();
-
-        // After getting the database instance
-        var collections = new[] { "Users", "Models", "Experiments", "ClinicalTasks", "TestScenarios", "DataObjects" };
-        foreach (var collectionName in collections)
-        {
-            if (!database.ListCollectionNames().ToList().Contains(collectionName))
-            {
-                database.CreateCollection(collectionName);
-            }
-        }
-
-        return database;
-    }
-    catch (Exception ex)
-    {
-        // Log the exception details
-        Console.WriteLine($"Failed to connect to MongoDB: {ex}");
-        throw;
-    }
-});
-
-// Remove the CosmosDbContext registration and replace with MongoDB collections
-builder.Services.AddSingleton(sp =>
-{
-    var database = sp.GetRequiredService<IMongoDatabase>();
-    return database.GetCollection<MedBench.Core.Models.User>(builder.Configuration["CosmosDb:ContainerName"]);
-});
-
-// Update the MongoDB Client registration to use managed identity
-builder.Services.AddSingleton<IMongoClient>(sp => 
-{
-    var cosmosEndpoint = Environment.GetEnvironmentVariable("COSMOSDB_ENDPOINT") 
-        ?? builder.Configuration["CosmosDb:Endpoint"];
-        
-    if (!string.IsNullOrEmpty(cosmosEndpoint))
-    {
-        // TODO: Implement proper managed identity for MongoDB API
-        // For now, fall back to connection string
-    }
-    
-    var connectionString = Environment.GetEnvironmentVariable("COSMOSDB_CONNECTION_STRING") 
-        ?? builder.Configuration["CosmosDb:ConnectionString"];
-        
-    if (string.IsNullOrEmpty(connectionString))
-    {
-        throw new InvalidOperationException("MongoDB connection string not found. Please configure managed identity or connection string.");
-    }
-    
-    return new MongoClient(connectionString);
->>>>>>> origin/main
 });
 
 // Register repositories
@@ -376,7 +291,6 @@ builder.Services.AddSingleton<BlobServiceClient>(sp =>
     var storageEndpoint = Environment.GetEnvironmentVariable("AZURE_STORAGE_ENDPOINT")
         ?? builder.Configuration["AzureStorage:Endpoint"];
     
-<<<<<<< HEAD
     if (string.IsNullOrWhiteSpace(storageEndpoint))
     {
         throw new InvalidOperationException(
@@ -387,25 +301,6 @@ builder.Services.AddSingleton<BlobServiceClient>(sp =>
 
     var credential = new DefaultAzureCredential();
     return new BlobServiceClient(new Uri(storageEndpoint), credential);
-=======
-    if (!string.IsNullOrEmpty(storageEndpoint))
-    {
-        // Use managed identity for storage authentication
-        var credential = new DefaultAzureCredential();
-        return new BlobServiceClient(new Uri(storageEndpoint), credential);
-    }
-    
-    // Fall back to connection string if endpoint not configured
-    var connectionString = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING")
-        ?? builder.Configuration["AzureStorage:ConnectionString"];
-        
-    if (string.IsNullOrEmpty(connectionString))
-    {
-        throw new InvalidOperationException("Storage endpoint or connection string not found. Configure AZURE_STORAGE_ENDPOINT for managed identity.");
-    }
-    
-    return new BlobServiceClient(connectionString);
->>>>>>> origin/main
 });
 
 // Register Key Vault Service
