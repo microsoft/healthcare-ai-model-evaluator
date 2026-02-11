@@ -1,0 +1,232 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "metadata": {
+    "_generator": {
+      "name": "bicep",
+      "version": "0.38.33.27573",
+      "templateHash": "1217464186283331185"
+    }
+  },
+  "parameters": {
+    "location": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "object",
+      "defaultValue": {}
+    },
+    "containerAppsEnvName": {
+      "type": "string"
+    },
+    "containerRegistryName": {
+      "type": "string"
+    },
+    "logAnalyticsWorkspaceName": {
+      "type": "string"
+    },
+    "applicationInsightsName": {
+      "type": "string"
+    },
+    "keyVaultName": {
+      "type": "string"
+    },
+    "authClientId": {
+      "type": "string"
+    },
+    "apiImageName": {
+      "type": "string"
+    },
+    "resourceToken": {
+      "type": "string"
+    },
+    "webBaseUrl": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "emailFrom": {
+      "type": "string",
+      "defaultValue": "no-reply@haime.local"
+    },
+    "emailSmtpHost": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "emailSmtpPort": {
+      "type": "int",
+      "defaultValue": 587
+    },
+    "emailSmtpUser": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "emailSmtpPass": {
+      "type": "securestring",
+      "defaultValue": ""
+    },
+    "emailSmtpUseSsl": {
+      "type": "bool",
+      "defaultValue": true
+    },
+    "acsKeyVaultSecretName": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "emailEnabled": {
+      "type": "bool",
+      "defaultValue": false
+    },
+    "containerAppsInternal": {
+      "type": "bool",
+      "defaultValue": false,
+      "metadata": {
+        "description": "When true, deploy Container Apps Environment as internal-only and make app ingress internal."
+      }
+    },
+    "containerAppsInfrastructureSubnetId": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "When containerAppsInternal is true: subnet resource ID for the Container Apps Environment infrastructure subnet."
+      }
+    },
+    "enableWebIpFiltering": {
+      "type": "bool",
+      "defaultValue": true,
+      "metadata": {
+        "description": "Enable IP filtering for the web application (when true, only allowedWebIp can access the API)"
+      }
+    },
+    "allowedWebIp": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "IP address allowed to access the web application API (comma-delimited CIDR format, e.g., \"203.0.113.1/32,198.51.100.0/24\")"
+      }
+    },
+    "cosmosAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Cosmos DB account name for endpoint resolution (managed identity auth)"
+      }
+    },
+    "storageAccountName": {
+      "type": "string",
+      "metadata": {
+        "description": "Storage account name for endpoint resolution (managed identity auth)"
+      }
+    }
+  },
+  "resources": [
+    {
+      "type": "Microsoft.App/managedEnvironments",
+      "apiVersion": "2025-01-01",
+      "name": "[parameters('containerAppsEnvName')]",
+      "location": "[parameters('location')]",
+      "tags": "[parameters('tags')]",
+      "properties": "[union(createObject('appLogsConfiguration', createObject('destination', 'none')), if(parameters('containerAppsInternal'), createObject('vnetConfiguration', createObject('infrastructureSubnetId', parameters('containerAppsInfrastructureSubnetId'), 'internal', true()), 'workloadProfiles', createArray(createObject('name', 'Consumption', 'workloadProfileType', 'Consumption'))), createObject()))]"
+    },
+    {
+      "type": "Microsoft.App/containerApps",
+      "apiVersion": "2023-05-01",
+      "name": "[format('api-{0}', parameters('resourceToken'))]",
+      "location": "[parameters('location')]",
+      "tags": "[union(parameters('tags'), createObject('azd-service-name', 'api'))]",
+      "properties": {
+        "managedEnvironmentId": "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppsEnvName'))]",
+        "configuration": {
+          "activeRevisionsMode": "Single",
+          "ingress": {
+            "external": "[not(parameters('containerAppsInternal'))]",
+            "targetPort": 8080,
+            "corsPolicy": {
+              "allowedOrigins": [
+                "*"
+              ],
+              "allowedMethods": [
+                "GET",
+                "POST",
+                "PUT",
+                "DELETE",
+                "OPTIONS"
+              ],
+              "allowedHeaders": [
+                "*"
+              ]
+            },
+            "ipSecurityRestrictions": "[if(and(parameters('enableWebIpFiltering'), not(empty(parameters('allowedWebIp')))), createArray(createObject('name', 'AllowedIP', 'ipAddressRange', if(contains(parameters('allowedWebIp'), ','), trim(split(parameters('allowedWebIp'), ',')[0]), parameters('allowedWebIp')), 'action', 'Allow'), createObject('name', 'DenyAll', 'ipAddressRange', '0.0.0.0/0', 'action', 'Deny')), createArray())]"
+          },
+          "registries": [
+            {
+              "server": "[reference(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2021-09-01').loginServer]",
+              "username": "[listCredentials(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2021-09-01').username]",
+              "passwordSecretRef": "container-registry-password"
+            }
+          ],
+          "secrets": "[concat(createArray(createObject('name', 'container-registry-password', 'value', listCredentials(resourceId('Microsoft.ContainerRegistry/registries', parameters('containerRegistryName')), '2021-09-01').passwords[0].value), createObject('name', 'cosmos-endpoint', 'value', reference(resourceId('Microsoft.DocumentDB/databaseAccounts', parameters('cosmosAccountName')), '2023-04-15').documentEndpoint), createObject('name', 'storage-endpoint', 'value', reference(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-01-01').primaryEndpoints.blob), createObject('name', 'auth-client-id', 'value', parameters('authClientId'))), if(empty(parameters('emailSmtpPass')), createArray(), createArray(createObject('name', 'email-smtp-password', 'value', parameters('emailSmtpPass')))), if(empty(parameters('acsKeyVaultSecretName')), createArray(), createArray(createObject('name', 'acs-connection-string', 'keyVaultUrl', format('{0}secrets/{1}', reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2022-07-01').vaultUri, parameters('acsKeyVaultSecretName')), 'identity', 'system'))))]"
+        },
+        "template": {
+          "containers": [
+            {
+              "image": "[if(not(empty(parameters('apiImageName'))), parameters('apiImageName'), 'mcr.microsoft.com/dotnet/aspnet:8.0')]",
+              "name": "api",
+              "env": "[concat(createArray(createObject('name', 'ASPNETCORE_ENVIRONMENT', 'value', 'Production'), createObject('name', 'ASPNETCORE_URLS', 'value', 'http://+:8080'), createObject('name', 'APPLICATIONINSIGHTS_CONNECTION_STRING', 'value', reference(resourceId('Microsoft.Insights/components', parameters('applicationInsightsName')), '2020-02-02').ConnectionString), createObject('name', 'CosmosDb__DatabaseName', 'value', 'HAIMEDB'), createObject('name', 'COSMOSDB_ENDPOINT', 'secretRef', 'cosmos-endpoint'), createObject('name', 'AZURE_STORAGE_ENDPOINT', 'secretRef', 'storage-endpoint'), createObject('name', 'AZURE_KEY_VAULT_NAME', 'value', parameters('keyVaultName')), createObject('name', 'KeyVault__Name', 'value', parameters('keyVaultName')), createObject('name', 'AzureStorage__ImageContainer', 'value', 'images'), createObject('name', 'AzureAd__ClientId', 'secretRef', 'auth-client-id'), createObject('name', 'AzureAd__Audience', 'value', parameters('authClientId')), createObject('name', 'AzureAd__TenantId', 'value', subscription().tenantId), createObject('name', 'Email__Smtp__Port', 'value', string(parameters('emailSmtpPort'))), createObject('name', 'Email__Smtp__UseSsl', 'value', string(parameters('emailSmtpUseSsl')))), if(empty(parameters('webBaseUrl')), createArray(), createArray(createObject('name', 'Web__BaseUrl', 'value', parameters('webBaseUrl')))), createArray(createObject('name', 'Email__Enabled', 'value', string(parameters('emailEnabled')))), if(empty(parameters('acsKeyVaultSecretName')), createArray(), createArray(createObject('name', 'Email__Acs__ConnectionString', 'secretRef', 'acs-connection-string'))), if(empty(parameters('emailFrom')), createArray(), createArray(createObject('name', 'Email__From', 'value', parameters('emailFrom')))), if(empty(parameters('emailSmtpHost')), createArray(), createArray(createObject('name', 'Email__Smtp__Host', 'value', parameters('emailSmtpHost')))), if(empty(parameters('emailSmtpUser')), createArray(), createArray(createObject('name', 'Email__Smtp__User', 'value', parameters('emailSmtpUser')))), if(empty(parameters('emailSmtpPass')), createArray(), createArray(createObject('name', 'Email__Smtp__Pass', 'secretRef', 'email-smtp-password'))))]",
+              "resources": {
+                "cpu": "[json('0.5')]",
+                "memory": "1Gi"
+              }
+            }
+          ],
+          "scale": {
+            "minReplicas": 1,
+            "maxReplicas": 3
+          }
+        }
+      },
+      "identity": {
+        "type": "SystemAssigned"
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/managedEnvironments', parameters('containerAppsEnvName'))]"
+      ]
+    },
+    {
+      "type": "Microsoft.KeyVault/vaults/accessPolicies",
+      "apiVersion": "2022-07-01",
+      "name": "[format('{0}/{1}', parameters('keyVaultName'), 'add')]",
+      "properties": {
+        "accessPolicies": [
+          {
+            "tenantId": "[subscription().tenantId]",
+            "objectId": "[reference(resourceId('Microsoft.App/containerApps', format('api-{0}', parameters('resourceToken'))), '2023-05-01', 'full').identity.principalId]",
+            "permissions": {
+              "secrets": [
+                "get",
+                "list",
+                "set",
+                "delete"
+              ]
+            }
+          }
+        ]
+      },
+      "dependsOn": [
+        "[resourceId('Microsoft.App/containerApps', format('api-{0}', parameters('resourceToken')))]"
+      ]
+    }
+  ],
+  "outputs": {
+    "apiUri": {
+      "type": "string",
+      "value": "[format('https://{0}', reference(resourceId('Microsoft.App/containerApps', format('api-{0}', parameters('resourceToken'))), '2023-05-01').configuration.ingress.fqdn)]"
+    },
+    "apiName": {
+      "type": "string",
+      "value": "[format('api-{0}', parameters('resourceToken'))]"
+    },
+    "apiPrincipalId": {
+      "type": "string",
+      "value": "[reference(resourceId('Microsoft.App/containerApps', format('api-{0}', parameters('resourceToken'))), '2023-05-01', 'full').identity.principalId]"
+    }
+  }
+}

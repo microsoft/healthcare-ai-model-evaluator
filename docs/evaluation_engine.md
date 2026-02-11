@@ -643,7 +643,7 @@ The Engine includes utilities to convert MedHelm benchmark data into Healthcare 
 ### Common Issues
 
 **Issue: Blob trigger not firing**
-- Verify storage connection string in function app settings
+- Verify AzureWebJobsStorage__* settings and AZURE_STORAGE_ENDPOINT
 - Check blob container exists (`metricjobs`)
 - Confirm function app has storage account access
 - Review function app logs for trigger errors

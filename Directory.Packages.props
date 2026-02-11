@@ -23,9 +23,6 @@
     <PackageVersion Include="Microsoft.Identity.Web" Version="2.16.1" />
     <PackageVersion Include="Microsoft.Identity.Web.UI" Version="2.16.1" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
-    <PackageVersion Include="MongoDB.Bson" Version="2.22.0" />
-    <PackageVersion Include="MongoDB.Driver" Version="2.22.0" />
-    <PackageVersion Include="MongoDB.Driver.Core" Version="2.22.0" />
     <PackageVersion Include="Moq" Version="4.20.70" />
     <PackageVersion Include="Newtonsoft.Json" Version="13.0.1" />
     <PackageVersion Include="SharpToken" Version="1.2.14" />
@@ -33,6 +30,7 @@
     <PackageVersion Include="Swashbuckle.AspNetCore" Version="6.5.0" />
   <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.10" />
   <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="7.5.1" />
+    <PackageVersion Include="ZstdSharp.Port" Version="0.6.2" />
     <PackageVersion Include="xunit" Version="2.6.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="2.5.5" />
   </ItemGroup>

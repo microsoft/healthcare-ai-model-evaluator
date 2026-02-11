@@ -95,8 +95,12 @@ AZURE_OPENAI_ENDPOINT=https://your-openai-service.openai.azure.com/
 AZURE_OPENAI_API_KEY=your-api-key
 AZURE_OPENAI_DEPLOYMENT=gpt-4  # Optional, defaults to 'gpt-4'
 
-# Storage Configuration (same as main function app)
-AzureWebJobsStorage=DefaultEndpointsProtocol=https;AccountName=...
+# Storage Configuration (managed identity / Entra ID)
+AZURE_STORAGE_ENDPOINT=https://<account>.blob.core.windows.net
+AzureWebJobsStorage__accountName=<account>
+AzureWebJobsStorage__credential=managedidentity
+AzureWebJobsStorage__blobServiceUri=https://<account>.blob.core.windows.net
+AzureWebJobsStorage__queueServiceUri=https://<account>.queue.core.windows.net
 ```
 
 ### Option 1: Using the Deployment Script (Recommended)

@@ -2,6 +2,7 @@ namespace MedBench.Core.Models;
 
 public class ClinicalTask
 {
+    [System.Text.Json.Serialization.JsonPropertyName("id")]
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public List<TaskDataSetModel> DataSetModels { get; set; } = new();

@@ -8,6 +8,12 @@ param openAIEndpoint string
 param openAIDeploymentName string
 param openAIApiVersion string
 
+@description('Enable regional VNet integration for the Function App (outbound).')
+param enableVnetIntegration bool = false
+
+@description('When enableVnetIntegration is true: subnet resource ID for Function App VNet integration.')
+param integrationSubnetId string = ''
+
 @description('Docker image tag')
 param dockerImageTag string = 'latest'
 
@@ -57,8 +63,21 @@ resource metricsApp 'Microsoft.Web/sites@2022-09-01' = {
       linuxFxVersion: 'DOCKER|${containerRegistry.properties.loginServer}/haime-metrics:${dockerImageTag}'
       appSettings: [
         {
-          name: 'AzureWebJobsStorage'
-          value: 'DefaultEndpointsProtocol=https;AccountName=${storageAccount.name};AccountKey=${storageAccount.listKeys().keys[0].value};EndpointSuffix=core.windows.net'
+          // Identity-based storage connection for triggers/bindings (no shared key / no connection string)
+          name: 'AzureWebJobsStorage__accountName'
+          value: storageAccount.name
+        }
+        {
+          name: 'AzureWebJobsStorage__credential'
+          value: 'managedidentity'
+        }
+        {
+          name: 'AzureWebJobsStorage__blobServiceUri'
+          value: 'https://${storageAccount.name}.blob.${environment().suffixes.storage}'
+        }
+        {
+          name: 'AzureWebJobsStorage__queueServiceUri'
+          value: 'https://${storageAccount.name}.queue.${environment().suffixes.storage}'
         }
         {
           name: 'FUNCTIONS_WORKER_RUNTIME'
@@ -108,6 +127,37 @@ resource metricsApp 'Microsoft.Web/sites@2022-09-01' = {
   }
 }
 
+// Grant the metrics function app identity access to Storage data plane.
+// Blob triggers use both Blob and Queue behind the scenes.
+resource metricsStorageBlobContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storageAccount.id, metricsApp.name, 'MetricsStorageBlobDataContributor')
+  scope: storageAccount
+  properties: {
+    principalId: metricsApp.identity.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'ba92f5b4-2d11-453d-a403-e96b0029c9fe') // Storage Blob Data Contributor
+  }
+}
+
+resource metricsStorageQueueContributor 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(storageAccount.id, metricsApp.name, 'MetricsStorageQueueDataContributor')
+  scope: storageAccount
+  properties: {
+    principalId: metricsApp.identity.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '974c5e8b-45b9-4653-ba55-5f855dd0fb88') // Storage Queue Data Contributor
+  }
+}
+
+// Regional VNet integration (outbound) for the metrics function app
+resource metricsAppVnetConfig 'Microsoft.Web/sites/networkConfig@2022-09-01' = if (enableVnetIntegration) {
+  parent: metricsApp
+  name: 'virtualNetwork'
+  properties: {
+    subnetResourceId: integrationSubnetId
+  }
+}
+
 // Key Vault access policies for metrics function app
 resource functionKeyVaultAccess 'Microsoft.KeyVault/vaults/accessPolicies@2022-07-01' = {
   parent: keyVault
@@ -128,3 +178,4 @@ resource functionKeyVaultAccess 'Microsoft.KeyVault/vaults/accessPolicies@2022-0
 // Outputs
 output metricsAppName string = metricsApp.name
 output metricsAppDefaultHostName string = metricsApp.properties.defaultHostName 
+output metricsAppPrincipalId string = metricsApp.identity.principalId

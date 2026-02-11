@@ -24,7 +24,6 @@ class Settings(JsonSerializable):
     env: Environment = Environment.DEVELOPMENT
 
     azure_storage_blob_endpoint: str = None
-    azure_storage_connection_string: str = None
 
     babelbench_aml_workspace_name: str = "hls-bench"
 

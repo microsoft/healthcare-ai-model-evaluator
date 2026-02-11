@@ -8,5 +8,3 @@ global using MedBench.Core.Models;
 global using CoreUser = MedBench.Core.Models.User;
 global using System.Security.Claims; 
 global using System.Security.Principal;  // Add this for ClaimsIdentity
-global using MongoDB.Bson;
-global using MongoDB.Driver;

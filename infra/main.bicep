@@ -125,13 +125,79 @@ param emailSmtpPass string = ''
 param emailSmtpUseSsl bool = true
 
 @description('Enable IP filtering for the web application (when true, only allowedWebIp can access the Container App API)')
-param enableWebIpFiltering bool = true
+
+param enableWebIpFiltering bool = false
 
 @description('IP addresses allowed to access the Container App web API (comma-delimited CIDR format, e.g., "203.0.113.1/32,198.51.100.0/24"). Storage and Cosmos use managed identity only.')
 param allowedWebIp string = ''
 
 @description('Azure AD App Registration Client ID (will be set by postprovision script)')
 param authClientId string = '00000000-0000-0000-0000-000000000000'
+
+@description('Deployment networking mode. "open" deploys public ingress; "private" deploys into a VNet with internal-only ingress.')
+@allowed([
+  'open'
+  'private'
+])
+param deploymentNetworking string = 'private'
+
+@description('When deploymentNetworking is private: create a new VNet when true; otherwise use existingVnetResourceId.')
+param createVnet bool = true
+
+@description('Resource ID of an existing VNet to use when createVnet is false (e.g. /subscriptions/.../resourceGroups/.../providers/Microsoft.Network/virtualNetworks/yourVnet)')
+param existingVnetResourceId string = ''
+
+@description('Resource ID of an existing subnet for Container Apps Environment infrastructure (optional; if empty, the deployment creates one in the selected VNet).')
+param existingAcaInfrastructureSubnetId string = ''
+
+@description('Resource ID of an existing subnet for Azure Functions VNet Integration (optional; if empty, the deployment creates one in the selected VNet).')
+param existingFunctionsIntegrationSubnetId string = ''
+
+@description('Address space for a new VNet when createVnet is true (CIDR).')
+param vnetAddressSpace string = '10.30.0.0/16'
+
+@description('Subnet prefix for Container Apps Environment infrastructure subnet (CIDR).')
+param acaInfrastructureSubnetPrefix string = '10.30.0.0/23'
+
+@description('Subnet prefix for Azure Functions VNet Integration subnet (CIDR).')
+param functionsIntegrationSubnetPrefix string = '10.30.2.0/24'
+
+@description('When deploymentNetworking is private and createVnet is true: create a VPN gateway for P2S access.')
+param createVpnGateway bool = true
+
+@description('When createVpnGateway is true: GatewaySubnet prefix (CIDR).')
+param gatewaySubnetPrefix string = '10.30.255.0/27'
+
+@description('When createVpnGateway is true: VPN client address pool (CIDR).')
+param vpnClientAddressPool string = '172.16.200.0/24'
+
+@description('When createVpnGateway is true: VPN gateway SKU.')
+param vpnGatewaySku string = 'VpnGw1'
+
+@description('When deploymentNetworking is private and createVnet is true: create a private endpoint for the Container Apps Environment.')
+param createPrivateEndpoint bool = true
+
+@description('When createPrivateEndpoint is true: subnet prefix for private endpoints (CIDR).')
+param privateEndpointSubnetPrefix string = '10.30.4.0/27'
+
+@description('When deploymentNetworking is private and createVnet is true: create a DNS private resolver with inbound endpoint.')
+param createDnsResolver bool = true
+
+@description('When createDnsResolver is true: subnet prefix for DNS resolver inbound endpoint (CIDR).')
+param dnsResolverSubnetPrefix string = '10.30.3.0/27'
+
+@description('Optional static IP for DNS resolver inbound endpoint.')
+param dnsResolverInboundIp string = ''
+
+@description('Root admin email for automatic bootstrap (optional)')
+param rootAdminEmail string = ''
+
+@description('Root admin display name for automatic bootstrap (optional)')
+param rootAdminName string = ''
+
+@secure()
+@description('Root admin password for automatic bootstrap (optional)')
+param rootAdminPassword string = ''
 
 @description('Tags for all AI resources created. JSON object')
 param tagParam object = {}
@@ -158,6 +224,33 @@ var names = {
   containerAppsEnv: !empty(containerAppsEnvName) ? containerAppsEnvName : 'cae-${uniqueSuffix}'
   logAnalytics: !empty(logAnalyticsName) ? logAnalyticsName : 'log-${uniqueSuffix}'
   appInsights: !empty(applicationInsightsName) ? applicationInsightsName : 'appi-${uniqueSuffix}'
+}
+
+// Optional VNet integration for private/internal deployment
+module network './modules/network.bicep' = if (deploymentNetworking == 'private') {
+  name: '${deploymentName}-network'
+  params: {
+    location: location
+    tags: tags
+    resourceToken: uniqueSuffix
+    createVnet: createVnet
+    existingVnetResourceId: existingVnetResourceId
+    existingAcaInfrastructureSubnetId: existingAcaInfrastructureSubnetId
+    existingFunctionsIntegrationSubnetId: existingFunctionsIntegrationSubnetId
+    vnetAddressSpace: vnetAddressSpace
+    acaInfrastructureSubnetPrefix: acaInfrastructureSubnetPrefix
+    functionsIntegrationSubnetPrefix: functionsIntegrationSubnetPrefix
+    gatewaySubnetPrefix: gatewaySubnetPrefix
+    createVpnGateway: createVnet && createVpnGateway
+    vpnClientAddressPool: vpnClientAddressPool
+    vpnGatewaySku: vpnGatewaySku
+    aadTenantId: tenant().tenantId
+    createPrivateEndpoint: createVnet && createPrivateEndpoint
+    privateEndpointSubnetPrefix: privateEndpointSubnetPrefix
+    createDnsResolver: createVnet && createDnsResolver
+    dnsResolverSubnetPrefix: dnsResolverSubnetPrefix
+    dnsResolverInboundIp: dnsResolverInboundIp
+  }
 }
 
 // Core infrastructure first
@@ -252,7 +345,6 @@ module containerApps './modules/containerapps.bicep' = {
     tags: tags
     containerAppsEnvName: names.containerAppsEnv
     containerRegistryName: registry.outputs.name
-    logAnalyticsWorkspaceName: monitoring.outputs.logAnalyticsWorkspaceName
     applicationInsightsName: monitoring.outputs.applicationInsightsName
     keyVaultName: keyVault.outputs.name
     authClientId: authClientId
@@ -272,9 +364,142 @@ module containerApps './modules/containerapps.bicep' = {
     // IP filtering
     enableWebIpFiltering: enableWebIpFiltering
     allowedWebIp: allowedWebIp
-    // Account names for direct connection string generation
+    // Networking
+    containerAppsInternal: deploymentNetworking == 'private'
+    containerAppsInfrastructureSubnetId: deploymentNetworking == 'private' ? network.outputs.acaInfrastructureSubnetId : ''
+    // Account names for endpoint resolution (managed identity auth)
     cosmosAccountName: cosmos.outputs.accountName
     storageAccountName: storage.outputs.name
+    rootAdminEmail: rootAdminEmail
+    rootAdminName: rootAdminName
+    rootAdminPassword: rootAdminPassword
+  }
+}
+
+// Private Endpoint for Container Apps Environment (when using a new private VNet)
+var privateEndpointNicName = 'nic-aca-pe-${uniqueSuffix}'
+
+resource acaPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-11-01' = if (deploymentNetworking == 'private' && createVnet && createPrivateEndpoint) {
+  name: 'pe-aca-${uniqueSuffix}'
+  location: location
+  tags: tags
+  properties: {
+    subnet: {
+      id: network.outputs.privateEndpointSubnetId
+    }
+    customNetworkInterfaceName: privateEndpointNicName
+    privateLinkServiceConnections: [
+      {
+        name: 'aca-env'
+        properties: {
+          privateLinkServiceId: containerApps.outputs.environmentId
+          groupIds: [
+            'managedEnvironments'
+          ]
+        }
+      }
+    ]
+  }
+}
+
+var acaPrivateEndpointIp = deploymentNetworking == 'private' && createVnet && createPrivateEndpoint ? acaPrivateEndpoint.properties.customDnsConfigs[0].ipAddresses[0] : ''
+
+// Private DNS zones for Container Apps (private endpoint model)
+var privatelinkZoneName = 'privatelink.${location}.azurecontainerapps.io'
+
+resource privatelinkDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (deploymentNetworking == 'private' && createVnet && createPrivateEndpoint) {
+  name: privatelinkZoneName
+  location: 'global'
+}
+
+resource privatelinkDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (deploymentNetworking == 'private' && createVnet && createPrivateEndpoint) {
+  parent: privatelinkDnsZone
+  name: 'link-privatelink-${uniqueSuffix}'
+  location: 'global'
+  properties: {
+    virtualNetwork: {
+      id: network.outputs.vnetId
+    }
+    registrationEnabled: false
+  }
+}
+
+resource privatelinkDnsARecord 'Microsoft.Network/privateDnsZones/A@2020-06-01' = if (deploymentNetworking == 'private' && createVnet && createPrivateEndpoint) {
+  parent: privatelinkDnsZone
+  name: names.containerAppsEnv
+  properties: {
+    ttl: 300
+    aRecords: [
+      {
+        ipv4Address: acaPrivateEndpointIp
+      }
+    ]
+  }
+}
+
+// App default domain DNS zone (maps app FQDNs to private endpoint IP)
+var environmentDefaultDomainName = '${names.containerAppsEnv}.${location}.azurecontainerapps.io'
+
+resource appDefaultDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (deploymentNetworking == 'private' && createVnet && createPrivateEndpoint) {
+  name: environmentDefaultDomainName
+  location: 'global'
+}
+
+resource appDefaultDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (deploymentNetworking == 'private' && createVnet && createPrivateEndpoint) {
+  parent: appDefaultDnsZone
+  name: 'link-appdomain-${uniqueSuffix}'
+  location: 'global'
+  properties: {
+    virtualNetwork: {
+      id: network.outputs.vnetId
+    }
+    registrationEnabled: false
+  }
+}
+
+resource appDefaultDnsWildcard 'Microsoft.Network/privateDnsZones/A@2020-06-01' = if (deploymentNetworking == 'private' && createVnet && createPrivateEndpoint) {
+  parent: appDefaultDnsZone
+  name: '*'
+  properties: {
+    ttl: 300
+    aRecords: [
+      {
+        ipv4Address: acaPrivateEndpointIp
+      }
+    ]
+  }
+}
+
+// Private DNS for internal Container Apps (only when using a new private VNet)
+var internalZoneName = 'internal.${environmentDefaultDomainName}'
+
+resource privateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (deploymentNetworking == 'private' && createVnet && !createPrivateEndpoint) {
+  name: internalZoneName
+  location: 'global'
+}
+
+resource privateDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (deploymentNetworking == 'private' && createVnet && !createPrivateEndpoint) {
+  parent: privateDnsZone
+  name: 'link-${uniqueSuffix}'
+  location: 'global'
+  properties: {
+    virtualNetwork: {
+      id: network.outputs.vnetId
+    }
+    registrationEnabled: false
+  }
+}
+
+resource privateDnsWildcardRecord 'Microsoft.Network/privateDnsZones/A@2020-06-01' = if (deploymentNetworking == 'private' && createVnet && !createPrivateEndpoint) {
+  parent: privateDnsZone
+  name: '*'
+  properties: {
+    ttl: 300
+    aRecords: [
+      {
+        ipv4Address: containerApps.outputs.environmentStaticIp
+      }
+    ]
   }
 }
 
@@ -304,6 +529,8 @@ module functions './modules/functions.bicep' = {
     openAIDeploymentName: openAI.outputs.deploymentName
     openAIApiVersion: openAI.outputs.apiVersion
     dockerImageTag: dockerImageTag
+    enableVnetIntegration: deploymentNetworking == 'private'
+    integrationSubnetId: deploymentNetworking == 'private' ? network.outputs.functionsIntegrationSubnetId : ''
   }
 }
 
@@ -335,6 +562,8 @@ module evaluatorAddon './modules/addons/evaluator.bicep' = if (enableEvaluatorAd
     azureOpenAIEndpoint: openAI.outputs.endpoint
     azureOpenAIDeployment: openAI.outputs.deploymentName
     azureOpenAIVersion: openAI.outputs.apiVersion
+    enableVnetIntegration: deploymentNetworking == 'private'
+    integrationSubnetId: deploymentNetworking == 'private' ? network.outputs.functionsIntegrationSubnetId : ''
   }
   dependsOn: [
     functions
@@ -353,6 +582,12 @@ output STORAGE_ACCOUNT_NAME string = storage.outputs.name
 output AUTH_CLIENT_ID string = authClientId
 output API_BASE_URL string = containerApps.outputs.apiUri
 output WEB_BASE_URL string = containerApps.outputs.apiUri
+output CONTAINERAPPS_ENV_DEFAULT_DOMAIN string = containerApps.outputs.environmentDefaultDomain
+output CONTAINERAPPS_ENV_STATIC_IP string = containerApps.outputs.environmentStaticIp
+output VPN_GATEWAY_NAME string = deploymentNetworking == 'private' && createVnet && createVpnGateway ? network.outputs.vpnGatewayName : ''
+output DNS_RESOLVER_INBOUND_IP string = deploymentNetworking == 'private' && createVnet && createDnsResolver ? network.outputs.dnsResolverInboundIp : ''
+output PRIVATE_ENDPOINT_IP string = deploymentNetworking == 'private' && createVnet && createPrivateEndpoint ? acaPrivateEndpointIp : ''
+
 
 // Function app outputs
 output METRICS_FUNCTION_APP_NAME string = functions.outputs.metricsAppName

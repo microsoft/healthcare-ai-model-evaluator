@@ -1,38 +1,52 @@
-using Microsoft.Extensions.Configuration;
-using MongoDB.Driver;
+using MedBench.Core.Cosmos;
 using MedBench.Core.Models;
 using MedBench.Core.Interfaces;
+using Microsoft.Azure.Cosmos;
 
 namespace MedBench.Core.Repositories;
 
 public class ImageRepository : IImageRepository
 {
-    private readonly IMongoCollection<Image> _images;
+    private readonly Container _container;
 
-    public ImageRepository(IMongoClient mongoClient, IConfiguration configuration)
+    public ImageRepository(CosmosContainerProvider containerProvider)
     {
-        var database = mongoClient.GetDatabase(configuration["CosmosDb:DatabaseName"]);
-        _images = database.GetCollection<Image>("Images");
+        _container = containerProvider.GetContainer("Images");
     }
 
     public async Task<Image> GetByIdAsync(string id)
     {
-        var image = await _images.Find(x => x.Id == id).FirstOrDefaultAsync();
-        if (image == null)
+        try
+        {
+            var response = await _container.ReadItemAsync<Image>(id, new PartitionKey(id));
+            return response.Resource;
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
             throw new KeyNotFoundException($"Image with ID {id} not found.");
-        return image;
+        }
     }
 
     public async Task<Image> CreateAsync(Image image)
     {
-        await _images.InsertOneAsync(image);
+        if (string.IsNullOrWhiteSpace(image.Id))
+        {
+            image.Id = Guid.NewGuid().ToString();
+        }
+
+        await _container.CreateItemAsync(image, new PartitionKey(image.Id));
         return image;
     }
 
     public async Task DeleteAsync(string id)
     {
-        var result = await _images.DeleteOneAsync(x => x.Id == id);
-        if (result.DeletedCount == 0)
+        try
+        {
+            await _container.DeleteItemAsync<Image>(id, new PartitionKey(id));
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
             throw new KeyNotFoundException($"Image with ID {id} not found.");
+        }
     }
 } 

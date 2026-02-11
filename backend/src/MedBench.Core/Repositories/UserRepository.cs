@@ -1,127 +1,152 @@
-using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using MongoDB.Driver;
+using MedBench.Core.Cosmos;
 using MedBench.Core.Interfaces;
-using MedBench.Core.Models;
+using Microsoft.Azure.Cosmos;
+using UserModel = MedBench.Core.Models.User;
 
-namespace MedBench.Core.Repositories
+namespace MedBench.Core.Repositories;
+
+public class UserRepository : IUserRepository
 {
-    public class UserRepository : IUserRepository
+    private readonly Container _container;
+
+    public UserRepository(CosmosContainerProvider containerProvider)
     {
-        private readonly IMongoCollection<User> _users;
+        _container = containerProvider.GetContainer("Users");
+    }
 
-        public UserRepository(IMongoCollection<User> users)
+    public async Task<UserModel> GetByIdAsync(string id)
+    {
+        try
         {
-            _users = users;
-
-            // Create indexes for common queries
-            
-            // Index for email lookup - critical for authentication
-            var emailIndex = Builders<User>.IndexKeys.Ascending(u => u.Email);
-            _users.Indexes.CreateOne(new CreateIndexModel<User>(emailIndex));
-
-            // Index for model reviewers query
-            var modelReviewerIndex = Builders<User>.IndexKeys.Ascending(u => u.IsModelReviewer);
-            _users.Indexes.CreateOne(new CreateIndexModel<User>(modelReviewerIndex));
-
-            // Compound index for model reviewers with ModelId
-            var modelReviewerWithIdIndex = Builders<User>.IndexKeys
-                .Ascending(u => u.IsModelReviewer)
-                .Ascending(u => u.ModelId);
-            _users.Indexes.CreateOne(new CreateIndexModel<User>(modelReviewerWithIdIndex));
+            var response = await _container.ReadItemAsync<UserModel>(id, new PartitionKey(id));
+            return response.Resource;
         }
-
-        public async Task<User> GetByIdAsync(string id)
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
-            var user = await _users.Find(u => u.Id == id).FirstOrDefaultAsync();
-            if (user == null)
-                throw new KeyNotFoundException($"User with ID {id} not found");
-            return user;
-        }
-
-        public async Task<IEnumerable<User>> GetAllAsync()
-        {
-            return await _users.Find(_ => true).ToListAsync();
-        }
-
-        public async Task<User> CreateAsync(User user)
-        {
-            // normalize
-            if (!string.IsNullOrWhiteSpace(user.Email))
-            {
-                user.Email = user.Email.Trim().ToLowerInvariant();
-            }
-            user.UpdatedAt = DateTime.UtcNow;
-            await _users.InsertOneAsync(user);
-            return user;
-        }
-
-        public async Task<User> UpdateAsync(User user)
-        {
-            // Full replace: expect caller to preserve sensitive fields
-            if (!string.IsNullOrWhiteSpace(user.Email))
-            {
-                user.Email = user.Email.Trim().ToLowerInvariant();
-            }
-            user.UpdatedAt = DateTime.UtcNow;
-            var result = await _users.ReplaceOneAsync(u => u.Id == user.Id, user);
-            if (result.ModifiedCount == 0)
-                throw new KeyNotFoundException($"User with ID {user.Id} not found");
-            return user;
-        }
-
-        public async Task<User> UpdateProfileAsync(User user)
-        {
-            // Update only non-auth fields to avoid overwriting password hash/salt inadvertently
-            var update = Builders<User>.Update
-                .Set(u => u.Name, user.Name)
-                .Set(u => u.Email, string.IsNullOrWhiteSpace(user.Email) ? user.Email : user.Email.Trim().ToLowerInvariant())
-                .Set(u => u.Roles, user.Roles ?? new List<string>())
-                .Set(u => u.Expertise, user.Expertise)
-                .Set(u => u.IsModelReviewer, user.IsModelReviewer)
-                .Set(u => u.ModelId, user.ModelId)
-                .Set(u => u.UpdatedAt, DateTime.UtcNow);
-
-            var result = await _users.UpdateOneAsync(x => x.Id == user.Id, update);
-            if (result.MatchedCount == 0)
-                throw new KeyNotFoundException($"User with ID {user.Id} not found");
-
-            return await GetByIdAsync(user.Id);
-        }
-
-        public async Task DeleteAsync(string id)
-        {
-            var result = await _users.DeleteOneAsync(u => u.Id == id);
-            if (result.DeletedCount == 0)
-                throw new KeyNotFoundException($"User with ID {id} not found");
-        }
-
-        public async Task<string?> GetUserIdByEmailAsync(string email)
-        {
-            var norm = email?.Trim().ToLowerInvariant();
-            var user = await _users.Find(x => x.Email == norm).FirstOrDefaultAsync();
-            return user?.Id;
-        }
-
-        public async Task<User?> FindByEmailAsync(string email)
-        {
-            var norm = email?.Trim().ToLowerInvariant();
-            return await _users.Find(x => x.Email == norm).FirstOrDefaultAsync();
-        }
-
-        public async Task<IEnumerable<User>> GetModelReviewers()
-        {
-            return await _users.Find(u => u.IsModelReviewer).ToListAsync();
-        }
-
-        public async Task<IEnumerable<User>> GetModelReviewersFromIds(IEnumerable<string> userIds)
-        {
-            return await _users.Find(u => 
-                userIds.Contains(u.Id) && 
-                u.IsModelReviewer && 
-                !string.IsNullOrEmpty(u.ModelId)
-            ).ToListAsync();
+            throw new KeyNotFoundException($"User with ID {id} not found");
         }
     }
-} 
+
+    public async Task<IEnumerable<UserModel>> GetAllAsync()
+    {
+        return await CosmosQueryHelpers.QueryAsync<UserModel>(
+            _container,
+            new QueryDefinition("SELECT * FROM c"));
+    }
+
+    public async Task<UserModel> CreateAsync(UserModel user)
+    {
+        if (string.IsNullOrWhiteSpace(user.Id))
+        {
+            user.Id = Guid.NewGuid().ToString();
+        }
+
+        if (!string.IsNullOrWhiteSpace(user.Email))
+        {
+            user.Email = user.Email.Trim().ToLowerInvariant();
+        }
+
+        user.UpdatedAt = DateTime.UtcNow;
+        await _container.CreateItemAsync(user, new PartitionKey(user.Id));
+        return user;
+    }
+
+    public async Task<UserModel> UpdateAsync(UserModel user)
+    {
+        if (string.IsNullOrWhiteSpace(user.Id))
+        {
+            throw new ArgumentException("User must have an Id", nameof(user));
+        }
+
+        if (!string.IsNullOrWhiteSpace(user.Email))
+        {
+            user.Email = user.Email.Trim().ToLowerInvariant();
+        }
+
+        user.UpdatedAt = DateTime.UtcNow;
+
+        try
+        {
+            await _container.ReplaceItemAsync(user, user.Id, new PartitionKey(user.Id));
+            return user;
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            throw new KeyNotFoundException($"User with ID {user.Id} not found");
+        }
+    }
+
+    public async Task<UserModel> UpdateProfileAsync(UserModel user)
+    {
+        var existing = await GetByIdAsync(user.Id);
+
+        existing.Name = user.Name;
+        existing.Email = string.IsNullOrWhiteSpace(user.Email) ? user.Email : user.Email.Trim().ToLowerInvariant();
+        existing.Roles = user.Roles ?? new List<string>();
+        existing.Expertise = user.Expertise;
+        existing.IsModelReviewer = user.IsModelReviewer;
+        existing.ModelId = user.ModelId;
+        existing.UpdatedAt = DateTime.UtcNow;
+
+        await _container.ReplaceItemAsync(existing, existing.Id, new PartitionKey(existing.Id));
+        return existing;
+    }
+
+    public async Task DeleteAsync(string id)
+    {
+        try
+        {
+            await _container.DeleteItemAsync<UserModel>(id, new PartitionKey(id));
+        }
+        catch (CosmosException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            throw new KeyNotFoundException($"User with ID {id} not found");
+        }
+    }
+
+    public async Task<string?> GetUserIdByEmailAsync(string email)
+    {
+        var norm = email?.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(norm)) return null;
+
+        var id = await CosmosQueryHelpers.QuerySingleOrDefaultAsync<string>(
+            _container,
+            new QueryDefinition("SELECT VALUE c.id FROM c WHERE c.Email = @email")
+                .WithParameter("@email", norm));
+
+        return id;
+    }
+
+    public async Task<UserModel?> FindByEmailAsync(string email)
+    {
+        var norm = email?.Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(norm)) return null;
+
+        return await CosmosQueryHelpers.QuerySingleOrDefaultAsync<UserModel>(
+            _container,
+            new QueryDefinition("SELECT * FROM c WHERE c.Email = @email")
+                .WithParameter("@email", norm));
+    }
+
+    public async Task<IEnumerable<UserModel>> GetModelReviewers()
+    {
+        return await CosmosQueryHelpers.QueryAsync<UserModel>(
+            _container,
+            new QueryDefinition("SELECT * FROM c WHERE c.IsModelReviewer = true"));
+    }
+
+    public async Task<IEnumerable<UserModel>> GetModelReviewersFromIds(IEnumerable<string> userIds)
+    {
+        var ids = userIds?.Where(x => !string.IsNullOrWhiteSpace(x)).ToArray() ?? Array.Empty<string>();
+        if (ids.Length == 0) return Array.Empty<UserModel>();
+
+        return await CosmosQueryHelpers.QueryAsync<UserModel>(
+            _container,
+            new QueryDefinition(
+                    "SELECT * FROM c " +
+                    "WHERE c.IsModelReviewer = true " +
+                    "AND IS_DEFINED(c.ModelId) AND c.ModelId != '' " +
+                    "AND ARRAY_CONTAINS(@ids, c.id)")
+                .WithParameter("@ids", ids));
+    }
+}

@@ -13,21 +13,16 @@ services:
         posix:
           shell: sh
           run: |
-            # Check if environment variables are available before building frontend
-            if azd env get-value AUTH_CLIENT_ID >/dev/null 2>&1 && azd env get-value API_BASE_URL >/dev/null 2>&1; then
-              echo "Environment variables found - building frontend..."
-              cd ../../../frontend
-              ../infra/scripts/update-env.sh
-              npm install
-              npm run build
-              # Copy built files to backend wwwroot
-              mkdir -p ../backend/src/MedBench.API/wwwroot/webapp
-              cp -r build/* ../backend/src/MedBench.API/wwwroot/webapp/
-              echo "Frontend build completed"
-            else
-              echo "Environment variables not yet available - skipping frontend build"
-              echo "Frontend will be built after infrastructure is provisioned"
-            fi
+            echo "Building frontend..."
+            cd ../../../frontend
+            ../infra/scripts/update-env.sh
+            npm install
+            npm run build
+            # Copy built files to backend wwwroot
+            mkdir -p ../backend/src/MedBench.API/wwwroot/webapp
+            cp -r build/* ../backend/src/MedBench.API/wwwroot/webapp/
+            echo "Frontend build completed"
+
           interactive: false
           continueOnError: false
 
@@ -44,16 +39,17 @@ services:
     language: python
     host: function
     module: .
-    hooks:
-      prepackage:
-        shell: sh
-        run: ../../package_addon.sh evaluator
-        continueOnError: false
 
 hooks:
   preprovision:
-    - shell: sh
-      run: ./infra/hooks/preprovision.sh
+    - posix:
+        shell: sh
+        run: ./infra/hooks/preprovision.sh
+        interactive: true
+      windows:
+        shell: pwsh
+        run: ./infra/hooks/preprovision.ps1
+        interactive: true
       continueOnError: false
   postprovision:
     - run: ./infra/scripts/postprovision.sh
@@ -64,6 +60,26 @@ infra:
   path: infra
   module: main
   parameters:
+    deploymentNetworking: "${DEPLOYMENT_NETWORKING=private}"
+    createVnet: "${CREATE_VNET=true}"
+    existingVnetResourceId: "${EXISTING_VNET_RESOURCE_ID=}"
+    existingAcaInfrastructureSubnetId: "${EXISTING_ACA_INFRASTRUCTURE_SUBNET_ID=}"
+    existingFunctionsIntegrationSubnetId: "${EXISTING_FUNCTIONS_INTEGRATION_SUBNET_ID=}"
+    vnetAddressSpace: "${VNET_ADDRESS_SPACE=10.30.0.0/16}"
+    acaInfrastructureSubnetPrefix: "${ACA_INFRASTRUCTURE_SUBNET_PREFIX=10.30.0.0/23}"
+    functionsIntegrationSubnetPrefix: "${FUNCTIONS_INTEGRATION_SUBNET_PREFIX=10.30.2.0/24}"
+    gatewaySubnetPrefix: "${GATEWAY_SUBNET_PREFIX=10.30.255.0/27}"
+    createVpnGateway: "${CREATE_VPN_GATEWAY=true}"
+    vpnClientAddressPool: "${VPN_CLIENT_ADDRESS_POOL=172.16.200.0/24}"
+    vpnGatewaySku: "${VPN_GATEWAY_SKU=VpnGw1}"
+    createPrivateEndpoint: "${CREATE_PRIVATE_ENDPOINT=true}"
+    privateEndpointSubnetPrefix: "${PRIVATE_ENDPOINT_SUBNET_PREFIX=10.30.4.0/27}"
+    createDnsResolver: "${CREATE_DNS_RESOLVER=true}"
+    dnsResolverSubnetPrefix: "${DNS_RESOLVER_SUBNET_PREFIX=10.30.3.0/27}"
+    dnsResolverInboundIp: "${DNS_RESOLVER_INBOUND_IP=}"
+    rootAdminEmail: "${ROOT_ADMIN_EMAIL=}"
+    rootAdminName: "${ROOT_ADMIN_NAME=}"
+    rootAdminPassword: "${ROOT_ADMIN_PASSWORD=}"
     enableWebIpFiltering: "${ENABLE_WEB_IP_FILTERING}"
     allowedWebIp: "${ALLOWED_WEB_IP}"
     authClientId: "${AUTH_CLIENT_ID}"

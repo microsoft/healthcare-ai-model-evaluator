@@ -1,38 +1,44 @@
 using Xunit;
 using Moq;
-using MongoDB.Driver;
 using MedBench.Core.Models;
 using MedBench.Core.Repositories;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using MongoDB.Bson;
+using Microsoft.Azure.Cosmos;
+using System.Linq;
+using System.Threading;
 
 namespace MedBench.API.Tests.Repositories
 {
     public class DataObjectRepositoryTests
     {
-        private readonly Mock<IMongoCollection<DataObject>> _mockCollection;
-        private readonly Mock<IMongoCollection<DataSet>> _mockDataSetCollection;
-        private readonly Mock<IMongoDatabase> _mockDb;
+        private readonly Mock<Container> _mockDataObjects;
+        private readonly Mock<Container> _mockDataSets;
         private readonly DataObjectRepository _repository;
 
         public DataObjectRepositoryTests()
         {
-            _mockCollection = new Mock<IMongoCollection<DataObject>>();
-            _mockDataSetCollection = new Mock<IMongoCollection<DataSet>>();
-            _mockDb = new Mock<IMongoDatabase>();
+            _mockDataObjects = new Mock<Container>();
+            _mockDataSets = new Mock<Container>();
 
-            // Setup the database to return the mock collections
-            _mockDb.Setup(db => db.GetCollection<DataObject>("DataObjects", null))
-                .Returns(_mockCollection.Object);
-            _mockDb.Setup(db => db.GetCollection<DataSet>("DataSets", null))
-                .Returns(_mockDataSetCollection.Object);
+            _mockDataSets
+                .Setup(c => c.PatchItemAsync<DataSet>(
+                    It.IsAny<string>(),
+                    It.IsAny<PartitionKey>(),
+                    It.IsAny<IReadOnlyList<PatchOperation>>(),
+                    It.IsAny<PatchItemRequestOptions?>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Mock.Of<ItemResponse<DataSet>>());
 
-            // Mock the index manager to avoid null reference exception during index creation
-            var mockIndexManager = new Mock<IMongoIndexManager<DataObject>>();
-            _mockCollection.Setup(c => c.Indexes).Returns(mockIndexManager.Object);
+            _mockDataObjects
+                .Setup(c => c.CreateItemAsync(
+                    It.IsAny<DataObject>(),
+                    It.IsAny<PartitionKey>(),
+                    It.IsAny<ItemRequestOptions?>(),
+                    It.IsAny<CancellationToken>()))
+                .ReturnsAsync(Mock.Of<ItemResponse<DataObject>>());
 
-            _repository = new DataObjectRepository(_mockDb.Object);
+            _repository = new DataObjectRepository(_mockDataObjects.Object, _mockDataSets.Object);
         }
 
         [Fact]
@@ -46,23 +52,24 @@ namespace MedBench.API.Tests.Repositories
                 new DataObject { DataSetId = dataSetId }
             };
 
-            _mockDataSetCollection.Setup(c => c.UpdateOneAsync(
-                It.IsAny<FilterDefinition<DataSet>>(),
-                It.IsAny<UpdateDefinition<DataSet>>(),
-                It.IsAny<UpdateOptions>(),
-                default))
-                .ReturnsAsync(new UpdateResult.Acknowledged(1, 1, null));
-
             // Act
-            var result = await _repository.CreateManyAsync(dataObjects);
+            var result = (await _repository.CreateManyAsync(dataObjects)).ToList();
 
             // Assert
-            Assert.Equal(2, result.Count());
-            _mockDataSetCollection.Verify(c => c.UpdateOneAsync(
-                It.IsAny<FilterDefinition<DataSet>>(),
-                It.IsAny<UpdateDefinition<DataSet>>(),
-                It.IsAny<UpdateOptions>(),
-                default), Times.Once);
+            Assert.Equal(2, result.Count);
+
+            _mockDataSets.Verify(c => c.PatchItemAsync<DataSet>(
+                dataSetId,
+                It.IsAny<PartitionKey>(),
+                It.IsAny<IReadOnlyList<PatchOperation>>(),
+                It.IsAny<PatchItemRequestOptions?>(),
+                It.IsAny<CancellationToken>()), Times.Once);
+
+            _mockDataObjects.Verify(c => c.CreateItemAsync(
+                It.IsAny<DataObject>(),
+                It.IsAny<PartitionKey>(),
+                It.IsAny<ItemRequestOptions?>(),
+                It.IsAny<CancellationToken>()), Times.Exactly(2));
         }
     }
 } 

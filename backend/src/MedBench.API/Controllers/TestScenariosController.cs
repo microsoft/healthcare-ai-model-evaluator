@@ -51,10 +51,10 @@ public class TestScenariosController : ControllerBase
                 return Unauthorized();
 
             // Ensure we have an ID before saving
-            if (string.IsNullOrEmpty(scenario.Id))
-            {
-                scenario.Id = MongoDB.Bson.ObjectId.GenerateNewId().ToString();
-            }
+                if (string.IsNullOrEmpty(scenario.Id))
+                {
+                    scenario.Id = Guid.NewGuid().ToString("N");
+                }
 
             scenario.OwnerId = userId;
             Console.WriteLine($"Creating test scenario with ID: {scenario.Id}");

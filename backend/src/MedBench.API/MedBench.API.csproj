@@ -17,7 +17,6 @@
     <PackageReference Include="Microsoft.Azure.Cosmos" />
     <PackageReference Include="Microsoft.Identity.Web" />
     <PackageReference Include="Microsoft.Identity.Web.UI" />
-    <PackageReference Include="MongoDB.Driver" />
     <PackageReference Include="SixLabors.ImageSharp" />
     <PackageReference Include="Swashbuckle.AspNetCore" />
     <PackageReference Include="SharpToken" />

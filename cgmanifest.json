@@ -110,30 +110,6 @@
       "component": {
         "type": "nuget",
         "nuget": {
-          "name": "MongoDB.Driver"
-        }
-      }
-    },
-    {
-      "component": {
-        "type": "nuget",
-        "nuget": {
-          "name": "MongoDB.Bson"
-        }
-      }
-    },
-    {
-      "component": {
-        "type": "nuget",
-        "nuget": {
-          "name": "MongoDB.Driver.Core"
-        }
-      }
-    },
-    {
-      "component": {
-        "type": "nuget",
-        "nuget": {
           "name": "SixLabors.ImageSharp"
         }
       }

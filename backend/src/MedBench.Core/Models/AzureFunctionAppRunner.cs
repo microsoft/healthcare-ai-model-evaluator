@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Azure.Storage.Blobs;
+using Azure.Identity;
 using MedBench.Core.Interfaces;
 using System.Text.Json;
 using System.Threading;
@@ -28,8 +29,8 @@ namespace MedBench.Core.Models
             ILogger logger,
             string modelId) : base(settings, imageService, scopeFactory, logger, modelId)
         {
-            var connectionString = GetStorageConnectionString();
-            _blobServiceClient = new BlobServiceClient(connectionString);
+            var storageEndpoint = GetStorageBlobEndpoint();
+            _blobServiceClient = new BlobServiceClient(new Uri(storageEndpoint), new DefaultAzureCredential());
             
             // Get function app specific parameters
             _functionAppType = GetParameter(FunctionAppRunnerSettings.FunctionAppType);
@@ -365,13 +366,13 @@ namespace MedBench.Core.Models
             throw new ArgumentException($"Required parameter '{key}' not found in settings");
         }
 
-        private string GetStorageConnectionString()
+        private string GetStorageBlobEndpoint()
         {
             // First try to get from model settings
-            if (_settings.TryGetValue(FunctionAppRunnerSettings.StorageConnectionString, out string? settingsConnectionString) 
-                && !string.IsNullOrEmpty(settingsConnectionString))
+            if (_settings.TryGetValue(FunctionAppRunnerSettings.StorageEndpoint, out string? settingsEndpoint)
+                && !string.IsNullOrWhiteSpace(settingsEndpoint))
             {
-                return settingsConnectionString;
+                return settingsEndpoint;
             }
 
             // Fall back to configuration
@@ -379,15 +380,27 @@ namespace MedBench.Core.Models
             var configuration = scope.ServiceProvider.GetService<IConfiguration>();
             if (configuration != null)
             {
-                var connectionString = Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING") 
-                       ?? configuration["AzureStorage:ConnectionString"];
-                if (!string.IsNullOrEmpty(connectionString))
+                var endpoint = Environment.GetEnvironmentVariable("AZURE_STORAGE_ENDPOINT")
+                       ?? configuration["AzureStorage:Endpoint"];
+                if (!string.IsNullOrWhiteSpace(endpoint))
                 {
-                    return connectionString;
+                    return endpoint;
                 }
             }
 
-            throw new InvalidOperationException("No storage connection string found in model settings or environment variables.");
+            // Legacy key exists in older configs; fail with a clear message so callers migrate.
+            if (_settings.ContainsKey(FunctionAppRunnerSettings.StorageConnectionString)
+                || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("AZURE_STORAGE_CONNECTION_STRING")))
+            {
+                throw new InvalidOperationException(
+                    "Storage connection strings are not supported. Configure AZURE_STORAGE_ENDPOINT (or AzureStorage:Endpoint) " +
+                    "and grant this workload a Managed Identity with Storage RBAC."
+                );
+            }
+
+            throw new InvalidOperationException(
+                "No storage endpoint found. Configure AZURE_STORAGE_ENDPOINT (or AzureStorage:Endpoint) and grant this workload a Managed Identity with Storage RBAC."
+            );
         }
 
 

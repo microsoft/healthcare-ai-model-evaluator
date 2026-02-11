@@ -402,6 +402,7 @@ def llm_based_evaluation(text: str, criteria: str) -> Dict[str, Any]:
 ### Step 7: Write Results to Blob
 
 ```python
+from azure.identity import DefaultAzureCredential
 from azure.storage.blob import BlobServiceClient
 import os
 import json
@@ -416,9 +417,12 @@ def write_results_to_blob(input_blob_name: str, results: Dict[str, Any]) -> None
     # Create output blob name
     output_blob_name = f"{job_name}-your-addon-results.json"
     
-    # Get blob client
-    connection_string = os.getenv("AzureWebJobsStorage")
-    blob_service = BlobServiceClient.from_connection_string(connection_string)
+    # Get blob client (managed identity / Entra ID)
+    storage_endpoint = os.getenv("AZURE_STORAGE_ENDPOINT")
+    if not storage_endpoint:
+        raise ValueError("AZURE_STORAGE_ENDPOINT is required for managed identity auth")
+
+    blob_service = BlobServiceClient(account_url=storage_endpoint, credential=DefaultAzureCredential())
     container_client = blob_service.get_container_client("evaluatorresults")
     
     # Write results
@@ -437,6 +441,7 @@ def write_results_to_blob(input_blob_name: str, results: Dict[str, Any]) -> None
 ```txt
 azure-functions
 azure-storage-blob
+azure-identity
 openai  # If using Azure OpenAI
 ```
 
@@ -580,12 +585,16 @@ az functionapp config appsettings set \
     AZURE_OPENAI_API_KEY=your-api-key \
     AZURE_OPENAI_DEPLOYMENT=gpt-4
 
-# Storage connection
+# Storage (managed identity / Entra ID)
 az functionapp config appsettings set \
-  --name your-addon-function-app \
-  --resource-group your-rg \
-  --settings \
-    AzureWebJobsStorage=your-storage-connection-string
+    --name your-addon-function-app \
+    --resource-group your-rg \
+    --settings \
+        AZURE_STORAGE_ENDPOINT=https://<account>.blob.core.windows.net \
+        AzureWebJobsStorage__accountName=<account> \
+        AzureWebJobsStorage__credential=managedidentity \
+        AzureWebJobsStorage__blobServiceUri=https://<account>.blob.core.windows.net \
+        AzureWebJobsStorage__queueServiceUri=https://<account>.queue.core.windows.net
 ```
 
 ## Available Add-ons
@@ -706,8 +715,8 @@ Potential areas for community-contributed add-ons:
 
 **Blob trigger not firing**:
 - Verify container name matches trigger path
-- Check storage account connection string
-- Ensure function app has storage permissions
+- Check AZURE_STORAGE_ENDPOINT and AzureWebJobsStorage__* settings
+- Ensure the function app identity has Storage Blob/Queue **data-plane** roles
 - Review function app diagnostic logs
 
 **Azure OpenAI errors**:

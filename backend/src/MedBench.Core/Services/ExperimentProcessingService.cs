@@ -11,7 +11,6 @@ using System.IO;
 using Microsoft.Extensions.Hosting;
 using System.Net.Sockets;
 using Microsoft.Extensions.DependencyInjection;
-using MongoDB.Bson;
 using Azure.Storage.Blobs;
 using Microsoft.Extensions.Configuration;
 using SharpToken;
@@ -740,7 +739,7 @@ namespace MedBench.Core.Services
                 foreach (var trial in pendingTrials)
                 {
                     _logger.LogInformation("Trial: " + trial.Id);
-                    _logger.LogInformation(trial.ToJson());
+                    _logger.LogInformation("{Trial}", JsonSerializer.Serialize(trial));
                     // Verify trial exists before processing
                     var existingTrial = await trialRepository.GetByIdAsync(trial.Id);
                     if (existingTrial == null)
@@ -825,7 +824,7 @@ namespace MedBench.Core.Services
 
                         foreach (var output in existingTrial.ModelOutputs)
                         {
-                            _logger.LogInformation("calculating stats for: " + output.ToJson());
+                            _logger.LogInformation("calculating stats for: {Output}", JsonSerializer.Serialize(output));
                             await statCalculatorService.CalculateModelResults(output.ModelId, experimentId);
                         }
                     }
@@ -1477,7 +1476,7 @@ namespace MedBench.Core.Services
 
                                     boundingBoxes.Add(new BoundingBox
                                     {
-                                        Id = ObjectId.GenerateNewId().ToString(),
+                                        Id = Guid.NewGuid().ToString("N"),
                                         X = xMin,
                                         Y = yMin,
                                         Width = xMax - xMin,
