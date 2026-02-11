@@ -402,11 +402,7 @@ resource acaPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-11-01' = if
   }
 }
 
-resource acaPrivateEndpointNic 'Microsoft.Network/networkInterfaces@2023-11-01' existing = if (deploymentNetworking == 'private' && createVnet && createPrivateEndpoint) {
-  name: privateEndpointNicName
-}
-
-var acaPrivateEndpointIp = deploymentNetworking == 'private' && createVnet && createPrivateEndpoint ? acaPrivateEndpointNic.properties.ipConfigurations[0].properties.privateIPAddress : ''
+var acaPrivateEndpointIp = deploymentNetworking == 'private' && createVnet && createPrivateEndpoint ? acaPrivateEndpoint.properties.customDnsConfigs[0].ipAddresses[0] : ''
 
 // Private DNS zones for Container Apps (private endpoint model)
 var privatelinkZoneName = 'privatelink.${location}.azurecontainerapps.io'
