@@ -394,7 +394,7 @@ resource acaPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-11-01' = if
         properties: {
           privateLinkServiceId: containerApps.outputs.environmentId
           groupIds: [
-            'managedEnvironment'
+            'managedEnvironments'
           ]
         }
       }
@@ -419,6 +419,7 @@ resource privatelinkDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if 
 resource privatelinkDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (deploymentNetworking == 'private' && createVnet && createPrivateEndpoint) {
   parent: privatelinkDnsZone
   name: 'link-privatelink-${uniqueSuffix}'
+  location: 'global'
   properties: {
     virtualNetwork: {
       id: network.outputs.vnetId
@@ -451,6 +452,7 @@ resource appDefaultDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (
 resource appDefaultDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (deploymentNetworking == 'private' && createVnet && createPrivateEndpoint) {
   parent: appDefaultDnsZone
   name: 'link-appdomain-${uniqueSuffix}'
+  location: 'global'
   properties: {
     virtualNetwork: {
       id: network.outputs.vnetId
@@ -483,6 +485,7 @@ resource privateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (dep
 resource privateDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (deploymentNetworking == 'private' && createVnet && !createPrivateEndpoint) {
   parent: privateDnsZone
   name: 'link-${uniqueSuffix}'
+  location: 'global'
   properties: {
     virtualNetwork: {
       id: network.outputs.vnetId
