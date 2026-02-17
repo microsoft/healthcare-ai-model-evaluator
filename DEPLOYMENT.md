@@ -13,7 +13,7 @@ Healthcare AI Model Evaluator consists of:
 
 ## Getting Started
 
-### Prerequisites
+### Pre-requisites
 
 > [!IMPORTANT]
 > Follow the steps in order. Each step builds on the previous ones.
@@ -22,7 +22,7 @@ Healthcare AI Model Evaluator consists of:
 - [Azure CLI](https://learn.microsoft.com/en-us/cli/azure/install-azure-cli)
 - [Azure Developer CLI (azd)](https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/install-azd)
 - [Docker Desktop](https://docs.docker.com/get-docker/) (for Functions deployment)
-- DotNet v8.0.318
+- [DotNet v8.0.318](https://github.com/dotnet/core/blob/main/release-notes/8.0/8.0.21/8.0.318.md)
 
 **Azure Subscription Requirements:**
 - **Azure OpenAI**: Access to one of the supported models for Model-as-a-Judge with Metrics Azure Functions.
@@ -67,6 +67,18 @@ Create a new environment with a short name:
 azd env new <envName>
 ```
 
+#### Pre-package Evaluator Addon
+
+By default, the [evaluator addon](./functions/addons/README.md) deployment is enabled. And for `azd up` to work properly, we must pre-package the addon, for that from the project root run:
+```bash
+./functions/addons/package_addon.sh evaluator
+```
+
+To disable the custom evaluator addon run:
+```bash
+azd env set ENABLE_EVALUATOR_ADDON false
+```
+
 #### Azure OpenAI Configuration
 
 During deployment (`azd up`), you'll be prompted to select an Azure OpenAI model, capacity, and deployment type. You can review available models at the [Azure OpenAI Service models documentation](https://learn.microsoft.com/en-us/azure/ai-foundry/openai/how-to/reasoning).
@@ -88,6 +100,25 @@ azd env set CREATE_AZURE_OPENAI false
 azd env set EXISTING_AZURE_OPENAI_ENDPOINT "https://your-openai.openai.azure.com/"
 azd env set EXISTING_AZURE_OPENAI_KEY "your-api-key"
 ```
+
+#### Setup First Admin User
+
+You can bootstrap the first admin user automatically during deployment by setting these azd environment values:
+
+```bash
+azd env set ROOT_ADMIN_EMAIL "admin@example.com"
+azd env set ROOT_ADMIN_NAME "Admin User"
+azd env set ROOT_ADMIN_PASSWORD "<strong-password>"
+azd up
+```
+
+Once the application is running, you can:
+1. Navigate to your application URL: `$(azd env get-value API_BASE_URL)`
+2. Click "Sign in with Password" 
+3. Use the email/password you just created
+4. Access the admin panel to create additional users
+
+> **Note**: This only needs to be set once. Additional users can be created through the web interface by admin users.
 
 #### Optional Configuration
 
@@ -119,9 +150,6 @@ azd env set AZURE_LOCATION westus2
 **Feature Flags**: Control optional components:
 
 ```sh
-# Disable evaluator addon to reduce deployment time
-azd env set ENABLE_EVALUATOR_ADDON false
-
 # Disable Azure Communication Services
 azd env set ENABLE_ACS false
 ```
@@ -129,6 +157,10 @@ azd env set ENABLE_ACS false
 ### Step 3: Deploy the Infrastructure
 
 Now that your environment is configured, you can deploy all necessary resources and infrastructure for the Healthcare AI Model Evaluator.
+
+```bash
+azd up
+```
 
 #### IP Filtering & Security Configuration
 
@@ -264,7 +296,7 @@ azd up
 
 > [!WARNING]
 > **Legacy migration (Mongo → SQL API)**: Older deployments used **Cosmos DB API for MongoDB**. This repository now provisions **Cosmos DB SQL API** instead, which means **existing Mongo data is not automatically migrated**. Plan for a one-time migration or accept data loss when moving environments.
-
+>
 > **Export (old Mongo API only — not for local dev)**
 > - Use `mongoexport` against your old Cosmos Mongo API account (or any Mongo-compatible endpoint):
 >   ```sh
@@ -334,9 +366,9 @@ azd up
 
 To start the deployment process, run:
 
-   ```bash
-   azd up
-   ```
+```bash
+azd up
+```
 
 During deployment you will be prompted for any required variable not yet set, such as subscription, resource group and location.
 
@@ -399,28 +431,6 @@ echo "Application URL: $(azd env get-value API_BASE_URL)"
 echo "Frontend: $(azd env get-value API_BASE_URL)
 echo "API: $(azd env get-value API_BASE_URL)/api"
 ```
-
-## Post-Deployment Setup
-
-### Create First Admin User
-
-You can bootstrap the first admin user automatically during deployment by setting these azd environment values:
-
-```bash
-azd env set ROOT_ADMIN_EMAIL "admin@example.com"
-azd env set ROOT_ADMIN_NAME "Admin User"
-azd env set ROOT_ADMIN_PASSWORD "<strong-password>"
-azd up
-```
-
-Once created, you can:
-1. Navigate to your application URL: `$(azd env get-value API_BASE_URL)/webapp`
-2. Click "Sign in with Password" 
-3. Use the email/password you just created
-4. Access the admin panel to create additional users
-
-> **Note**: This only needs to be set once. Additional users can be created through the web interface by admin users.
-
 
 ---
 

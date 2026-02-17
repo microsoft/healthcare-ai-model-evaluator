@@ -55,9 +55,11 @@ For a complete overview of the Healthcare AI Model Evaluator platform, refer to 
 ## Deployment
 
 > [!IMPORTANT]
-> See [DEPLOYMENT.md](./DEPLOYMENT.md) for complete deployment guide, configuration options, and troubleshooting.
+> See [DEPLOYMENT.md](./DEPLOYMENT.md) for complete deployment guide, pre-requisites, configuration options, and troubleshooting.
 
 ### Quick start
+
+Before starting with deployment, make sure you go through the [deployment pre-requisites](./DEPLOYMENT.md#pre-requisites).
 
 Initialize and deploy the complete Healthcare AI Model Evaluator platform using Azure Developer CLI (azd).
 
@@ -69,9 +71,14 @@ azd init -t microsoft/healthcare-ai-model-evaluator
 azd up
 ```
 
+To initialize the project targetting a specific branch, use the `--branch` flag:
+```bash
+azd init -t microsoft/healthcare-ai-model-evaluator --branch feature-branch
+```
+
 ### First-time Setup
 
-After deployment, bootstrap your first admin user by setting these azd environment values and re-running deployment:
+To bootstrap your first admin user by setting these azd environment values and re-running deployment:
 
 ```bash
 azd env set ROOT_ADMIN_EMAIL "admin@example.com"
