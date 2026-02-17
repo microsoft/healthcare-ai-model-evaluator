@@ -387,9 +387,9 @@ This command will:
 
 ### Step 4: Build and Push Metrics Function Docker Image
 
-   This step is necessary because `azd` does not automatically build and push Docker images for Azure Functions.
+This step is necessary because `azd` does not automatically build and push Docker images for Azure Functions.
 
-   ```bash
+```bash
 # From the root folder, get the registry name and endpoint
 AZURE_CONTAINER_REGISTRY_NAME=$(azd env get-value AZURE_CONTAINER_REGISTRY_NAME)
 AZURE_CONTAINER_REGISTRY_ENDPOINT=$(azd env get-value AZURE_CONTAINER_REGISTRY_ENDPOINT)
@@ -401,14 +401,14 @@ cd functions
 az acr login --name $AZURE_CONTAINER_REGISTRY_NAME
 
 # Build the Docker image
-docker compose build medbench-metrics
+docker compose build haime-metrics
 
 # Tag the image for the registry
-docker tag functions-medbench-metrics:latest $AZURE_CONTAINER_REGISTRY_ENDPOINT/medbench-metrics:latest
+docker tag functions-haime-metrics:latest $AZURE_CONTAINER_REGISTRY_ENDPOINT/haime-metrics:latest
 
 # Push the image to Azure Container Registry
-docker push $AZURE_CONTAINER_REGISTRY_ENDPOINT/medbench-metrics:latest
-   ```
+docker push $AZURE_CONTAINER_REGISTRY_ENDPOINT/haime-metrics:latest
+```
 
 > [!NOTE]
 > After pushing the image, the Azure Function will automatically pull and deploy it. This may take a few minutes.
@@ -561,7 +561,7 @@ For production healthcare environments, you should restrict access to your appli
 
 ### Integrate with Existing Azure Front Door
 
-Most healthcare organizations already have Azure Front Door with WAF configured. You can integrate MedBench behind your existing Front Door.
+Most healthcare organizations already have Azure Front Door with WAF configured. You can integrate HAIME behind your existing Front Door.
 
 #### Configure Container Apps for Front Door Integration
 
@@ -618,18 +618,18 @@ az network front-door backend-pool backend add \
 
 #### Update Front Door Routing Rules
 
-Configure routing to send MedBench traffic to the new backend:
+Configure routing to send HAIME traffic to the new backend:
 
 ```bash
-# Create routing rule for MedBench
+# Create routing rule for HAIME
 az network front-door routing-rule create \
   --front-door-name "your-existing-frontdoor" \
   --resource-group "your-frontdoor-rg" \
-  --name "medbench-routing" \
+  --name "haime-routing" \
   --frontend-endpoints "your-frontend" \
   --route-type Forward \
   --backend-pool "your-backend-pool" \
-  --patterns "/medbench/*" \
+  --patterns "/haime/*" \
   --accepted-protocols Https
 ```
 
