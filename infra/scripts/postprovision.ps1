@@ -65,19 +65,25 @@ if ($clientId -and $clientId -ne "placeholder-will-be-updated-by-script" -and $c
         if ($principalId -and $principalId -ne "null") {
             Write-Host "Container App managed identity principal ID: $principalId"
             
-            # Assign Cosmos DB role
+            # Assign Cosmos DB SQL data-plane role (Built-in Data Contributor)
+            # This is required for reading/writing data via managed identity
+            # Built-in role IDs: 00000000-0000-0000-0000-000000000001 (Reader), 00000000-0000-0000-0000-000000000002 (Contributor)
             $cosmosAccountName = $env:COSMOS_ACCOUNT_NAME
             if ($cosmosAccountName) {
-                Write-Host "Assigning Cosmos DB role to Container App managed identity..."
-                $cosmosRoleId = "5bd9cd88-fe45-4216-938b-f97437e15450" # Cosmos DB Account Reader Writer
-                az cosmosdb sql role assignment create `
-                    --account-name $cosmosAccountName `
-                    --resource-group $resourceGroupName `
-                    --principal-id $principalId `
-                    --role-definition-id $cosmosRoleId `
-                    --scope "/subscriptions/$($env:AZURE_SUBSCRIPTION_ID)/resourceGroups/$resourceGroupName/providers/Microsoft.DocumentDB/databaseAccounts/$cosmosAccountName" `
-                    --output none 2>$null || Write-Host "Role assignment may already exist"
-                Write-Host "✅ Cosmos DB role assignment completed"
+                Write-Host "Assigning Cosmos DB SQL data-plane role to Container App managed identity..."
+                $cosmosAccountId = az cosmosdb show --name $cosmosAccountName --resource-group $resourceGroupName --query "id" -o tsv 2>$null
+                if ($cosmosAccountId) {
+                    az cosmosdb sql role assignment create `
+                        --account-name $cosmosAccountName `
+                        --resource-group $resourceGroupName `
+                        --principal-id $principalId `
+                        --role-definition-id "$cosmosAccountId/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002" `
+                        --scope $cosmosAccountId `
+                        --output none 2>$null || Write-Host "SQL role assignment may already exist"
+                    Write-Host "✅ Cosmos DB SQL data-plane role assignment completed"
+                } else {
+                    Write-Host "⚠️  Warning: Could not get Cosmos DB account ID"
+                }
             }
             
             # Assign Storage role
@@ -248,19 +254,25 @@ try {
     if ($principalId -and $principalId -ne "null") {
         Write-Host "Container App managed identity principal ID: $principalId"
         
-        # Assign Cosmos DB role
+        # Assign Cosmos DB SQL data-plane role (Built-in Data Contributor)
+        # This is required for reading/writing data via managed identity
+        # Built-in role IDs: 00000000-0000-0000-0000-000000000001 (Reader), 00000000-0000-0000-0000-000000000002 (Contributor)
         $cosmosAccountName = $env:COSMOS_ACCOUNT_NAME
         if ($cosmosAccountName) {
-            Write-Host "Assigning Cosmos DB role to Container App managed identity..."
-            $cosmosRoleId = "5bd9cd88-fe45-4216-938b-f97437e15450" # Cosmos DB Account Reader Writer
-            az cosmosdb sql role assignment create `
-                --account-name $cosmosAccountName `
-                --resource-group $resourceGroupName `
-                --principal-id $principalId `
-                --role-definition-id $cosmosRoleId `
-                --scope "/subscriptions/$($env:AZURE_SUBSCRIPTION_ID)/resourceGroups/$resourceGroupName/providers/Microsoft.DocumentDB/databaseAccounts/$cosmosAccountName" `
-                --output none 2>$null || Write-Host "Role assignment may already exist"
-            Write-Host "✅ Cosmos DB role assignment completed"
+            Write-Host "Assigning Cosmos DB SQL data-plane role to Container App managed identity..."
+            $cosmosAccountId = az cosmosdb show --name $cosmosAccountName --resource-group $resourceGroupName --query "id" -o tsv 2>$null
+            if ($cosmosAccountId) {
+                az cosmosdb sql role assignment create `
+                    --account-name $cosmosAccountName `
+                    --resource-group $resourceGroupName `
+                    --principal-id $principalId `
+                    --role-definition-id "$cosmosAccountId/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002" `
+                    --scope $cosmosAccountId `
+                    --output none 2>$null || Write-Host "SQL role assignment may already exist"
+                Write-Host "✅ Cosmos DB SQL data-plane role assignment completed"
+            } else {
+                Write-Host "⚠️  Warning: Could not get Cosmos DB account ID"
+            }
         }
         
         # Assign Storage role
