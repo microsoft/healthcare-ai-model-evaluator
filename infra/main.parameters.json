@@ -125,6 +125,15 @@
     "allowedWebIp": {
       "value": "${ALLOWED_WEB_IP=}"
     },
+    "rootAdminEmail": {
+      "value": "${ROOT_ADMIN_EMAIL=}"
+    },
+    "rootAdminName": {
+      "value": "${ROOT_ADMIN_NAME=}"
+    },
+    "rootAdminPassword": {
+      "value": "${ROOT_ADMIN_PASSWORD=}"
+    },
     "deploymentNetworking": {
       "value": "${DEPLOYMENT_NETWORKING=private}"
     },
