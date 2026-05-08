@@ -132,7 +132,6 @@ Now that your environment is configured, you can deploy all necessary resources 
 
 #### IP Filtering & Security Configuration
 
-<<<<<<< HEAD
 This project supports two deployment networking modes:
 
 - `DEPLOYMENT_NETWORKING=open` (default): public ingress
@@ -152,6 +151,7 @@ In `private` mode:
   - `<defaultDomain>` (app FQDNs)
 - Azure Functions are configured for regional VNet integration (outbound).
 - You must access the API from within the VNet (for example via VPN, jumpbox, or peered network).
+- **Post-provision note:** the `postprovision` hook writes secrets to Key Vault. If Key Vault public access is disabled (default in private mode), you must be connected to the VNet (VPN/bastion/peered) for `azd up` to complete in one shot.
 
 **Accessing private mode (VPN / institutional network)**
 
@@ -179,19 +179,55 @@ azd env set CREATE_VNET true
 
 # OR: use existing subnets (resource IDs)
 azd env set CREATE_VNET false
+azd env set EXISTING_VNET_RESOURCE_ID "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/virtualNetworks/<vnet>"
 azd env set EXISTING_ACA_INFRASTRUCTURE_SUBNET_ID "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/virtualNetworks/<vnet>/subnets/<aca-subnet>"
 azd env set EXISTING_FUNCTIONS_INTEGRATION_SUBNET_ID "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/virtualNetworks/<vnet>/subnets/<functions-subnet>"
+azd env set EXISTING_PRIVATE_ENDPOINT_SUBNET_ID "/subscriptions/<sub>/resourceGroups/<rg>/providers/Microsoft.Network/virtualNetworks/<vnet>/subnets/<private-endpoints-subnet>"
 ```
 
-> [!NOTE]
-> The included frontend deployment won’t be able to reach an internal-only API from the public internet. In private mode, plan to access the UI/API from inside the VNet.
+#### Portal walkthrough: create VNet + required subnets (for CREATE_VNET=false)
+
+If you want to create the VNet and subnets yourself in the Azure Portal, follow these steps. This is useful when you need to deploy into an existing network or apply custom controls.
+
+1) **Create (or select) a VNet**
+   - Azure Portal → Virtual networks → Create
+   - Address space: choose a CIDR that does not overlap your on-prem or VPN client ranges (example: `10.30.0.0/16`).
+   - Resource group and region should match your azd deployment.
+
+2) **Create required subnets** (VNet → Subnets → + Subnet)
+   - **aca-infra** (Container Apps Environment infrastructure)
+     - Address range: e.g. `10.30.0.0/23`
+     - Subnet delegation: `Microsoft.App/environments`
+   - **functions-integration** (Azure Functions VNet integration)
+     - Address range: e.g. `10.30.2.0/24`
+     - Subnet delegation: `Microsoft.Web/serverFarms`
+   - **private-endpoints** (Private Endpoint subnet)
+     - Address range: e.g. `10.30.4.0/27`
+     - Private endpoint network policies: **Disabled**
+   - **dns-resolver-inbound** (DNS Private Resolver inbound endpoint) (optional but recommended)
+     - Address range: e.g. `10.30.3.0/27`
+     - Subnet delegation: `Microsoft.Network/dnsResolvers`
+   - **GatewaySubnet** (only if you plan to use P2S VPN Gateway)
+     - Address range: e.g. `10.30.255.0/27`
+     - Name must be exactly `GatewaySubnet`.
+
+3) **Copy subnet resource IDs**
+   - Each subnet blade → Copy **Resource ID**.
+   - Set these in your azd env (see the commands above). For private endpoints, set `EXISTING_PRIVATE_ENDPOINT_SUBNET_ID`.
+
+4) **Run azd provision**
+   - Your deployment will create private endpoints and DNS zones using the subnets you provided.
+
+> Tip: If `azd up` fails at `postprovision` with a Key Vault network error, connect to the VNet and re-run `./infra/scripts/postprovision.sh`.
+
+> Note: If you disable private endpoints (`CREATE_PRIVATE_ENDPOINT=false`), you can skip the private-endpoints subnet and the private DNS zones. If you keep private endpoints enabled, private DNS is required for name resolution inside the VNet.
+
 
 **Optional IP filtering (open mode)**
 
 In `open` mode, no IP filtering is auto-configured.
 
 If you want to restrict API ingress by IP, you can enable it explicitly:
-=======
 **By default, the deployment is secure-by-default** and will prompt you to configure IP filtering to protect the web application:
 
 - **During first deployment**, you'll be prompted to enter an IP address that can access the web application
@@ -201,7 +237,6 @@ If you want to restrict API ingress by IP, you can enable it explicitly:
 - **IP filtering applies only to the Container App** - Azure Functions, Storage, and Cosmos DB are secured through Azure's service-to-service authentication and managed identities
 
 **Managing IP Access:**
->>>>>>> origin/main
 
 ```sh
 # View current IP filtering settings
@@ -211,18 +246,17 @@ azd env get-value ENABLE_WEB_IP_FILTERING
 # Add or update allowed IPs (comma-delimited CIDR format)
 azd env set ALLOWED_WEB_IP "89.144.197.27/32,203.0.113.1/32"
 
-<<<<<<< HEAD
+
 # Enable IP filtering (comma-delimited CIDR format)
 azd env set ENABLE_WEB_IP_FILTERING true
 azd env set ALLOWED_WEB_IP "203.0.113.1/32,198.51.100.0/24"
 
 # Disable IP filtering
-=======
 # Disable IP filtering entirely (not recommended for production)
 azd env set ENABLE_WEB_IP_FILTERING false
 
 # Open to the entire internet 
->>>>>>> origin/main
+
 azd env set ENABLE_WEB_IP_FILTERING false
 azd env set ALLOWED_WEB_IP ""
 

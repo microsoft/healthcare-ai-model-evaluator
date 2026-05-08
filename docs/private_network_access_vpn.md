@@ -2,6 +2,8 @@
 
 When `DEPLOYMENT_NETWORKING=private`, the app’s ingress is internal-only. That’s expected: you **won’t** be able to load the web UI/API from a normal internet-connected browser.
 
+Important: If you run `azd up` with private networking, the `postprovision` step writes secrets to Key Vault. When Key Vault public access is disabled (default), you must be connected to the VNet (VPN/bastion/peered) for `azd up` to complete in one shot. If you are not connected, provisioning can succeed but `postprovision` will fail; connect and re-run `./infra/scripts/postprovision.sh`.
+
 To test and operate the deployment without making it public, you need network connectivity **into the VNet** (VPN, bastion/jumpbox, or peering from an institutional network).
 
 This doc covers:

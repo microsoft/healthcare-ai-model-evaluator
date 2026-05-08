@@ -65,6 +65,7 @@ infra:
     existingVnetResourceId: "${EXISTING_VNET_RESOURCE_ID=}"
     existingAcaInfrastructureSubnetId: "${EXISTING_ACA_INFRASTRUCTURE_SUBNET_ID=}"
     existingFunctionsIntegrationSubnetId: "${EXISTING_FUNCTIONS_INTEGRATION_SUBNET_ID=}"
+    existingPrivateEndpointSubnetId: "${EXISTING_PRIVATE_ENDPOINT_SUBNET_ID=}"
     vnetAddressSpace: "${VNET_ADDRESS_SPACE=10.30.0.0/16}"
     acaInfrastructureSubnetPrefix: "${ACA_INFRASTRUCTURE_SUBNET_PREFIX=10.30.0.0/23}"
     functionsIntegrationSubnetPrefix: "${FUNCTIONS_INTEGRATION_SUBNET_PREFIX=10.30.2.0/24}"

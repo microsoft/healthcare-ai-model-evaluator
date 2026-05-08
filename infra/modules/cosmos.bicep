@@ -48,9 +48,8 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2023-04-15' = {
         name: 'EnableServerless'
       }
     ]
-    // Allow public access (network mode may further restrict this in private deployments)
-    publicNetworkAccess: 'Enabled'  
-    networkAclBypass: 'AzureServices' // Allow Azure services like Container Apps and Functions
+    publicNetworkAccess: 'Disabled'
+    networkAclBypass: 'None'
     isVirtualNetworkFilterEnabled: false
     ipRules: []
   }

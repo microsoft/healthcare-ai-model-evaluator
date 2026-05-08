@@ -153,6 +153,9 @@ param existingAcaInfrastructureSubnetId string = ''
 @description('Resource ID of an existing subnet for Azure Functions VNet Integration (optional; if empty, the deployment creates one in the selected VNet).')
 param existingFunctionsIntegrationSubnetId string = ''
 
+@description('Resource ID of an existing subnet for private endpoints (required when createPrivateEndpoint is true and createVnet is false).')
+param existingPrivateEndpointSubnetId string = ''
+
 @description('Address space for a new VNet when createVnet is true (CIDR).')
 param vnetAddressSpace string = '10.30.0.0/16'
 
@@ -237,6 +240,7 @@ module network './modules/network.bicep' = if (deploymentNetworking == 'private'
     existingVnetResourceId: existingVnetResourceId
     existingAcaInfrastructureSubnetId: existingAcaInfrastructureSubnetId
     existingFunctionsIntegrationSubnetId: existingFunctionsIntegrationSubnetId
+    existingPrivateEndpointSubnetId: existingPrivateEndpointSubnetId
     vnetAddressSpace: vnetAddressSpace
     acaInfrastructureSubnetPrefix: acaInfrastructureSubnetPrefix
     functionsIntegrationSubnetPrefix: functionsIntegrationSubnetPrefix
@@ -245,7 +249,7 @@ module network './modules/network.bicep' = if (deploymentNetworking == 'private'
     vpnClientAddressPool: vpnClientAddressPool
     vpnGatewaySku: vpnGatewaySku
     aadTenantId: tenant().tenantId
-    createPrivateEndpoint: createVnet && createPrivateEndpoint
+    createPrivateEndpoint: createPrivateEndpoint
     privateEndpointSubnetPrefix: privateEndpointSubnetPrefix
     createDnsResolver: createVnet && createDnsResolver
     dnsResolverSubnetPrefix: dnsResolverSubnetPrefix
@@ -376,10 +380,10 @@ module containerApps './modules/containerapps.bicep' = {
   }
 }
 
-// Private Endpoint for Container Apps Environment (when using a new private VNet)
+// Private Endpoint for Container Apps Environment (private networking)
 var privateEndpointNicName = 'nic-aca-pe-${uniqueSuffix}'
 
-resource acaPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-11-01' = if (deploymentNetworking == 'private' && createVnet && createPrivateEndpoint) {
+resource acaPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-11-01' = if (deploymentNetworking == 'private' && createPrivateEndpoint) {
   name: 'pe-aca-${uniqueSuffix}'
   location: location
   tags: tags
@@ -402,17 +406,132 @@ resource acaPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-11-01' = if
   }
 }
 
-var acaPrivateEndpointIp = deploymentNetworking == 'private' && createVnet && createPrivateEndpoint ? acaPrivateEndpoint.properties.customDnsConfigs[0].ipAddresses[0] : ''
+var acaPrivateEndpointIp = deploymentNetworking == 'private' && createPrivateEndpoint ? acaPrivateEndpoint.properties.customDnsConfigs[0].ipAddresses[0] : ''
+
+// Private endpoints for data services (Storage, Cosmos, Key Vault)
+resource storageBlobPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-11-01' = if (deploymentNetworking == 'private' && createPrivateEndpoint) {
+  name: 'pe-storage-blob-${uniqueSuffix}'
+  location: location
+  tags: tags
+  properties: {
+    subnet: {
+      id: network.outputs.privateEndpointSubnetId
+    }
+    privateLinkServiceConnections: [
+      {
+        name: 'storage-blob'
+        properties: {
+          privateLinkServiceId: storageAccount.id
+          groupIds: [
+            'blob'
+          ]
+        }
+      }
+    ]
+  }
+}
+
+resource storageQueuePrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-11-01' = if (deploymentNetworking == 'private' && createPrivateEndpoint) {
+  name: 'pe-storage-queue-${uniqueSuffix}'
+  location: location
+  tags: tags
+  properties: {
+    subnet: {
+      id: network.outputs.privateEndpointSubnetId
+    }
+    privateLinkServiceConnections: [
+      {
+        name: 'storage-queue'
+        properties: {
+          privateLinkServiceId: storageAccount.id
+          groupIds: [
+            'queue'
+          ]
+        }
+      }
+    ]
+  }
+}
+
+resource cosmosPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-11-01' = if (deploymentNetworking == 'private' && createPrivateEndpoint) {
+  name: 'pe-cosmos-${uniqueSuffix}'
+  location: location
+  tags: tags
+  properties: {
+    subnet: {
+      id: network.outputs.privateEndpointSubnetId
+    }
+    privateLinkServiceConnections: [
+      {
+        name: 'cosmos-sql'
+        properties: {
+          privateLinkServiceId: resourceId('Microsoft.DocumentDB/databaseAccounts', cosmos.outputs.accountName)
+          groupIds: [
+            'Sql'
+          ]
+        }
+      }
+    ]
+  }
+}
+
+resource keyVaultPrivateEndpoint 'Microsoft.Network/privateEndpoints@2023-11-01' = if (deploymentNetworking == 'private' && createPrivateEndpoint) {
+  name: 'pe-kv-${uniqueSuffix}'
+  location: location
+  tags: tags
+  properties: {
+    subnet: {
+      id: network.outputs.privateEndpointSubnetId
+    }
+    privateLinkServiceConnections: [
+      {
+        name: 'keyvault'
+        properties: {
+          privateLinkServiceId: resourceId('Microsoft.KeyVault/vaults', keyVault.outputs.name)
+          groupIds: [
+            'vault'
+          ]
+        }
+      }
+    ]
+  }
+}
 
 // Private DNS zones for Container Apps (private endpoint model)
 var privatelinkZoneName = 'privatelink.${location}.azurecontainerapps.io'
 
-resource privatelinkDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (deploymentNetworking == 'private' && createVnet && createPrivateEndpoint) {
+// Private DNS zones for data services
+var storageBlobZoneName = 'privatelink.blob.${environment().suffixes.storage}'
+var storageQueueZoneName = 'privatelink.queue.${environment().suffixes.storage}'
+var cosmosZoneName = 'privatelink.documents.azure.com'
+var keyVaultZoneName = 'privatelink.vaultcore.azure.net'
+
+resource privatelinkDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (deploymentNetworking == 'private' && createPrivateEndpoint) {
   name: privatelinkZoneName
   location: 'global'
 }
 
-resource privatelinkDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (deploymentNetworking == 'private' && createVnet && createPrivateEndpoint) {
+resource storageBlobDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (deploymentNetworking == 'private' && createPrivateEndpoint) {
+  name: storageBlobZoneName
+  location: 'global'
+}
+
+resource storageQueueDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (deploymentNetworking == 'private' && createPrivateEndpoint) {
+  name: storageQueueZoneName
+  location: 'global'
+}
+
+resource cosmosDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (deploymentNetworking == 'private' && createPrivateEndpoint) {
+  name: cosmosZoneName
+  location: 'global'
+}
+
+resource keyVaultDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (deploymentNetworking == 'private' && createPrivateEndpoint) {
+  name: keyVaultZoneName
+  location: 'global'
+}
+
+resource privatelinkDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (deploymentNetworking == 'private' && createPrivateEndpoint) {
   parent: privatelinkDnsZone
   name: 'link-privatelink-${uniqueSuffix}'
   location: 'global'
@@ -424,7 +543,55 @@ resource privatelinkDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetwor
   }
 }
 
-resource privatelinkDnsARecord 'Microsoft.Network/privateDnsZones/A@2020-06-01' = if (deploymentNetworking == 'private' && createVnet && createPrivateEndpoint) {
+resource storageBlobDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (deploymentNetworking == 'private' && createPrivateEndpoint) {
+  parent: storageBlobDnsZone
+  name: 'link-storage-blob-${uniqueSuffix}'
+  location: 'global'
+  properties: {
+    virtualNetwork: {
+      id: network.outputs.vnetId
+    }
+    registrationEnabled: false
+  }
+}
+
+resource storageQueueDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (deploymentNetworking == 'private' && createPrivateEndpoint) {
+  parent: storageQueueDnsZone
+  name: 'link-storage-queue-${uniqueSuffix}'
+  location: 'global'
+  properties: {
+    virtualNetwork: {
+      id: network.outputs.vnetId
+    }
+    registrationEnabled: false
+  }
+}
+
+resource cosmosDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (deploymentNetworking == 'private' && createPrivateEndpoint) {
+  parent: cosmosDnsZone
+  name: 'link-cosmos-${uniqueSuffix}'
+  location: 'global'
+  properties: {
+    virtualNetwork: {
+      id: network.outputs.vnetId
+    }
+    registrationEnabled: false
+  }
+}
+
+resource keyVaultDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (deploymentNetworking == 'private' && createPrivateEndpoint) {
+  parent: keyVaultDnsZone
+  name: 'link-kv-${uniqueSuffix}'
+  location: 'global'
+  properties: {
+    virtualNetwork: {
+      id: network.outputs.vnetId
+    }
+    registrationEnabled: false
+  }
+}
+
+resource privatelinkDnsARecord 'Microsoft.Network/privateDnsZones/A@2020-06-01' = if (deploymentNetworking == 'private' && createPrivateEndpoint) {
   parent: privatelinkDnsZone
   name: names.containerAppsEnv
   properties: {
@@ -440,12 +607,12 @@ resource privatelinkDnsARecord 'Microsoft.Network/privateDnsZones/A@2020-06-01' 
 // App default domain DNS zone (maps app FQDNs to private endpoint IP)
 var environmentDefaultDomainName = '${names.containerAppsEnv}.${location}.azurecontainerapps.io'
 
-resource appDefaultDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (deploymentNetworking == 'private' && createVnet && createPrivateEndpoint) {
+resource appDefaultDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (deploymentNetworking == 'private' && createPrivateEndpoint) {
   name: environmentDefaultDomainName
   location: 'global'
 }
 
-resource appDefaultDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (deploymentNetworking == 'private' && createVnet && createPrivateEndpoint) {
+resource appDefaultDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (deploymentNetworking == 'private' && createPrivateEndpoint) {
   parent: appDefaultDnsZone
   name: 'link-appdomain-${uniqueSuffix}'
   location: 'global'
@@ -457,7 +624,7 @@ resource appDefaultDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetwork
   }
 }
 
-resource appDefaultDnsWildcard 'Microsoft.Network/privateDnsZones/A@2020-06-01' = if (deploymentNetworking == 'private' && createVnet && createPrivateEndpoint) {
+resource appDefaultDnsWildcard 'Microsoft.Network/privateDnsZones/A@2020-06-01' = if (deploymentNetworking == 'private' && createPrivateEndpoint) {
   parent: appDefaultDnsZone
   name: '*'
   properties: {
@@ -470,15 +637,15 @@ resource appDefaultDnsWildcard 'Microsoft.Network/privateDnsZones/A@2020-06-01' 
   }
 }
 
-// Private DNS for internal Container Apps (only when using a new private VNet)
+// Private DNS for internal Container Apps (when not using private endpoints)
 var internalZoneName = 'internal.${environmentDefaultDomainName}'
 
-resource privateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (deploymentNetworking == 'private' && createVnet && !createPrivateEndpoint) {
+resource privateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = if (deploymentNetworking == 'private' && !createPrivateEndpoint) {
   name: internalZoneName
   location: 'global'
 }
 
-resource privateDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (deploymentNetworking == 'private' && createVnet && !createPrivateEndpoint) {
+resource privateDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = if (deploymentNetworking == 'private' && !createPrivateEndpoint) {
   parent: privateDnsZone
   name: 'link-${uniqueSuffix}'
   location: 'global'
@@ -490,7 +657,68 @@ resource privateDnsZoneLink 'Microsoft.Network/privateDnsZones/virtualNetworkLin
   }
 }
 
-resource privateDnsWildcardRecord 'Microsoft.Network/privateDnsZones/A@2020-06-01' = if (deploymentNetworking == 'private' && createVnet && !createPrivateEndpoint) {
+// Private DNS zone groups for data service private endpoints
+resource storageBlobPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-11-01' = if (deploymentNetworking == 'private' && createPrivateEndpoint) {
+  name: 'storage-blob-dns'
+  parent: storageBlobPrivateEndpoint
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: 'blob'
+        properties: {
+          privateDnsZoneId: storageBlobDnsZone.id
+        }
+      }
+    ]
+  }
+}
+
+resource storageQueuePrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-11-01' = if (deploymentNetworking == 'private' && createPrivateEndpoint) {
+  name: 'storage-queue-dns'
+  parent: storageQueuePrivateEndpoint
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: 'queue'
+        properties: {
+          privateDnsZoneId: storageQueueDnsZone.id
+        }
+      }
+    ]
+  }
+}
+
+resource cosmosPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-11-01' = if (deploymentNetworking == 'private' && createPrivateEndpoint) {
+  name: 'cosmos-dns'
+  parent: cosmosPrivateEndpoint
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: 'cosmos'
+        properties: {
+          privateDnsZoneId: cosmosDnsZone.id
+        }
+      }
+    ]
+  }
+}
+
+resource keyVaultPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-11-01' = if (deploymentNetworking == 'private' && createPrivateEndpoint) {
+  name: 'kv-dns'
+  parent: keyVaultPrivateEndpoint
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        name: 'keyvault'
+        properties: {
+          privateDnsZoneId: keyVaultDnsZone.id
+        }
+      }
+    ]
+  }
+}
+
+resource privateDnsWildcardRecord 'Microsoft.Network/privateDnsZones/A@2020-06-01' = if (deploymentNetworking == 'private' && !createPrivateEndpoint) {
   parent: privateDnsZone
   name: '*'
   properties: {
@@ -586,7 +814,7 @@ output CONTAINERAPPS_ENV_DEFAULT_DOMAIN string = containerApps.outputs.environme
 output CONTAINERAPPS_ENV_STATIC_IP string = containerApps.outputs.environmentStaticIp
 output VPN_GATEWAY_NAME string = deploymentNetworking == 'private' && createVnet && createVpnGateway ? network.outputs.vpnGatewayName : ''
 output DNS_RESOLVER_INBOUND_IP string = deploymentNetworking == 'private' && createVnet && createDnsResolver ? network.outputs.dnsResolverInboundIp : ''
-output PRIVATE_ENDPOINT_IP string = deploymentNetworking == 'private' && createVnet && createPrivateEndpoint ? acaPrivateEndpointIp : ''
+output PRIVATE_ENDPOINT_IP string = deploymentNetworking == 'private' && createPrivateEndpoint ? acaPrivateEndpointIp : ''
 
 
 // Function app outputs

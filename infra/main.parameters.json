@@ -140,6 +140,9 @@
     "existingFunctionsIntegrationSubnetId": {
       "value": "${EXISTING_FUNCTIONS_INTEGRATION_SUBNET_ID=}"
     },
+    "existingPrivateEndpointSubnetId": {
+      "value": "${EXISTING_PRIVATE_ENDPOINT_SUBNET_ID=}"
+    },
     "vnetAddressSpace": {
       "value": "${VNET_ADDRESS_SPACE=10.30.0.0/16}"
     },

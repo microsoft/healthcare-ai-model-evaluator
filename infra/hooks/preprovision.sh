@@ -147,6 +147,11 @@ CREATE_VNET=$(get_env_value CREATE_VNET)
 EXISTING_VNET_RESOURCE_ID=$(get_env_value EXISTING_VNET_RESOURCE_ID)
 EXISTING_ACA_INFRA_SUBNET_ID=$(get_env_value EXISTING_ACA_INFRASTRUCTURE_SUBNET_ID)
 EXISTING_FUNCTIONS_SUBNET_ID=$(get_env_value EXISTING_FUNCTIONS_INTEGRATION_SUBNET_ID)
+EXISTING_PRIVATE_ENDPOINT_SUBNET_ID=$(get_env_value EXISTING_PRIVATE_ENDPOINT_SUBNET_ID)
+CREATE_PRIVATE_ENDPOINT=$(get_env_value CREATE_PRIVATE_ENDPOINT)
+if [ -z "$CREATE_PRIVATE_ENDPOINT" ]; then
+    CREATE_PRIVATE_ENDPOINT="true"
+fi
 
 # If we're creating a VNet, validate CIDR inputs early to prevent ARM 400s like InvalidCIDRNotation.
 if [ "$CREATE_VNET" = "true" ] || [ -z "$CREATE_VNET" ]; then
@@ -201,9 +206,11 @@ if [ "$CREATE_VNET" = "true" ]; then
     exit 0
 fi
 
-if [ -n "$EXISTING_ACA_INFRA_SUBNET_ID" ] && [ -n "$EXISTING_FUNCTIONS_SUBNET_ID" ]; then
-    # Existing subnet IDs already configured.
-    exit 0
+if [ -n "$EXISTING_ACA_INFRA_SUBNET_ID" ] && [ -n "$EXISTING_FUNCTIONS_SUBNET_ID" ] && [ -n "$EXISTING_VNET_RESOURCE_ID" ]; then
+    if [ "$CREATE_PRIVATE_ENDPOINT" != "true" ] || [ -n "$EXISTING_PRIVATE_ENDPOINT_SUBNET_ID" ]; then
+        # Existing subnet IDs already configured.
+        exit 0
+    fi
 fi
 
 if ! is_interactive; then
@@ -212,8 +219,12 @@ if ! is_interactive; then
     echo "  azd env set CREATE_VNET true"
     echo "  -or-"
     echo "  azd env set CREATE_VNET false"
+    echo "  azd env set EXISTING_VNET_RESOURCE_ID <vnetResourceId>"
     echo "  azd env set EXISTING_ACA_INFRASTRUCTURE_SUBNET_ID <subnetResourceId>"
     echo "  azd env set EXISTING_FUNCTIONS_INTEGRATION_SUBNET_ID <subnetResourceId>"
+    if [ "$CREATE_PRIVATE_ENDPOINT" = "true" ]; then
+        echo "  azd env set EXISTING_PRIVATE_ENDPOINT_SUBNET_ID <subnetResourceId>"
+    fi
     exit 1
 fi
 
@@ -314,6 +325,28 @@ if [ $funcIndex -lt 0 ] || [ $funcIndex -ge ${#subnets[@]} ]; then
 fi
 IFS=$'\t' read -r funcSubnetName funcSubnetId <<< "${subnets[$funcIndex]}"
 set_env_value EXISTING_FUNCTIONS_INTEGRATION_SUBNET_ID "$funcSubnetId"
+
+if [ "$CREATE_PRIVATE_ENDPOINT" = "true" ]; then
+    echo ""
+    echo "Select subnet for Private Endpoints (must have private endpoint network policies disabled):"
+    for i in "${!subnets[@]}"; do
+        IFS=$'\t' read -r subnetName subnetId <<< "${subnets[$i]}"
+        printf "  %d) %s\n" $((i+1)) "$subnetName"
+    done
+    peIndex=""
+    prompt "Enter number: " peIndex
+    if ! echo "$peIndex" | grep -Eq '^[0-9]+$'; then
+        echo "Invalid selection."
+        exit 1
+    fi
+    peIndex=$((peIndex-1))
+    if [ $peIndex -lt 0 ] || [ $peIndex -ge ${#subnets[@]} ]; then
+        echo "Invalid selection."
+        exit 1
+    fi
+    IFS=$'\t' read -r peSubnetName peSubnetId <<< "${subnets[$peIndex]}"
+    set_env_value EXISTING_PRIVATE_ENDPOINT_SUBNET_ID "$peSubnetId"
+fi
 
 echo ""
 echo "Configured private networking."

@@ -19,11 +19,12 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
     allowSharedKeyAccess: false
     defaultToOAuthAuthentication: true
     allowBlobPublicAccess: false
+    publicNetworkAccess: 'Disabled'
     minimumTlsVersion: 'TLS1_2'
     accessTier: 'Hot'
     networkAcls: {
-      defaultAction: 'Allow'  // Allow Azure services and managed identity access
-      bypass: 'AzureServices'
+      defaultAction: 'Deny'
+      bypass: 'None'
       ipRules: []  // No specific IP restrictions - rely on managed identity
     }
   }

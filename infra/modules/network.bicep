@@ -14,6 +14,9 @@ param existingAcaInfrastructureSubnetId string = ''
 @description('When createVnet is false: existing subnet ID for Azure Functions VNet integration.')
 param existingFunctionsIntegrationSubnetId string = ''
 
+@description('When createVnet is false and createPrivateEndpoint is true: existing subnet ID for private endpoints.')
+param existingPrivateEndpointSubnetId string = ''
+
 @description('When createVnet is true: VNet address space CIDR.')
 param vnetAddressSpace string = '10.30.0.0/16'
 
@@ -226,5 +229,5 @@ output vnetId string = createVnet ? vnet.id : existingVnetResourceId
 output acaInfrastructureSubnetId string = createVnet ? resourceId('Microsoft.Network/virtualNetworks/subnets', vnet.name, 'aca-infra') : existingAcaInfrastructureSubnetId
 output functionsIntegrationSubnetId string = createVnet ? resourceId('Microsoft.Network/virtualNetworks/subnets', vnet.name, 'functions-integration') : existingFunctionsIntegrationSubnetId
 output vpnGatewayName string = createVnet && createVpnGateway ? vpnGateway.name : ''
-output privateEndpointSubnetId string = createVnet && createPrivateEndpoint ? resourceId('Microsoft.Network/virtualNetworks/subnets', vnet.name, 'private-endpoints') : ''
+output privateEndpointSubnetId string = createPrivateEndpoint ? (createVnet ? resourceId('Microsoft.Network/virtualNetworks/subnets', vnet.name, 'private-endpoints') : existingPrivateEndpointSubnetId) : ''
 output dnsResolverInboundIp string = createVnet && createDnsResolver ? dnsResolverInbound.properties.ipConfigurations[0].privateIpAddress : ''

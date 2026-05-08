@@ -238,12 +238,18 @@ fi
 # Ensure public IP exists
 if ! az network public-ip show -g "$RG" -n "$PIP_NAME" >/dev/null 2>&1; then
   log "Creating public IP $PIP_NAME..."
+  PIP_ZONES_ARGS=()
+  if [[ "$SKU" == *"AZ" ]]; then
+    # AZ VPN gateways require zone-redundant Standard public IPs.
+    PIP_ZONES_ARGS=(--zone 1 2 3)
+  fi
   az network public-ip create \
     -g "$RG" \
     -n "$PIP_NAME" \
     --location "$LOCATION" \
     --sku Standard \
     --allocation-method Static \
+    "${PIP_ZONES_ARGS[@]}" \
     >/dev/null
 else
   log "Public IP already exists: $PIP_NAME"
