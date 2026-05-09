@@ -34,6 +34,9 @@ param rootAdminPassword string = ''
 @description('When true, deploy Container Apps Environment as internal-only and make app ingress internal.')
 param containerAppsInternal bool = false
 
+@description('When true, expose app ingress even in an internal environment (non-internal FQDN, still VNet-only).')
+param containerAppsExposeInInternal bool = false
+
 @description('When containerAppsInternal is true: subnet resource ID for the Container Apps Environment infrastructure subnet.')
 param containerAppsInfrastructureSubnetId string = ''
 
@@ -102,7 +105,7 @@ resource apiContainerApp 'Microsoft.App/containerApps@2023-05-01' = {
     configuration: {
       activeRevisionsMode: 'Single'
       ingress: {
-        external: !containerAppsInternal
+        external: containerAppsInternal ? containerAppsExposeInInternal : true
         targetPort: 8080
         corsPolicy: {
           allowedOrigins: ['*']
@@ -340,7 +343,10 @@ resource keyVaultAccessPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2022-07-
   }
 }
 
+var apiNonInternalFqdn = '${apiContainerApp.name}.${containerAppsEnvironment.properties.defaultDomain}'
+
 output apiUri string = 'https://${apiContainerApp.properties.configuration.ingress.fqdn}'
+output apiNonInternalUri string = 'https://${apiNonInternalFqdn}'
 output apiName string = apiContainerApp.name
 output apiPrincipalId string = apiContainerApp.identity.principalId 
 output environmentDefaultDomain string = containerAppsEnvironment.properties.defaultDomain

@@ -370,6 +370,7 @@ module containerApps './modules/containerapps.bicep' = {
     allowedWebIp: allowedWebIp
     // Networking
     containerAppsInternal: deploymentNetworking == 'private'
+    containerAppsExposeInInternal: deploymentNetworking == 'private'
     containerAppsInfrastructureSubnetId: deploymentNetworking == 'private' ? network.outputs.acaInfrastructureSubnetId : ''
     // Account names for endpoint resolution (managed identity auth)
     cosmosAccountName: cosmos.outputs.accountName
@@ -808,8 +809,8 @@ output AZURE_KEY_VAULT_NAME string = keyVault.outputs.name
 output COSMOS_ACCOUNT_NAME string = cosmos.outputs.accountName
 output STORAGE_ACCOUNT_NAME string = storage.outputs.name
 output AUTH_CLIENT_ID string = authClientId
-output API_BASE_URL string = containerApps.outputs.apiUri
-output WEB_BASE_URL string = containerApps.outputs.apiUri
+output API_BASE_URL string = containerApps.outputs.apiNonInternalUri
+output WEB_BASE_URL string = containerApps.outputs.apiNonInternalUri
 output CONTAINERAPPS_ENV_DEFAULT_DOMAIN string = containerApps.outputs.environmentDefaultDomain
 output CONTAINERAPPS_ENV_STATIC_IP string = containerApps.outputs.environmentStaticIp
 output VPN_GATEWAY_NAME string = deploymentNetworking == 'private' && createVnet && createVpnGateway ? network.outputs.vpnGatewayName : ''
