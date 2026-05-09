@@ -51,6 +51,9 @@ param allowedWebIp string = ''
 @description('Cosmos DB account name for endpoint resolution (managed identity auth)')
 param cosmosAccountName string
 
+@description('Cosmos DB database name for SQL RBAC scope')
+param cosmosDatabaseName string
+
 @description('Storage account name for endpoint resolution (managed identity auth)')  
 param storageAccountName string
 
@@ -333,7 +336,7 @@ resource cosmosSqlDataContributor 'Microsoft.DocumentDB/databaseAccounts/sqlRole
   properties: {
     principalId: apiContainerApp.identity.principalId
     roleDefinitionId: '${cosmosAccount.id}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002'
-    scope: '/'
+    scope: '${cosmosAccount.id}/dbs/${cosmosDatabaseName}'
   }
 }
 

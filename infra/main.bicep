@@ -288,16 +288,13 @@ module keyVault './modules/keyvault.bicep' = {
 }
 
 // Azure OpenAI service (depends on key vault for secret storage)
-module openAI './modules/openai.bicep' = {
-  name: '${deploymentName}-openai'
+module openAINew './modules/openai.bicep' = if (createOpenAI) {
+  name: '${deploymentName}-openai-new'
   params: {
     location: empty(gptDeploymentLocation) ? location : gptDeploymentLocation
     tags: tags
     name: names.openai
     keyVaultName: keyVault.outputs.name
-    createOpenAI: createOpenAI
-    existingOpenAIEndpoint: existingOpenAIEndpoint
-    existingOpenAIKey: existingOpenAIKey
     openAIApiVersion: openAIApiVersion
     openAIModelName: openAIModelName
     openAIModelVersion: openAIModelVersion
@@ -305,6 +302,22 @@ module openAI './modules/openai.bicep' = {
     modelSku: modelSku
   }
 }
+
+module openAIExisting './modules/openai-existing.bicep' = if (!createOpenAI) {
+  name: '${deploymentName}-openai-existing'
+  params: {
+    keyVaultName: keyVault.outputs.name
+    existingOpenAIEndpoint: existingOpenAIEndpoint
+    existingOpenAIKey: existingOpenAIKey
+    openAIApiVersion: openAIApiVersion
+    openAIModelName: openAIModelName
+  }
+}
+
+var openAIEndpoint = createOpenAI ? openAINew!.outputs.endpoint : existingOpenAIEndpoint
+var openAIDeploymentName = openAIModelName
+var openAIApiVersionValue = openAIApiVersion
+var openAIServiceNameValue = createOpenAI ? openAINew!.outputs.serviceName : ''
 
 // Auth placeholder (simple, minimal dependencies)
 // Auth configuration is handled entirely by postprovision script
@@ -375,6 +388,7 @@ module containerApps './modules/containerapps.bicep' = {
     containerAppsInfrastructureSubnetId: deploymentNetworking == 'private' ? network.outputs.acaInfrastructureSubnetId : ''
     // Account names for endpoint resolution (managed identity auth)
     cosmosAccountName: cosmos.outputs.accountName
+    cosmosDatabaseName: cosmos.outputs.databaseName
     storageAccountName: storage.outputs.name
     rootAdminEmail: rootAdminEmail
     rootAdminName: rootAdminName
@@ -756,9 +770,9 @@ module functions './modules/functions.bicep' = {
     keyVaultName: keyVault.outputs.name
     storageAccountName: storage.outputs.name
     containerRegistryName: registry.outputs.name
-    openAIEndpoint: openAI.outputs.endpoint
-    openAIDeploymentName: openAI.outputs.deploymentName
-    openAIApiVersion: openAI.outputs.apiVersion
+    openAIEndpoint: openAIEndpoint
+    openAIDeploymentName: openAIDeploymentName
+    openAIApiVersion: openAIApiVersionValue
     dockerImageTag: dockerImageTag
     enableVnetIntegration: deploymentNetworking == 'private'
     integrationSubnetId: deploymentNetworking == 'private' ? network.outputs.functionsIntegrationSubnetId : ''
@@ -790,9 +804,9 @@ module evaluatorAddon './modules/addons/evaluator.bicep' = if (enableEvaluatorAd
     resourceToken: uniqueSuffix
     storageAccountName: storage.outputs.name
     keyVaultName: keyVault.outputs.name
-    azureOpenAIEndpoint: openAI.outputs.endpoint
-    azureOpenAIDeployment: openAI.outputs.deploymentName
-    azureOpenAIVersion: openAI.outputs.apiVersion
+    azureOpenAIEndpoint: openAIEndpoint
+    azureOpenAIDeployment: openAIDeploymentName
+    azureOpenAIVersion: openAIApiVersionValue
     enableVnetIntegration: deploymentNetworking == 'private'
     integrationSubnetId: deploymentNetworking == 'private' ? network.outputs.functionsIntegrationSubnetId : ''
   }
@@ -830,6 +844,6 @@ output EVALUATOR_FUNCTION_APP_NAME string = ''
 output EVALUATOR_FUNCTION_APP_URL string = ''
 
 // Azure OpenAI outputs
-output AZURE_OPENAI_ENDPOINT string = openAI.outputs.endpoint
-output AZURE_OPENAI_DEPLOYMENT string = openAI.outputs.deploymentName
-output AZURE_OPENAI_SERVICE_NAME string = openAI.outputs.serviceName 
+output AZURE_OPENAI_ENDPOINT string = openAIEndpoint
+output AZURE_OPENAI_DEPLOYMENT string = openAIDeploymentName
+output AZURE_OPENAI_SERVICE_NAME string = openAIServiceNameValue 

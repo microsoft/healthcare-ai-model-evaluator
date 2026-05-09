@@ -230,4 +230,4 @@ output acaInfrastructureSubnetId string = createVnet ? resourceId('Microsoft.Net
 output functionsIntegrationSubnetId string = createVnet ? resourceId('Microsoft.Network/virtualNetworks/subnets', vnet.name, 'functions-integration') : existingFunctionsIntegrationSubnetId
 output vpnGatewayName string = createVnet && createVpnGateway ? vpnGateway.name : ''
 output privateEndpointSubnetId string = createPrivateEndpoint ? (createVnet ? resourceId('Microsoft.Network/virtualNetworks/subnets', vnet.name, 'private-endpoints') : existingPrivateEndpointSubnetId) : ''
-output dnsResolverInboundIp string = createVnet && createDnsResolver ? dnsResolverInbound.properties.ipConfigurations[0].privateIpAddress : ''
+output dnsResolverInboundIp string = createVnet && createDnsResolver ? dnsResolverInbound!.properties.ipConfigurations[0].privateIpAddress : ''
