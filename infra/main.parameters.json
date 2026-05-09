@@ -116,6 +116,15 @@
     "emailEnabled": {
       "value": "${EMAIL_ENABLED=false}"
     },
+    "rootAdminEmail": {
+      "value": "${ROOT_ADMIN_EMAIL=}"
+    },
+    "rootAdminName": {
+      "value": "${ROOT_ADMIN_NAME=}"
+    },
+    "rootAdminPassword": {
+      "value": "${ROOT_ADMIN_PASSWORD=}"
+    },
     "authClientId": {
       "value": "${AUTH_CLIENT_ID=}"
     },
