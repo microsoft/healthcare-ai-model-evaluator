@@ -326,6 +326,17 @@ resource apiContainerApp 'Microsoft.App/containerApps@2023-05-01' = {
   }
 }
 
+// Cosmos DB SQL API data-plane RBAC for the API managed identity.
+resource cosmosSqlDataContributor 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2023-04-15' = {
+  parent: cosmosAccount
+  name: guid(cosmosAccount.id, apiContainerApp.name, 'sql-data-contributor')
+  properties: {
+    principalId: apiContainerApp.identity.principalId
+    roleDefinitionId: '${cosmosAccount.id}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002'
+    scope: '/'
+  }
+}
+
 // Grant Container App access to Key Vault
 resource keyVaultAccessPolicy 'Microsoft.KeyVault/vaults/accessPolicies@2022-07-01' = {
   parent: keyVault

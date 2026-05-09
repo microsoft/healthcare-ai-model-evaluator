@@ -341,6 +341,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' existing 
   name: names.storage
 }
 
+
 // Container Apps deployed after data services so secrets exist
 module containerApps './modules/containerapps.bicep' = {
   name: '${deploymentName}-containerapps'
@@ -380,6 +381,7 @@ module containerApps './modules/containerapps.bicep' = {
     rootAdminPassword: rootAdminPassword
   }
 }
+
 
 // Private Endpoint for Container Apps Environment (private networking)
 var privateEndpointNicName = 'nic-aca-pe-${uniqueSuffix}'
