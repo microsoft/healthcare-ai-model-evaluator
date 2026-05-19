@@ -203,17 +203,24 @@ PRINCIPAL_ID=$(az containerapp show --name "$CONTAINER_APP_NAME" --resource-grou
 if [ -n "$PRINCIPAL_ID" ] && [ "$PRINCIPAL_ID" != "null" ]; then
     echo "Container App managed identity principal ID: $PRINCIPAL_ID"
     
-    # Assign Cosmos DB role
+    # Assign Cosmos DB SQL data-plane role (Built-in Data Contributor)
+    # This is required for reading/writing data via managed identity
+    # Built-in role IDs: 00000000-0000-0000-0000-000000000001 (Reader), 00000000-0000-0000-0000-000000000002 (Contributor)
     if [ -n "$COSMOS_ACCOUNT_NAME" ]; then
-        echo "Assigning Cosmos DB role to Container App managed identity..."
-        az cosmosdb sql role assignment create \
-            --account-name "$COSMOS_ACCOUNT_NAME" \
-            --resource-group "$RESOURCE_GROUP_NAME" \
-            --principal-id "$PRINCIPAL_ID" \
-            --role-definition-id "5bd9cd88-fe45-4216-938b-f97437e15450" \
-            --scope "/subscriptions/$AZURE_SUBSCRIPTION_ID/resourceGroups/$RESOURCE_GROUP_NAME/providers/Microsoft.DocumentDB/databaseAccounts/$COSMOS_ACCOUNT_NAME" \
-            --output none 2>/dev/null || echo "Role assignment may already exist"
-        echo "✅ Cosmos DB role assignment completed"
+        echo "Assigning Cosmos DB SQL data-plane role to Container App managed identity..."
+        COSMOS_ACCOUNT_ID=$(az cosmosdb show --name "$COSMOS_ACCOUNT_NAME" --resource-group "$RESOURCE_GROUP_NAME" --query "id" -o tsv 2>/dev/null || echo "")
+        if [ -n "$COSMOS_ACCOUNT_ID" ]; then
+            az cosmosdb sql role assignment create \
+                --account-name "$COSMOS_ACCOUNT_NAME" \
+                --resource-group "$RESOURCE_GROUP_NAME" \
+                --principal-id "$PRINCIPAL_ID" \
+                --role-definition-id "${COSMOS_ACCOUNT_ID}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002" \
+                --scope "$COSMOS_ACCOUNT_ID" \
+                --output none 2>/dev/null || echo "SQL role assignment may already exist"
+            echo "✅ Cosmos DB SQL data-plane role assignment completed"
+        else
+            echo "⚠️  Warning: Could not get Cosmos DB account ID"
+        fi
     fi
     
     # Assign Storage role
