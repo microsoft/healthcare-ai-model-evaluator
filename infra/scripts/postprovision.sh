@@ -215,7 +215,7 @@ if [ -n "$PRINCIPAL_ID" ] && [ "$PRINCIPAL_ID" != "null" ]; then
                 --resource-group "$RESOURCE_GROUP_NAME" \
                 --principal-id "$PRINCIPAL_ID" \
                 --role-definition-id "${COSMOS_ACCOUNT_ID}/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002" \
-                --scope "$COSMOS_ACCOUNT_ID" \
+                --scope "/" \
                 --output none 2>/dev/null || echo "SQL role assignment may already exist"
             echo "✅ Cosmos DB SQL data-plane role assignment completed"
         else
