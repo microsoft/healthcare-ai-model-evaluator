@@ -103,13 +103,13 @@ npm run dev
 ```bash
 # For Linux/macOS
 export AZURE_STORAGE_CONNECTION_STRING="Your Storage Account connection string"
-export COSMOSDB_CONNECTION_STRING="Your mongodb connection string"
-export COSMOSDB_ENDPOINT="Your mongodb endpoint"
+export COSMOSDB_CONNECTION_STRING="Your Cosmos DB connection string"
+export COSMOSDB_ENDPOINT="Your Cosmos DB endpoint"
 
 # For PowerShell
 $env:AZURE_STORAGE_CONNECTION_STRING="Your Storage Account connection string"
-$env:COSMOSDB_CONNECTION_STRING="Your mongodb connection string"
-$env:COSMOSDB_ENDPOINT="Your mongodb endpoint"
+$env:COSMOSDB_CONNECTION_STRING="Your Cosmos DB connection string"
+$env:COSMOSDB_ENDPOINT="Your Cosmos DB endpoint"
 
 cd backend
 dotnet restore
