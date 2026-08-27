@@ -71,7 +71,7 @@ azd init -t microsoft/healthcare-ai-model-evaluator
 azd up
 ```
 
-To initialize the project targetting a specific branch, use the `--branch` flag:
+To initialize the project targeting a specific branch, use the `--branch` flag:
 ```bash
 azd init -t microsoft/healthcare-ai-model-evaluator --branch feature-branch
 ```
