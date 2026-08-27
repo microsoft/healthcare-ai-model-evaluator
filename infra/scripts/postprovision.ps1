@@ -267,7 +267,7 @@ try {
                     --resource-group $resourceGroupName `
                     --principal-id $principalId `
                     --role-definition-id "$cosmosAccountId/sqlRoleDefinitions/00000000-0000-0000-0000-000000000002" `
-                    --scope $cosmosAccountId `
+                    --scope "/" `
                     --output none 2>$null || Write-Host "SQL role assignment may already exist"
                 Write-Host "✅ Cosmos DB SQL data-plane role assignment completed"
             } else {
